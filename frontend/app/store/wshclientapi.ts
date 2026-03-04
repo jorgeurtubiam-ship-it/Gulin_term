@@ -807,9 +807,24 @@ class RpcApiType {
         return client.wshRpcCall("waveinfo", null, opts);
     }
 
+    // command "webclick" [call]
+    WebClickCommand(client: WshClient, data: CommandWebClickData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("webclick", data, opts);
+    }
+
+    // command "webgettext" [call]
+    WebGetTextCommand(client: WshClient, data: CommandWebGetTextData, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("webgettext", data, opts);
+    }
+
     // command "webselector" [call]
     WebSelectorCommand(client: WshClient, data: CommandWebSelectorData, opts?: RpcOpts): Promise<string[]> {
         return client.wshRpcCall("webselector", data, opts);
+    }
+
+    // command "webtype" [call]
+    WebTypeCommand(client: WshClient, data: CommandWebTypeData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("webtype", data, opts);
     }
 
     // command "workspacelist" [call]

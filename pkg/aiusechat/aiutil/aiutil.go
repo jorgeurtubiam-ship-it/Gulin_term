@@ -243,7 +243,7 @@ func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts u
 	}
 
 	if toolDef.ToolApproval != nil {
-		toolUseData.Approval = toolDef.ToolApproval(parsedArgs)
+		toolUseData.Approval = toolDef.ToolApproval(parsedArgs, chatOpts)
 	}
 
 	if chatOpts.TabId != "" {

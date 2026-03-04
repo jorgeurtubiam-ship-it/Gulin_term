@@ -4,9 +4,11 @@
 package aiusechat
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
@@ -80,7 +82,7 @@ func verifyReadDirInput(input any, toolUseData *uctypes.UIMessageDataToolUse) er
 	return nil
 }
 
-func readDirCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+func readDirCallback(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseReadDirInput(input)
 	if err != nil {
 		return nil, err
@@ -165,7 +167,10 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("reading directory %q (max_entries: %d)", parsed.Path, *parsed.MaxEntries)
 		},
 		ToolAnyCallback: readDirCallback,
-		ToolApproval: func(input any) string {
+		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+			if strings.HasSuffix(chatOpts.Config.AIMode, "@act") {
+				return uctypes.ApprovalAutoApproved
+			}
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyReadDirInput,

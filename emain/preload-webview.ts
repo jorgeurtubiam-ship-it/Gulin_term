@@ -25,4 +25,9 @@ document.addEventListener("contextmenu", (event) => {
     // do nothing
 });
 
+ipcRenderer.on("webview-get-text", (event) => {
+    const text = document.body.innerText;
+    ipcRenderer.send("webview-get-text-response", { text });
+});
+
 console.log("loaded wave preload-webview.ts");

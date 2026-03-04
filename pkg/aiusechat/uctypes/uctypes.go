@@ -4,6 +4,7 @@
 package uctypes
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"slices"
@@ -30,6 +31,7 @@ const (
 	AIProvider_OpenRouter  = "openrouter"
 	AIProvider_NanoGPT     = "nanogpt"
 	AIProvider_OpenAI      = "openai"
+	AIProvider_DeepSeek    = "deepseek"
 	AIProvider_Azure       = "azure"
 	AIProvider_AzureLegacy = "azure-legacy"
 	AIProvider_Custom      = "custom"
@@ -108,12 +110,12 @@ type ToolDefinition struct {
 	Strict               bool           `json:"strict,omitempty"`
 	RequiredCapabilities []string       `json:"requiredcapabilities,omitempty"`
 
-	ToolTextCallback func(any) (string, error)                     `json:"-"`
-	ToolAnyCallback  func(any, *UIMessageDataToolUse) (any, error) `json:"-"` // *UIMessageDataToolUse will NOT be nil
-	ToolCallDesc     func(any, any, *UIMessageDataToolUse) string  `json:"-"` // passed input, output (may be nil), *UIMessageDataToolUse (may be nil)
-	ToolApproval     func(any) string                              `json:"-"`
-	ToolVerifyInput  func(any, *UIMessageDataToolUse) error        `json:"-"` // *UIMessageDataToolUse will NOT be nil
-	ToolProgressDesc func(any) ([]string, error)                   `json:"-"`
+	ToolTextCallback func(context.Context, any) (string, error)                     `json:"-"`
+	ToolAnyCallback  func(context.Context, any, *UIMessageDataToolUse) (any, error) `json:"-"` // *UIMessageDataToolUse will NOT be nil
+	ToolCallDesc     func(any, any, *UIMessageDataToolUse) string                   `json:"-"` // passed input, output (may be nil), *UIMessageDataToolUse (may be nil)
+	ToolApproval     func(any, WaveChatOpts) string                                 `json:"-"`
+	ToolVerifyInput  func(any, *UIMessageDataToolUse) error                         `json:"-"` // *UIMessageDataToolUse will NOT be nil
+	ToolProgressDesc func(any) ([]string, error)                                    `json:"-"`
 }
 
 func (td *ToolDefinition) Clean() *ToolDefinition {
@@ -355,6 +357,7 @@ type GenAIMessage interface {
 	GetMessageId() string
 	GetUsage() *AIUsage
 	GetRole() string
+	GetContent() string
 }
 
 const (
@@ -365,7 +368,17 @@ const (
 // wave specific for POSTing a new message to a convo
 type AIMessage struct {
 	MessageId string          `json:"messageid"` // only for idempotency
+	Role      string          `json:"role"`      // "user" or "assistant"
 	Parts     []AIMessagePart `json:"parts"`
+}
+
+func (m *AIMessage) GetContent() string {
+	for _, part := range m.Parts {
+		if part.Type == AIMessagePartTypeText {
+			return part.Text
+		}
+	}
+	return ""
 }
 
 type AIMessagePart struct {
@@ -395,6 +408,14 @@ type AIToolResult struct {
 
 func (m *AIMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *AIMessage) GetRole() string {
+	return m.Role
+}
+
+func (m *AIMessage) GetUsage() *AIUsage {
+	return nil
 }
 
 func (m *AIMessage) Validate() error {
@@ -635,19 +656,12 @@ func AreModelsCompatible(apiType, model1, model2 string) bool {
 		return true
 	}
 
-	if apiType == APIType_OpenAIResponses {
-		gpt5Models := map[string]bool{
-			"gpt-5.2":    true,
-			"gpt-5.1":    true,
-			"gpt-5":      true,
-			"gpt-5-mini": true,
-			"gpt-5-nano": true,
-		}
-
-		if gpt5Models[model1] && gpt5Models[model2] {
-			return true
-		}
+	// For OpenAI-compatible chat APIs (Ollama, DeepSeek, etc.), allow sharing history
+	if apiType == APIType_OpenAIChat || apiType == APIType_OpenAIResponses {
+		return true
 	}
 
 	return false
 }
+
+var NativeMessageUnmarshalers = make(map[string]func(data []byte) (GenAIMessage, error))

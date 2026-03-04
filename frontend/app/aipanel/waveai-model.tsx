@@ -6,6 +6,7 @@ import {
     UseChatSetMessagesType,
     WaveUIMessage,
     WaveUIMessagePart,
+    ChatSummary,
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
 import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
@@ -75,6 +76,9 @@ export class WaveAIModel {
     >;
     restoreBackupStatus: jotai.PrimitiveAtom<"idle" | "processing" | "success" | "error"> = jotai.atom("idle");
     restoreBackupError: jotai.PrimitiveAtom<string> = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+    isSidebarOpen: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
+    chatSummaries: jotai.PrimitiveAtom<ChatSummary[]> = jotai.atom([]);
+    isLoadingChatSummaries: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
@@ -117,10 +121,23 @@ export class WaveAIModel {
 
         this.defaultModeAtom = jotai.atom((get) => {
             const telemetryEnabled = get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
+            const aiModeConfigs = get(this.aiModeConfigs);
+            const allConfigs = Object.entries(aiModeConfigs).map(([mode, config]) => ({ mode, ...config }));
+            const customConfigs = allConfigs.filter((config) => config["ai:provider"] !== "wave");
+
+            if (customConfigs.length > 0) {
+                // If there's a specific default mode saved in settings, check if it exists
+                let savedMode = get(getSettingsKeyAtom("waveai:defaultmode"));
+                if (savedMode && savedMode in aiModeConfigs && !savedMode.startsWith("waveai@")) {
+                    return savedMode;
+                }
+                // Return the first custom mode as default
+                return customConfigs[0].mode;
+            }
+
             if (this.inBuilder) {
                 return telemetryEnabled ? "waveai@balanced" : "invalid";
             }
-            const aiModeConfigs = get(this.aiModeConfigs);
             if (!telemetryEnabled) {
                 let mode = get(getSettingsKeyAtom("waveai:defaultmode"));
                 if (mode == null || mode.startsWith("waveai@")) {
@@ -266,6 +283,57 @@ export class WaveAIModel {
         globalStore.set(this.droppedFiles, []);
     }
 
+    async loadChatSummaries() {
+        globalStore.set(this.isLoadingChatSummaries, true);
+        try {
+            const response = await fetch(`${getWebServerEndpoint()}/wave/chat-list`);
+            if (response.ok) {
+                const data = await response.json();
+                globalStore.set(this.chatSummaries, data);
+            }
+        } catch (error) {
+            console.error("Failed to load chat summaries:", error);
+        } finally {
+            globalStore.set(this.isLoadingChatSummaries, false);
+        }
+    }
+
+    async switchToChat(chatId: string) {
+        if (chatId === globalStore.get(this.chatId)) {
+            return;
+        }
+        this.useChatStop?.();
+        this.clearFiles();
+        this.clearError();
+        globalStore.set(this.isLoadingChatAtom, true);
+        globalStore.set(this.chatId, chatId);
+
+        // Update RTInfo so it persists on reload
+        RpcApi.SetRTInfoCommand(TabRpcClient, {
+            oref: this.orefContext,
+            data: { "waveai:chatid": chatId },
+        });
+
+        try {
+            const messages = await this.reloadChatFromBackend(chatId);
+            this.useChatSetMessages?.(messages);
+        } catch (error) {
+            console.error("Failed to switch chat:", error);
+            this.setError("Failed to load chat history.");
+        } finally {
+            globalStore.set(this.isLoadingChatAtom, false);
+            this.toggleSidebar(false);
+        }
+    }
+
+    toggleSidebar(open?: boolean) {
+        const next = open ?? !globalStore.get(this.isSidebarOpen);
+        globalStore.set(this.isSidebarOpen, next);
+        if (next) {
+            this.loadChatSummaries();
+        }
+    }
+
     clearChat() {
         this.useChatStop?.();
         this.clearFiles();
@@ -395,12 +463,19 @@ export class WaveAIModel {
 
     isValidMode(mode: string): boolean {
         const telemetryEnabled = globalStore.get(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-        if (mode.startsWith("waveai@") && !telemetryEnabled) {
+        let baseMode = mode;
+        if (mode.endsWith("@plan")) {
+            baseMode = mode.substring(0, mode.length - 5);
+        } else if (mode.endsWith("@act")) {
+            baseMode = mode.substring(0, mode.length - 4);
+        }
+
+        if (baseMode.startsWith("waveai@") && !telemetryEnabled) {
             return false;
         }
 
         const aiModeConfigs = globalStore.get(this.aiModeConfigs);
-        if (aiModeConfigs == null || !(mode in aiModeConfigs)) {
+        if (aiModeConfigs == null || !(baseMode in aiModeConfigs)) {
             return false;
         }
 

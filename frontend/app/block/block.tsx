@@ -15,6 +15,7 @@ import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
+import { MemoryGridViewModel } from "@/app/view/waveai/memorygrid";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
@@ -44,6 +45,8 @@ import "./block.scss";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
 
+import { DashboardViewModel } from "@/app/view/dashboard/dashboard-model";
+
 const BlockRegistry: Map<string, ViewModelClass> = new Map();
 BlockRegistry.set("term", TermViewModel);
 BlockRegistry.set("preview", PreviewModel);
@@ -58,6 +61,8 @@ BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
+BlockRegistry.set("memory-grid", MemoryGridViewModel);
+BlockRegistry.set("dashboard", DashboardViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);
@@ -287,7 +292,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
                     ref={focusElemRef}
                     id={`${nodeModel.blockId}-dummy-focus`} // don't change this name (used in refocusNode)
                     className="dummy-focus"
-                    onChange={() => {}}
+                    onChange={() => { }}
                 />
             </div>
             <div

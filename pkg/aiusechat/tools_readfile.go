@@ -4,6 +4,7 @@
 package aiusechat
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -228,7 +229,7 @@ func verifyReadTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUs
 	return nil
 }
 
-func readTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+func readTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	const ReadLimit = 1024 * 1024 * 1024
 
 	params, err := parseReadTextFileInput(input)
@@ -402,7 +403,10 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("reading %q (from start: offset %d lines, count %d lines)", parsed.Filename, offset, count)
 		},
 		ToolAnyCallback: readTextFileCallback,
-		ToolApproval: func(input any) string {
+		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+			if strings.HasSuffix(chatOpts.Config.AIMode, "@act") {
+				return uctypes.ApprovalAutoApproved
+			}
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyReadTextFileInput,

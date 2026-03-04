@@ -1,8 +1,8 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
-
 import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
+import { ClientModel } from "@/app/store/client-model";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
@@ -192,6 +192,27 @@ export class TermViewModel implements ViewModel {
                                 iconColor: "var(--error-color)",
                                 title: "Exit Code: " + fullShellProcStatus?.shellprocexitcode,
                                 noAction: true,
+                            });
+                            rtn.push({
+                                elemtype: "textbutton",
+                                text: "✨ Fix me!",
+                                className: "green !py-[2px] !px-[10px] text-[11px] font-[500] ml-2",
+                                title: "Ask Gulin IA to analyze and fix this error",
+                                onClick: () => {
+                                    const aiModel = WaveAIModel.getInstance();
+                                    const layoutModel = WorkspaceLayoutModel.getInstance();
+
+                                    // Make sure AI panel is visible
+                                    if (!layoutModel.getAIPanelVisible()) {
+                                        layoutModel.setAIPanelVisible(true);
+                                    }
+
+                                    // Send the context to AI
+                                    const errorPrompt = `El comando que acabo de ejecutar (${cmdText}) falló con el código de salida ${fullShellProcStatus?.shellprocexitcode}. ¿Puedes analizar el error en mi terminal y darme el comando corregido para arreglarlo?`;
+
+                                    aiModel.appendText(errorPrompt, false, { scrollToBottom: true });
+                                    aiModel.handleSubmit();
+                                },
                             });
                         }
                     }
@@ -671,6 +692,75 @@ export class TermViewModel implements ViewModel {
                 return false;
             }
         }
+        if (keyutil.checkKeyPressed(waveEvent, "Tab") || keyutil.checkKeyPressed(waveEvent, "Enter")) {
+            const buffer = this.termRef.current?.terminal?.buffer?.active;
+            if (buffer) {
+                const currentLineIdx = buffer.cursorY + buffer.baseY;
+                const currentLine = buffer.getLine(currentLineIdx)?.translateToString(true)?.trim() || "";
+                const hashIndex = currentLine.lastIndexOf("#");
+                if (hashIndex !== -1) {
+                    const hashPrefix = currentLine.substring(0, hashIndex).trim();
+                    // Basic heuristic: if there's a #, and it's either the first char or preceded by spaces or prompt chars
+
+                    const promptText = currentLine.substring(hashIndex + 1).trim();
+                    if (promptText.length > 0) {
+                        event.preventDefault();
+                        event.stopPropagation();
+
+                        // Clear the current line in terminal (Ctrl-U or sending multiple backspaces)
+                        // Ctrl-U deletes from cursor to beginning of line, but since we are at end, it deletes the whole line.
+                        this.sendDataToController("\x15");
+
+                        // Fetch completion asynchronously
+                        fireAndForget(async () => {
+                            try {
+                                const clientId = ClientModel.getInstance().clientId;
+
+                                const fullConfig = globalStore.get(atoms.fullConfigAtom);
+                                const settings = fullConfig.settings || {};
+                                const presetKey = settings["ai:preset"] ?? "default";
+                                const preset = fullConfig.presets?.[presetKey] || {};
+                                const merged = { ...settings, ...preset };
+
+                                const aiOpts = {
+                                    model: merged["ai:model"] ?? null,
+                                    apitype: merged["ai:apitype"] ?? null,
+                                    orgid: merged["ai:orgid"] ?? null,
+                                    apitoken: merged["ai:apitoken"] ?? null,
+                                    apiversion: merged["ai:apiversion"] ?? null,
+                                    maxtokens: merged["ai:maxtokens"] ?? null,
+                                    timeoutms: merged["ai:timeoutms"] ?? 60000,
+                                    baseurl: merged["ai:baseurl"] ?? null,
+                                    proxyurl: merged["ai:proxyurl"] ?? null,
+                                };
+
+                                const beMsg = {
+                                    clientid: clientId,
+                                    opts: aiOpts,
+                                    prompt: [
+                                        { role: "system", content: "You are a strict bash auto-completer. Translate the user's plain language request into the corresponding bash command. Return ONLY the raw bash command text. Do NOT use markdown code blocks. Do NOT include explanations. Just the command." },
+                                        { role: "user", content: promptText }
+                                    ]
+                                };
+
+                                const aiGen = RpcApi.StreamWaveAiCommand(TabRpcClient, beMsg as any);
+                                let fullCmd = "";
+                                for await (const msg of aiGen) {
+                                    fullCmd += msg.text ?? "";
+                                }
+
+                                fullCmd = fullCmd.replace(/```bash\n?/g, "").replace(/```\n?/g, "").trim();
+                                this.sendDataToController(fullCmd);
+                            } catch (e) {
+                                console.error("Autocomplete failed", e);
+                            }
+                        });
+                        return false;
+                    }
+                }
+            }
+        }
+
         if (keyutil.checkKeyPressed(waveEvent, "Shift:Enter")) {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
             const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;

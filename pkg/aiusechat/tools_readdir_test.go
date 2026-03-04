@@ -285,9 +285,10 @@ func TestGetReadDirToolDefinition(t *testing.T) {
 
 	if toolDef.ToolApproval == nil {
 		t.Error("ToolApproval should not be nil")
-	}
-
-	if toolDef.ToolCallDesc == nil {
-		t.Error("ToolCallDesc should not be nil")
+	} else {
+		approval := toolDef.ToolApproval(nil, uctypes.WaveChatOpts{})
+		if approval != uctypes.ApprovalNeedsApproval {
+			t.Errorf("Expected ApprovalNeedsApproval, got %s", approval)
+		}
 	}
 }

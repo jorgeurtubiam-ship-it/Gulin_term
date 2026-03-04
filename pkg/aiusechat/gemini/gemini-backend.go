@@ -208,12 +208,21 @@ func RunGeminiChatStep(
 		defer cancel()
 	}
 
-	// Convert GenAIMessages to Gemini contents
+	// Convert native messages to Gemini format
 	var contents []GeminiContent
 	for _, genMsg := range chat.NativeMessages {
-		chatMsg, ok := genMsg.(*GeminiChatMessage)
-		if !ok {
-			return nil, nil, nil, fmt.Errorf("expected GeminiChatMessage, got %T", genMsg)
+		var chatMsg *GeminiChatMessage
+		var ok bool
+		if chatMsg, ok = genMsg.(*GeminiChatMessage); !ok {
+			if aiMsg, ok := genMsg.(*uctypes.AIMessage); ok {
+				var err error
+				chatMsg, err = ConvertAIMessageToGeminiChatMessage(*aiMsg)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("failed to convert fallback AIMessage: %w", err)
+				}
+			} else {
+				return nil, nil, nil, fmt.Errorf("expected GeminiChatMessage or *uctypes.AIMessage, got %T", genMsg)
+			}
 		}
 
 		content := GeminiContent{

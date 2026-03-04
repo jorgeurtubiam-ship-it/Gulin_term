@@ -71,42 +71,10 @@ function computeCompatibleSections(
     const currentConfig = aiModeConfigs[currentMode];
     const allConfigs = [...waveProviderConfigs, ...otherProviderConfigs];
 
-    if (!currentConfig) {
-        return [{ sectionName: "Incompatible Modes", configs: allConfigs, isIncompatible: true }];
-    }
-
-    const currentSwitchCompat = currentConfig["ai:switchcompat"] || [];
-    const compatibleConfigs: AIModeConfigWithMode[] = [{ ...currentConfig, mode: currentMode }];
-    const incompatibleConfigs: AIModeConfigWithMode[] = [];
-
-    if (currentSwitchCompat.length === 0) {
-        allConfigs.forEach((config) => {
-            if (config.mode !== currentMode) {
-                incompatibleConfigs.push(config);
-            }
-        });
-    } else {
-        allConfigs.forEach((config) => {
-            if (config.mode === currentMode) return;
-
-            const configSwitchCompat = config["ai:switchcompat"] || [];
-            const hasMatch = currentSwitchCompat.some((currentTag: string) => configSwitchCompat.includes(currentTag));
-
-            if (hasMatch) {
-                compatibleConfigs.push(config);
-            } else {
-                incompatibleConfigs.push(config);
-            }
-        });
-    }
-
+    // Gulin Custom: All models are now compatible to allow switching with Unified Memory.
+    // We just return one section with all available configs.
     const sections: ConfigSection[] = [];
-    const compatibleSectionName = compatibleConfigs.length === 1 ? "Current" : "Compatible Modes";
-    sections.push({ sectionName: compatibleSectionName, configs: compatibleConfigs });
-
-    if (incompatibleConfigs.length > 0) {
-        sections.push({ sectionName: "Incompatible Modes", configs: incompatibleConfigs, isIncompatible: true });
-    }
+    sections.push({ sectionName: "Available Modes", configs: allConfigs });
 
     return sections;
 }
@@ -118,13 +86,6 @@ function computeWaveCloudSections(
 ): ConfigSection[] {
     const sections: ConfigSection[] = [];
 
-    if (waveProviderConfigs.length > 0) {
-        sections.push({
-            sectionName: "Wave AI Cloud",
-            configs: waveProviderConfigs,
-            noTelemetry: !telemetryEnabled,
-        });
-    }
     if (otherProviderConfigs.length > 0) {
         sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
     }
@@ -172,13 +133,6 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
         setIsOpen(false);
     };
 
-    const displayConfig = aiModeConfigs[currentMode];
-    const displayName = displayConfig ? getModeDisplayName(displayConfig) : `Invalid (${currentMode})`;
-    const displayIcon = displayConfig ? displayConfig["display:icon"] || "sparkles" : "question";
-    const resolvedConfig = waveaiModeConfigs[currentMode];
-    const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
-    const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
-
     const handleNewChatClick = () => {
         model.clearChat();
         setIsOpen(false);
@@ -209,6 +163,23 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
             }, 100);
         });
     };
+
+    let baseMode = currentMode;
+    let suffixLabel = "";
+    if (currentMode.endsWith("@plan")) {
+        baseMode = currentMode.substring(0, currentMode.length - 5);
+        suffixLabel = " (PLAN)";
+    } else if (currentMode.endsWith("@act")) {
+        baseMode = currentMode.substring(0, currentMode.length - 4);
+        suffixLabel = " (ACT)";
+    }
+
+    const displayConfig = aiModeConfigs[baseMode];
+    const displayName = displayConfig ? getModeDisplayName(displayConfig) + suffixLabel : `Invalid (${currentMode})`;
+    const displayIcon = displayConfig ? displayConfig["display:icon"] || "sparkles" : "question";
+    const resolvedConfig = waveaiModeConfigs[baseMode];
+    const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
+    const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
 
     return (
         <div className="relative" ref={dropdownRef}>

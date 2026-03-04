@@ -132,8 +132,58 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
         }
     };
 
+    const [currentMode, setCurrentMode] = useAtom(model.currentAIMode);
+
+    const toggleMode = useCallback(
+        (suffix: string) => {
+            let baseMode = currentMode;
+            if (currentMode.endsWith("@plan")) {
+                baseMode = currentMode.substring(0, currentMode.length - 5);
+            } else if (currentMode.endsWith("@act")) {
+                baseMode = currentMode.substring(0, currentMode.length - 4);
+            }
+
+            if (currentMode.endsWith(suffix)) {
+                model.setAIMode(baseMode);
+            } else {
+                model.setAIMode(baseMode + suffix);
+            }
+        },
+        [currentMode, model]
+    );
+
     return (
-        <div className={cn("border-t", isFocused ? "border-accent/50" : "border-gray-600")}>
+        <div className={cn("border-t flex flex-col", isFocused ? "border-accent/50" : "border-gray-600")}>
+            <div className="flex items-center gap-2 px-3 py-1.5 border-b border-gray-600/30">
+                <button
+                    type="button"
+                    onClick={() => toggleMode("@plan")}
+                    className={cn(
+                        "flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border",
+                        currentMode.endsWith("@plan")
+                            ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-[0_0_8px_rgba(99,102,241,0.2)]"
+                            : "bg-zinc-800/50 text-zinc-500 border-transparent hover:text-zinc-400"
+                    )}
+                    title="Planning Mode: Gulin investigates and proposes a plan without acting."
+                >
+                    <i className="fa-solid fa-clipboard-list text-[10px]"></i>
+                    PLAN
+                </button>
+                <button
+                    type="button"
+                    onClick={() => toggleMode("@act")}
+                    className={cn(
+                        "flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border",
+                        currentMode.endsWith("@act")
+                            ? "bg-red-500/20 text-red-300 border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.2)]"
+                            : "bg-zinc-800/50 text-zinc-500 border-transparent hover:text-zinc-400"
+                    )}
+                    title="Action Mode: Gulin solves problems pro-actively using all tools."
+                >
+                    <i className="fa-solid fa-rocket text-[10px]"></i>
+                    ACT
+                </button>
+            </div>
             <input
                 ref={fileInputRef}
                 type="file"
@@ -153,7 +203,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         onBlur={handleBlur}
                         placeholder={placeholder}
                         className={cn(
-                            "w-full  text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto bg-zinc-800/50"
+                            "w-full text-white px-2 py-2 pr-5 focus:outline-none resize-none overflow-auto bg-zinc-800/50"
                         )}
                         style={{ fontSize: "13px" }}
                         rows={2}

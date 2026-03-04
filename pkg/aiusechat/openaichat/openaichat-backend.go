@@ -11,6 +11,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -48,9 +50,18 @@ func RunChatStep(
 
 	// Convert native messages
 	for _, genMsg := range chat.NativeMessages {
-		chatMsg, ok := genMsg.(*StoredChatMessage)
-		if !ok {
-			return nil, nil, nil, fmt.Errorf("expected StoredChatMessage, got %T", genMsg)
+		var chatMsg *StoredChatMessage
+		var ok bool
+		if chatMsg, ok = genMsg.(*StoredChatMessage); !ok {
+			if aiMsg, ok := genMsg.(*uctypes.AIMessage); ok {
+				var err error
+				chatMsg, err = ConvertAIMessageToStoredChatMessage(*aiMsg)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("failed to convert fallback AIMessage: %w", err)
+				}
+			} else {
+				return nil, nil, nil, fmt.Errorf("expected StoredChatMessage or *uctypes.AIMessage, got %T", genMsg)
+			}
 		}
 		messages = append(messages, *chatMsg.Message.clean())
 	}
@@ -201,6 +212,18 @@ func processChatStream(
 		stopKind = uctypes.StopKindToolUse
 	}
 
+	if len(toolCallsInProgress) == 0 {
+		extractedCalls, cleanText := extractToolCallsFromText(textBuilder.String())
+		if len(extractedCalls) > 0 {
+			toolCallsInProgress = extractedCalls
+			stopKind = uctypes.StopKindToolUse
+			finishReason = "tool_calls"
+			// Replace the builder content with the clean text
+			textBuilder.Reset()
+			textBuilder.WriteString(cleanText)
+		}
+	}
+
 	var validToolCalls []ToolCall
 	for _, tc := range toolCallsInProgress {
 		if tc.ID != "" && tc.Function.Name != "" {
@@ -239,10 +262,9 @@ func processChatStream(
 		},
 	}
 
+	assistantMsg.Message.Content = textBuilder.String()
 	if len(validToolCalls) > 0 {
 		assistantMsg.Message.ToolCalls = validToolCalls
-	} else {
-		assistantMsg.Message.Content = textBuilder.String()
 	}
 
 	if textStarted {
@@ -268,4 +290,83 @@ func extractPartialTextMessage(msgID string, text string) *StoredChatMessage {
 			Content: text,
 		},
 	}
+}
+
+func extractToolCallsFromText(text string) ([]ToolCall, string) {
+	var toolCalls []ToolCall
+	cleanText := text
+	extractedIndices := [][]int{}
+
+	// 1. Try to find content inside ```json ... ``` blocks
+	reMarkdown := regexp.MustCompile("(?s)```(?:json)?\n?(.*?)\n?```")
+	markdownMatches := reMarkdown.FindAllStringSubmatchIndex(text, -1)
+	for _, m := range markdownMatches {
+		candidate := strings.TrimSpace(text[m[2]:m[3]])
+		if tc := parseSingleToolCall(candidate); tc != nil {
+			toolCalls = append(toolCalls, *tc)
+			extractedIndices = append(extractedIndices, []int{m[0], m[1]})
+		}
+	}
+
+	// 2. Look for raw JSON objects outside of markdown blocks if we haven't found everything
+	// Use regex to find { "name": "...", "parameters": { ... } }
+	reRaw := regexp.MustCompile(`(?s)\{\s*"name":\s*"([^"]+)"\s*,\s*"parameters":\s*(\{.*?\})\s*\}`)
+	rawMatches := reRaw.FindAllStringSubmatchIndex(text, -1)
+	for _, m := range rawMatches {
+		// Check if this match overlaps with any already extracted markdown block
+		overlaps := false
+		for _, existing := range extractedIndices {
+			if (m[0] >= existing[0] && m[0] < existing[1]) || (m[1] > existing[0] && m[1] <= existing[1]) {
+				overlaps = true
+				break
+			}
+		}
+		if overlaps {
+			continue
+		}
+
+		name := text[m[2]:m[3]]
+		args := text[m[4]:m[5]]
+		toolCalls = append(toolCalls, ToolCall{
+			ID:   "call_" + uuid.New().String()[:8],
+			Type: "function",
+			Function: ToolFunctionCall{
+				Name:      name,
+				Arguments: args,
+			},
+		})
+		extractedIndices = append(extractedIndices, []int{m[0], m[1]})
+	}
+
+	// Clean up the text by removing all extracted parts
+	if len(extractedIndices) > 0 {
+		// Sort indices from end to start to remove correctly
+		slices.SortFunc(extractedIndices, func(a, b []int) int {
+			return b[0] - a[0]
+		})
+		for _, idxPair := range extractedIndices {
+			cleanText = cleanText[:idxPair[0]] + cleanText[idxPair[1]:]
+		}
+	}
+
+	return toolCalls, strings.TrimSpace(cleanText)
+}
+
+func parseSingleToolCall(candidate string) *ToolCall {
+	var simple struct {
+		Name       string         `json:"name"`
+		Parameters map[string]any `json:"parameters"`
+	}
+	if err := json.Unmarshal([]byte(candidate), &simple); err == nil && simple.Name != "" {
+		args, _ := json.Marshal(simple.Parameters)
+		return &ToolCall{
+			ID:   "call_" + uuid.New().String()[:8],
+			Type: "function",
+			Function: ToolFunctionCall{
+				Name:      simple.Name,
+				Arguments: string(args),
+			},
+		}
+	}
+	return nil
 }

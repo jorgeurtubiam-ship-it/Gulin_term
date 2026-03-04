@@ -4,6 +4,7 @@
 import { atoms } from "@/app/store/global";
 import * as jotai from "jotai";
 import { memo, useEffect, useState } from "react";
+import { WaveAIModel } from "./waveai-model";
 
 const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" | "red"; showClose?: boolean }) => {
     const isYellow = variant === "yellow";
@@ -16,8 +17,8 @@ const GetMoreButton = memo(({ variant, showClose = true }: { variant: "yellow" |
         showClose && isYellow
             ? "hover:has-[.close:hover]:bg-yellow-900/30"
             : showClose
-              ? "hover:has-[.close:hover]:bg-red-900/30"
-              : "";
+                ? "hover:has-[.close:hover]:bg-red-900/30"
+                : "";
 
     if (true as boolean) {
         // disable now until we have modal
@@ -60,10 +61,17 @@ function formatTimeRemaining(expirationEpoch: number): string {
 
 const AIRateLimitStripComponent = memo(() => {
     let rateLimitInfo = jotai.useAtomValue(atoms.waveAIRateLimitInfoAtom);
+    const model = WaveAIModel.getInstance();
+    const currentMode = jotai.useAtomValue(model.currentAIMode);
+    const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
+    const config = aiModeConfigs?.[currentMode];
+    const isWaveProvider = config?.["ai:provider"] === "wave";
+
     // rateLimitInfo = { req: 0, reqlimit: 200, preq: 0, preqlimit: 50, resetepoch: 1759374575 + 45 * 60 }; // testing
     const [, forceUpdate] = useState({});
 
-    const shouldShow = rateLimitInfo && !rateLimitInfo.unknown && (rateLimitInfo.preq <= 5 || rateLimitInfo.req === 0);
+    const shouldShow =
+        isWaveProvider && rateLimitInfo && !rateLimitInfo.unknown && (rateLimitInfo.preq <= 5 || rateLimitInfo.req === 0);
 
     useEffect(() => {
         if (!shouldShow) {

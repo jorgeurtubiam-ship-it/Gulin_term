@@ -114,7 +114,7 @@ func GetBuilderWriteAppFileToolDefinition(appId string, builderId string) uctype
 			lineCount := len(strings.Split(params.Contents, "\n"))
 			return []string{fmt.Sprintf("writing app.go (+%d lines)", lineCount)}, nil
 		},
-		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderWriteAppFileInput(input)
 			if err != nil {
 				return nil, err
@@ -244,7 +244,7 @@ func GetBuilderEditAppFileToolDefinition(appId string, builderId string) uctypes
 			}
 			return formatEditDescriptions(params.Edits), nil
 		},
-		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			params, err := parseBuilderEditAppFileInput(input)
 			if err != nil {
 				return nil, err
@@ -294,7 +294,7 @@ func GetBuilderListFilesToolDefinition(appId string) uctypes.ToolDefinition {
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
 			return "listing files"
 		},
-		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			result, err := waveappstore.ListAllAppFiles(appId)
 			if err != nil {
 				return nil, err

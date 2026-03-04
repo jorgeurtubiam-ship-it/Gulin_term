@@ -21,6 +21,17 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
+func init() {
+	uctypes.NativeMessageUnmarshalers[uctypes.APIType_AnthropicMessages] = func(data []byte) (uctypes.GenAIMessage, error) {
+		var msg anthropicChatMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return &msg, nil
+	}
+}
+
 // these conversions are based off the anthropic spec
 // and the aiprompts/aisdk-uimessage-type.md doc (v5)
 

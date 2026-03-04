@@ -44,15 +44,15 @@ func handleTsunamiBlockDesc(block *waveobj.Block) string {
 	return "tsunami widget - unknown description"
 }
 
-func makeTsunamiGetCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any, *uctypes.UIMessageDataToolUse) (any, error) {
-	return func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+func makeTsunamiGetCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(context.Context, any, *uctypes.UIMessageDataToolUse) (any, error) {
+	return func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 		if status.TsunamiPort == 0 {
 			return nil, fmt.Errorf("tsunami port not available")
 		}
 
 		url := fmt.Sprintf("http://localhost:%d%s", status.TsunamiPort, apiPath)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -79,15 +79,15 @@ func makeTsunamiGetCallback(status *blockcontroller.BlockControllerRuntimeStatus
 	}
 }
 
-func makeTsunamiPostCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(any, *uctypes.UIMessageDataToolUse) (any, error) {
-	return func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+func makeTsunamiPostCallback(status *blockcontroller.BlockControllerRuntimeStatus, apiPath string) func(context.Context, any, *uctypes.UIMessageDataToolUse) (any, error) {
+	return func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 		if status.TsunamiPort == 0 {
 			return nil, fmt.Errorf("tsunami port not available")
 		}
 
 		url := fmt.Sprintf("http://localhost:%d%s", status.TsunamiPort, apiPath)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
 		var reqBody []byte

@@ -11,6 +11,7 @@ import { SecretsContent } from "@/app/view/waveconfig/secretscontent";
 import { WaveConfigView } from "@/app/view/waveconfig/waveconfig";
 import { isWindows } from "@/util/platformutil";
 import { base64ToString, stringToBase64 } from "@/util/util";
+import { WaveAIVisualContent } from "@/app/view/waveconfig/waveaivisual";
 import { atom, type PrimitiveAtom } from "jotai";
 import type * as MonacoTypes from "monaco-editor";
 import * as React from "react";
@@ -90,14 +91,14 @@ const configFiles: ConfigFile[] = [
         hasJsonView: true,
     },
     {
-        name: "Wave AI Modes",
+        name: "Gulin IA Modes",
         path: "waveai.json",
         language: "json",
         description: "Local models and BYOK",
         docsUrl: "https://docs.waveterm.dev/waveai-modes",
         validator: validateWaveAiJson,
         hasJsonView: true,
-        // visualComponent: WaveAIVisualContent,
+        visualComponent: WaveAIVisualContent,
     },
     {
         name: "Tab Backgrounds",

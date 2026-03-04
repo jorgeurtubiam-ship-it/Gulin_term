@@ -6,7 +6,6 @@ package aiusechat
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
 	"github.com/wavetermdev/waveterm/pkg/wcore"
@@ -15,8 +14,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wshutil"
 )
 
-func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
-	return func(input any) (string, error) {
+func makeTabCaptureBlockScreenshot(tabId string) func(context.Context, any) (string, error) {
+	return func(ctx context.Context, input any) (string, error) {
 		inputMap, ok := input.(map[string]any)
 		if !ok {
 			return "", fmt.Errorf("invalid input format")
@@ -26,9 +25,6 @@ func makeTabCaptureBlockScreenshot(tabId string) func(any) (string, error) {
 		if !ok {
 			return "", fmt.Errorf("missing or invalid widget_id parameter")
 		}
-
-		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFn()
 
 		fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, blockIdPrefix)
 		if err != nil {

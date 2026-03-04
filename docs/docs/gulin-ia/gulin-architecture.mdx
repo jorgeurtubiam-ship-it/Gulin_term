@@ -1,0 +1,64 @@
+---
+id: gulin-architecture
+title: Arquitectura Interna de Gulin IA
+sidebar_label: Arquitectura Interna
+---
+
+# 🧠 Arquitectura y Módulos de Gulin IA
+
+Esta sección detalla todos los componentes clave que se han desarrollado e integrado en Wave Terminal para dar vida a **Gulin IA**. El sistema se divide en tres capas principales: la recolección de contexto (Frontend), el motor de procesamiento y orquestación (Backend Go) y el sistema de memoria (Brain).
+
+---
+
+## 1. El Motor de Chat y Múltiples LLMs (`usechat.go`)
+
+El cerebro detrás de todo el flujo conversacional reside en el paquete `aiusechat`. Aquí es donde se recibe el *prompt* del usuario y se decide cómo procesarlo.
+
+### Funcionalidades Añadidas:
+*   **Soporte Multi-Provider (`ResolveProvider`):** Gulin no está atado a OpenAI. Se agregó la lógica para enrutar peticiones localmente (vía Ollama, ejecutando Llama3 o DeepSeek Coder) o hacia APIs en la nube (Anthropic, Gemini, OpenAI).
+*   **Interceptor de Mensajes (`WaveAIPostMessageWrap`):** Antes de enviar el historial al LLM, el sistema reconstruye el *System Prompt* inyectando variables del entorno local del usuario.
+*   **Tokens y Rate Limits:** Lógica de asignación dinámica de tokens máximos dependiendo de si se está en "Builder Mode" (Tsunami) o en un chat normal.
+
+---
+
+## 2. Gulin Brain: Memoria a Largo Plazo (`memory_brain.go`)
+
+Uno de los mayores hitos de Gulin es su capacidad de recordar el contexto entre sesiones y pestañas independientes.
+
+### ¿Qué se implementó?
+*   **Almacenamiento Local (`GetGulinMemoryDir`):** Toda la memoria del proyecto se guarda de forma segura en `~/.waveterm/gulin/` en formato `.md`. 
+*   **Inyección de Contexto en Tiempo de Ejecución (`GetGulinBrainContext`):** Cada vez que un usuario envía un mensaje, este módulo lee los archivos `.md` de la memoria, formatea sus reglas y directrices, y las concatena de forma invisible al *System Prompt*.
+*   **Indexación por Embeddings (Experimental):** Se añadieron funciones (`GetEmbeddings`, `CosineSimilarity`, `SearchGulinMemory`) preparadas para consumir el endpoint local de embeddings de Ollama (`nomic-embed-text`). Esto permite que, en el futuro (Fase 4), Gulin haga búsquedas semánticas sobre miles de archivos de memoria sin saturar la ventana de contexto.
+
+---
+
+## 3. Tool Calling: Acciones Delegadas (Tools)
+
+Gulin pasa de ser un bot pasivo a un Agente Activo mediante la implementación de *Tools* (Herramientas) escritas nativamente en Go.
+
+### Herramientas Agregadas:
+*   **`tools_term.go` (Ejecución de Terminal):** Permite a Gulin analizar el sistema operativo del usuario e invocar secuencias de Bash directamente en la terminal adyacente. Todo esto bloqueado detrás de un sistema de "Aprobación de Usuario" por seguridad.
+*   **`tools_readdir.go` & `tools_readfile.go`:** Le da ojos a Gulin en el sistema de archivos local. Puede listar directorios y leer metadatos (tamaños, fechas) para entender dónde está el código fuente.
+*   **`tools_tsunami.go` & `tools_builder.go`:** Modos de generación agresiva de código. Permite a Gulin actuar como "Ingeniero Principal", creando estructuras de carpetas enteras y volcando código base (*boilerplates*) para proyectos nuevos desde cero.
+
+---
+
+## 4. Gestión de Base de Datos y Persistencia (`chatstore_db.go`)
+
+Para evitar que los historiales se borren y permitir métricas de uso:
+*   **Base de Datos SQLite Local:** Se implementó una tabla `chat_message` gestionada por `wstore`.
+*   **Carga y Volcado (`SaveMessageToDB` / `LoadChatFromDB`):** Permite mantener el historial exacto de qué proveedor LLM contestó cada mensaje (`api_type`, `model`) y rehidratar el chat nativo independientemente de si provino de Gemini, OpenAI o Anthropic.
+
+---
+
+## 5. Frontend: UI de Wave AI (React/TSX)
+
+La experiencia del usuario en la terminal se rediseñó para integrar a Gulin:
+
+*   **Widget Context (Selector):** Un interruptor vital (ON/OFF) en la UI que informa al backend en tiempo real si debe o no escanear los procesos locales y la terminal. 
+*   **Aislamiento de Pestañas (Tab State):** La lógica de React asegura que si abres un *Tab* nuevo (`T2`), el ID de chat y el contexto pasados a `usechat.go` sean completamente limpios, logrando el modo *Sandbox*.
+*   **Dashboards y Presentación:** Nuevos componentes visuales (`memorygrid.tsx`, `aihistorysidebar.tsx`) para gestionar gráficamente el historial de chats y ver qué memorias activas tiene Gulin guardadas.
+
+---
+
+> El objetivo principal de esta arquitectura es **Privacidad, Contexto y Autonomía**. Gulin sabe dónde estás parado, pero todas sus llamadas locales o de modificación en la terminal requieren aprobación o están restringidas al espacio de trabajo asignado.

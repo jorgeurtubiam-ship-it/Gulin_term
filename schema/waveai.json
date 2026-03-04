@@ -20,9 +20,11 @@
           "enum": [
             "wave",
             "google",
+            "groq",
             "openrouter",
             "nanogpt",
             "openai",
+            "deepseek",
             "azure",
             "azure-legacy",
             "custom"

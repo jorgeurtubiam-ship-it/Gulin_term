@@ -120,6 +120,9 @@ type WshRpcInterface interface {
 
 	// emain
 	WebSelectorCommand(ctx context.Context, data CommandWebSelectorData) ([]string, error)
+	WebGetTextCommand(ctx context.Context, data CommandWebGetTextData) (string, error)
+	WebClickCommand(ctx context.Context, data CommandWebClickData) error
+	WebTypeCommand(ctx context.Context, data CommandWebTypeData) error
 	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
 	FocusWindowCommand(ctx context.Context, windowId string) error
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
@@ -884,13 +887,34 @@ type BlockJobStatusData struct {
 }
 
 type FocusedBlockData struct {
-	BlockId                     string               `json:"blockid"`
-	ViewType                    string               `json:"viewtype"`
-	Controller                  string               `json:"controller"`
-	ConnName                    string               `json:"connname"`
-	BlockMeta                   waveobj.MetaMapType  `json:"blockmeta"`
-	TermJobStatus               *BlockJobStatusData  `json:"termjobstatus,omitempty"`
-	ConnStatus                  *ConnStatus          `json:"connstatus,omitempty"`
-	TermShellIntegrationStatus  string               `json:"termshellintegrationstatus,omitempty"`
-	TermLastCommand             string               `json:"termlastcommand,omitempty"`
+	BlockId                    string              `json:"blockid"`
+	ViewType                   string              `json:"viewtype"`
+	Controller                 string              `json:"controller"`
+	ConnName                   string              `json:"connname"`
+	BlockMeta                  waveobj.MetaMapType `json:"blockmeta"`
+	TermJobStatus              *BlockJobStatusData `json:"termjobstatus,omitempty"`
+	ConnStatus                 *ConnStatus         `json:"connstatus,omitempty"`
+	TermShellIntegrationStatus string              `json:"termshellintegrationstatus,omitempty"`
+	TermLastCommand            string              `json:"termlastcommand,omitempty"`
+}
+
+type CommandWebGetTextData struct {
+	WorkspaceId string `json:"workspaceid"`
+	BlockId     string `json:"blockid"`
+	TabId       string `json:"tabid"`
+}
+
+type CommandWebClickData struct {
+	WorkspaceId string `json:"workspaceid"`
+	BlockId     string `json:"blockid"`
+	TabId       string `json:"tabid"`
+	Selector    string `json:"selector"`
+}
+
+type CommandWebTypeData struct {
+	WorkspaceId string `json:"workspaceid"`
+	BlockId     string `json:"blockid"`
+	TabId       string `json:"tabid"`
+	Selector    string `json:"selector"`
+	Text        string `json:"text"`
 }

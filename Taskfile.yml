@@ -4,7 +4,7 @@
 version: "3"
 
 vars:
-    APP_NAME: "Wave"
+    APP_NAME: "GuLiN"
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
@@ -12,7 +12,7 @@ vars:
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
     ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
     RELEASES_BUCKET: dl.waveterm.dev/releases-w2
-    WINGET_PACKAGE: CommandLine.Wave
+    WINGET_PACKAGE: LoRdZeRo.GuLiN
 
 tasks:
     electron:dev:
@@ -196,7 +196,7 @@ tasks:
               ignore_error: true
             - task: build:server:internal
               vars:
-                  ARCHS: arm64,amd64
+                  ARCHS: arm64
 
     build:server:quickdev:
         desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
@@ -236,17 +236,15 @@ tasks:
             - dist/bin/wavesrv.x64.exe
 
     build:server:windows:
-        desc: Build the wavesrv component for Windows platforms (only generates artifacts for the current architecture).
-        platforms: [windows]
+        desc: Build the wavesrv component for Windows platforms.
         cmds:
-            - cmd: powershell -Command "Remove-Item -Force -ErrorAction SilentlyContinue -Path dist/bin/wavesrv*"
+            - cmd: '{{.RMRF}} dist/bin/wavesrv.x64.exe'
               ignore_error: true
             - task: build:server:internal
               vars:
-                  ARCHS:
-                      sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
-                  GO_ENV_VARS:
-                      sh: echo "{{if eq "amd64" ARCH}}CC=\"zig cc -target x86_64-windows-gnu\"{{else}}CC=\"zig cc -target aarch64-windows-gnu\"{{end}}"
+                  ARCHS: amd64
+                  GOOS: windows
+                  GO_ENV_VARS: CC="zig cc -target x86_64-windows-gnu"
 
     build:server:linux:
         desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
@@ -265,8 +263,10 @@ tasks:
         requires:
             vars:
                 - ARCHS
+        vars:
+            EXT: '{{if eq .GOOS "windows"}}.exe{{end}}'
         cmd:
-            cmd: CGO_ENABLED=1 GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{exeExt}} cmd/server/main-server.go
+            cmd: CGO_ENABLED=1 GOOS={{.GOOS | default OS}} GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{.EXT}} cmd/server/main-server.go
             for:
                 var: ARCHS
                 split: ","

@@ -22,12 +22,24 @@ var DefaultChatStore = &ChatStore{
 
 func (cs *ChatStore) Get(chatId string) *uctypes.AIChat {
 	cs.lock.Lock()
-	defer cs.lock.Unlock()
-
 	chat := cs.chats[chatId]
+	cs.lock.Unlock()
+
 	if chat == nil {
-		return nil
+		// Try loading from DB
+		var err error
+		chat, err = LoadChatFromDB(chatId)
+		if err != nil || chat == nil {
+			return nil
+		}
+		// Populate memory cache
+		cs.lock.Lock()
+		cs.chats[chatId] = chat
+		cs.lock.Unlock()
 	}
+
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
 
 	// Copy the chat to prevent concurrent access issues
 	copyChat := &uctypes.AIChat{
@@ -44,9 +56,11 @@ func (cs *ChatStore) Get(chatId string) *uctypes.AIChat {
 
 func (cs *ChatStore) Delete(chatId string) {
 	cs.lock.Lock()
-	defer cs.lock.Unlock()
-
 	delete(cs.chats, chatId)
+	cs.lock.Unlock()
+
+	// Persistence: Delete from DB
+	DeleteChatFromDB(chatId)
 }
 
 func (cs *ChatStore) CountUserMessages(chatId string) int {
@@ -66,12 +80,20 @@ func (cs *ChatStore) CountUserMessages(chatId string) int {
 	}
 	return count
 }
-
 func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, message uctypes.GenAIMessage) error {
 	cs.lock.Lock()
-	defer cs.lock.Unlock()
-
 	chat := cs.chats[chatId]
+	if chat == nil {
+		// Try loading from DB first to see if it exists
+		cs.lock.Unlock()
+		var err error
+		chat, err = LoadChatFromDB(chatId)
+		cs.lock.Lock()
+		if err == nil && chat != nil {
+			cs.chats[chatId] = chat
+		}
+	}
+
 	if chat == nil {
 		// Create new chat
 		chat = &uctypes.AIChat{
@@ -85,12 +107,15 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 	} else {
 		// Verify that the AI options match
 		if chat.APIType != aiOpts.APIType {
+			cs.lock.Unlock()
 			return fmt.Errorf("API type mismatch: expected %s, got %s (must start a new chat)", chat.APIType, aiOpts.APIType)
 		}
 		if !uctypes.AreModelsCompatible(chat.APIType, chat.Model, aiOpts.Model) {
+			cs.lock.Unlock()
 			return fmt.Errorf("model mismatch: expected %s, got %s (must start a new chat)", chat.Model, aiOpts.Model)
 		}
 		if chat.APIVersion != aiOpts.APIVersion {
+			cs.lock.Unlock()
 			return fmt.Errorf("API version mismatch: expected %s, got %s (must start a new chat)", chat.APIVersion, aiOpts.APIVersion)
 		}
 	}
@@ -101,14 +126,19 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 		if existingMessage.GetMessageId() == messageId {
 			// Replace existing message with same ID
 			chat.NativeMessages[i] = message
+			cs.lock.Unlock()
+			// Persistence: Update in DB
+			SaveMessageToDB(chatId, aiOpts, message)
 			return nil
 		}
 	}
 
 	// Append the new message if no duplicate found
 	chat.NativeMessages = append(chat.NativeMessages, message)
+	cs.lock.Unlock()
 
-	return nil
+	// Persistence: Save to DB
+	return SaveMessageToDB(chatId, aiOpts, message)
 }
 
 func (cs *ChatStore) RemoveMessage(chatId string, messageId string) bool {
@@ -126,4 +156,44 @@ func (cs *ChatStore) RemoveMessage(chatId string, messageId string) bool {
 	})
 
 	return len(chat.NativeMessages) < initialLen
+}
+func (cs *ChatStore) GetLastUserMessage(chatId string) uctypes.GenAIMessage {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	chat := cs.chats[chatId]
+	if chat == nil || len(chat.NativeMessages) == 0 {
+		return nil
+	}
+
+	for i := len(chat.NativeMessages) - 1; i >= 0; i-- {
+		if chat.NativeMessages[i].GetRole() == "user" {
+			return chat.NativeMessages[i]
+		}
+	}
+	return nil
+}
+
+func (cs *ChatStore) TrimMessagesAfter(chatId string, messageId string) {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	chat := cs.chats[chatId]
+	if chat == nil {
+		return
+	}
+
+	foundIdx := -1
+	for i, msg := range chat.NativeMessages {
+		if msg.GetMessageId() == messageId {
+			foundIdx = i
+			break
+		}
+	}
+
+	if foundIdx != -1 && foundIdx < len(chat.NativeMessages)-1 {
+		chat.NativeMessages = chat.NativeMessages[:foundIdx+1]
+		// Persistence: For simplicity in this implementation, we rely on the next PostMessage to resync DB
+		// or we could implement a DeleteMessagesAfter in DB.
+	}
 }

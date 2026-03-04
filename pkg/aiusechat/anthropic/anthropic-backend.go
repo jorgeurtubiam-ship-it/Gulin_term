@@ -46,6 +46,15 @@ func (m *anthropicChatMessage) GetMessageId() string {
 	return m.MessageId
 }
 
+func (m *anthropicChatMessage) GetContent() string {
+	for _, block := range m.Content {
+		if block.Type == "text" {
+			return block.Text
+		}
+	}
+	return ""
+}
+
 func (m *anthropicChatMessage) GetRole() string {
 	return m.Role
 }
@@ -434,10 +443,18 @@ func RunAnthropicChatStep(
 	// Convert GenAIMessages to anthropicInputMessages
 	var anthropicMsgs []anthropicInputMessage
 	for _, genMsg := range chat.NativeMessages {
-		// Cast to anthropicChatMessage
-		chatMsg, ok := genMsg.(*anthropicChatMessage)
-		if !ok {
-			return nil, nil, nil, fmt.Errorf("expected anthropicChatMessage, got %T", genMsg)
+		var chatMsg *anthropicChatMessage
+		var ok bool
+		if chatMsg, ok = genMsg.(*anthropicChatMessage); !ok {
+			if aiMsg, ok := genMsg.(*uctypes.AIMessage); ok {
+				var err error
+				chatMsg, err = ConvertAIMessageToAnthropicChatMessage(*aiMsg)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("failed to convert fallback AIMessage: %w", err)
+				}
+			} else {
+				return nil, nil, nil, fmt.Errorf("expected anthropicChatMessage or *uctypes.AIMessage, got %T", genMsg)
+			}
 		}
 		// Convert to anthropicInputMessage with copied content
 		contentCopy := make([]anthropicMessageContentBlock, len(chatMsg.Content))

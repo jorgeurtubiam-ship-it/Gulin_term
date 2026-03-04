@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -43,10 +44,18 @@ var (
 	globalRateLimitInfo = &uctypes.RateLimitInfo{Unknown: true}
 	rateLimitLock       sync.Mutex
 
-	activeChats = ds.MakeSyncMap[bool]() // key is chatid
+	activeChats = ds.MakeSyncMap[context.CancelFunc]() // key is chatid
 )
 
-func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool) []string {
+func CancelActiveChat(chatId string) {
+	if cancel, ok := activeChats.GetEx(chatId); ok {
+		log.Printf("canceling active chat %s\n", chatId)
+		cancel()
+		activeChats.Delete(chatId)
+	}
+}
+
+func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapability bool, widgetAccess bool, aiMode string) []string {
 	if isBuilder {
 		return []string{}
 	}
@@ -55,12 +64,23 @@ func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapab
 	if useNoToolsPrompt {
 		basePrompt = SystemPromptText_NoTools
 	}
+	var prompts []string
+	prompts = append(prompts, basePrompt)
+
+	if !useNoToolsPrompt {
+		if strings.HasSuffix(aiMode, "@plan") {
+			prompts = append(prompts, SystemPrompt_Plan)
+		} else if strings.HasSuffix(aiMode, "@act") {
+			prompts = append(prompts, SystemPrompt_Act)
+		}
+	}
+
 	modelLower := strings.ToLower(model)
 	needsStrictToolAddOn, _ := regexp.MatchString(`(?i)\b(mistral|o?llama|qwen|mixtral|yi|phi|deepseek)\b`, modelLower)
 	if needsStrictToolAddOn && !useNoToolsPrompt {
-		return []string{basePrompt, SystemPromptText_StrictToolAddOn}
+		prompts = append(prompts, SystemPromptText_StrictToolAddOn)
 	}
-	return []string{basePrompt}
+	return prompts
 }
 
 func isLocalEndpoint(endpoint string) bool {
@@ -217,7 +237,7 @@ func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOp
 	}
 }
 
-func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
+func processToolCallInternal(ctx context.Context, backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
 	if toolCall.ToolUseData == nil {
 		return uctypes.AIToolResult{
 			ToolName:  toolCall.Name,
@@ -287,7 +307,7 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 	}
 
 	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
-	result := ResolveToolCall(toolDef, toolCall, chatOpts)
+	result := ResolveToolCall(ctx, toolDef, toolCall, chatOpts)
 
 	if result.ErrorText != "" {
 		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
@@ -299,12 +319,12 @@ func processToolCallInternal(backend UseChatBackend, toolCall uctypes.WaveToolCa
 	return result
 }
 
-func processToolCall(backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
+func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
 	inputJSON, _ := json.Marshal(toolCall.Input)
 	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
 
 	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
-	result := processToolCallInternal(backend, toolCall, chatOpts, toolDef, sseHandler)
+	result := processToolCallInternal(ctx, backend, toolCall, chatOpts, toolDef, sseHandler)
 
 	if result.ErrorText != "" {
 		log.Printf("  error=%s\n", result.ErrorText)
@@ -325,7 +345,7 @@ func processToolCall(backend UseChatBackend, toolCall uctypes.WaveToolCall, chat
 	return result
 }
 
-func processAllToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
+func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
 	// Create and send all data-tooluse packets at the beginning
 	for i := range stopReason.ToolCalls {
 		toolCall := &stopReason.ToolCalls[i]
@@ -354,7 +374,7 @@ func processAllToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopRea
 			log.Printf("AI tool processing stopped: %v\n", sseHandler.Err())
 			break
 		}
-		result := processToolCall(backend, toolCall, chatOpts, sseHandler, metrics)
+		result := processToolCall(ctx, backend, toolCall, chatOpts, sseHandler, metrics)
 		toolResults = append(toolResults, result)
 	}
 
@@ -386,10 +406,14 @@ func processAllToolCalls(backend UseChatBackend, stopReason *uctypes.WaveStopRea
 }
 
 func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
-	if !activeChats.SetUnless(chatOpts.ChatId, true) {
+	chatCtx, cancelFn := context.WithCancel(ctx)
+	defer cancelFn()
+
+	if !activeChats.SetUnless(chatOpts.ChatId, cancelFn) {
 		return nil, fmt.Errorf("chat %s is already running", chatOpts.ChatId)
 	}
 	defer activeChats.Delete(chatOpts.ChatId)
+	ctx = chatCtx
 
 	stepNum := chatstore.DefaultChatStore.CountUserMessages(chatOpts.ChatId)
 	aiProvider := chatOpts.Config.Provider
@@ -479,7 +503,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
-			processAllToolCalls(backend, stopReason, chatOpts, sseHandler, metrics)
+			processAllToolCalls(ctx, backend, stopReason, chatOpts, sseHandler, metrics)
 			cont = &uctypes.WaveContinueResponse{
 				Model:            chatOpts.Config.Model,
 				ContinueFromKind: uctypes.StopKindToolUse,
@@ -491,7 +515,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	return metrics, nil
 }
 
-func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
+func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
 		ToolUseID: toolCall.ID,
@@ -511,7 +535,7 @@ func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolC
 
 	// Try ToolTextCallback first, then ToolAnyCallback
 	if toolDef.ToolTextCallback != nil {
-		text, err := toolDef.ToolTextCallback(toolCall.Input)
+		text, err := toolDef.ToolTextCallback(ctx, toolCall.Input)
 		if err != nil {
 			result.ErrorText = err.Error()
 		} else {
@@ -522,7 +546,7 @@ func ResolveToolCall(toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolC
 			}
 		}
 	} else if toolDef.ToolAnyCallback != nil {
-		output, err := toolDef.ToolAnyCallback(toolCall.Input, toolCall.ToolUseData)
+		output, err := toolDef.ToolAnyCallback(ctx, toolCall.Input, toolCall.ToolUseData)
 		if err != nil {
 			result.ErrorText = err.Error()
 		} else {
@@ -631,6 +655,72 @@ type PostMessageRequest struct {
 	AIMode       string            `json:"aimode"`
 }
 
+type BrainSummary struct {
+	Filename   string `json:"filename"`
+	Title      string `json:"title"`
+	LastUpdate int64  `json:"lastupdate"`
+	Snippet    string `json:"snippet"`
+}
+
+func WaveAIBrainListHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	files, err := ListGulinMemoryFiles()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to list brain files: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	summaries := make([]BrainSummary, 0)
+	for _, file := range files {
+		path := filepath.Join(GetGulinMemoryDir(), file)
+		info, err := os.Stat(path)
+		if err != nil {
+			continue
+		}
+		content, err := ReadGulinMemoryFile(file)
+		if err != nil {
+			continue
+		}
+		snippet := content
+		if len(snippet) > 200 {
+			snippet = snippet[:200]
+		}
+		title := strings.TrimSuffix(file, ".md")
+		title = strings.ReplaceAll(title, "_", " ")
+		title = strings.Title(title)
+
+		summaries = append(summaries, BrainSummary{
+			Filename:   file,
+			Title:      title,
+			LastUpdate: info.ModTime().UnixMilli(),
+			Snippet:    snippet,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summaries)
+}
+
+func WaveAIGetChatListHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	summaries, err := chatstore.GetChatListFromDB()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get chat list: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summaries)
+}
+
 func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow POST method
 	if r.Method != http.MethodPost {
@@ -691,7 +781,11 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		BuilderId:            req.BuilderId,
 		BuilderAppId:         req.BuilderAppId,
 	}
-	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess)
+	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess, chatOpts.Config.AIMode)
+	brainContext := GetGulinBrainContext(req.Msg.GetContent())
+	if brainContext != "" {
+		chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, brainContext)
+	}
 
 	if req.TabId != "" {
 		chatOpts.TabStateGenerator = func() (string, []uctypes.ToolDefinition, string, error) {
@@ -720,14 +814,79 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Handle Interruption
+	lastUserMsg := chatstore.DefaultChatStore.GetLastUserMessage(req.ChatID)
+	// Check if the chat is already active
+	activeCancel, ok := activeChats.GetEx(req.ChatID)
+	isInterruption := false
+	if ok && activeCancel != nil {
+		log.Printf("Interrupting active chat %s to merge context\n", req.ChatID)
+		CancelActiveChat(req.ChatID)
+		isInterruption = true
+
+		if lastUserMsg != nil {
+			// Merge the new message into the last user message
+			// We assume req.Msg has text content
+			newContent := req.Msg.GetContent()
+			if newContent != "" {
+				// Cast GenAIMessage to *uctypes.AIMessage to access its parts
+				aiMsg, ok := lastUserMsg.(*uctypes.AIMessage)
+				if ok {
+					currentParts := aiMsg.Parts
+					// Find first text part and append or add new part
+					merged := false
+					for i := range currentParts {
+						if currentParts[i].Type == uctypes.AIMessagePartTypeText {
+							currentParts[i].Text += "\n(Contexto adicional: " + newContent + ")"
+							merged = true
+							break
+						}
+					}
+					if !merged {
+						currentParts = append(currentParts, uctypes.AIMessagePart{
+							Type: uctypes.AIMessagePartTypeText,
+							Text: "\n(Contexto adicional: " + newContent + ")",
+						})
+					}
+					aiMsg.Parts = currentParts
+
+					// Save the updated message and trim everything after it
+					_ = chatstore.DefaultChatStore.PostMessage(req.ChatID, aiOpts, aiMsg)
+					chatstore.DefaultChatStore.TrimMessagesAfter(req.ChatID, aiMsg.GetMessageId())
+				}
+			}
+		}
+	}
+
 	// Create SSE handler and set up streaming
 	sseHandler := sse.MakeSSEHandlerCh(w, r.Context())
 	defer sseHandler.Close()
 
-	if err := WaveAIPostMessageWrap(r.Context(), sseHandler, &req.Msg, chatOpts); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
-		return
+	if isInterruption && lastUserMsg != nil {
+		// Restart with merged message
+		if err := RunAIChatWrap(r.Context(), sseHandler, chatOpts); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to restart chat: %v", err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Normal post
+		if err := WaveAIPostMessageWrap(r.Context(), sseHandler, &req.Msg, chatOpts); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
+			return
+		}
 	}
+}
+
+func RunAIChatWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
+	backend, err := GetBackendByAPIType(chatOpts.Config.APIType)
+	if err != nil {
+		return err
+	}
+	metrics, err := RunAIChat(ctx, sseHandler, backend, chatOpts)
+	if metrics != nil {
+		sendAIMetricsTelemetry(ctx, metrics)
+	}
+	return err
 }
 
 func WaveAIGetChatHandler(w http.ResponseWriter, r *http.Request) {

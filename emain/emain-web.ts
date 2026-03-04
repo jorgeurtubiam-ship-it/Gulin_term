@@ -63,3 +63,104 @@ export async function webGetSelector(wc: WebContents, selector: string, opts?: W
     }
     return results.value;
 }
+
+/**
+ * Extracts the inner text of the document body from a webview.
+ * @param wc The WebContents of the webview.
+ * @returns A promise that resolves to the text content of the page.
+ */
+export async function webGetText(wc: WebContents): Promise<string> {
+    if (!wc) {
+        return null;
+    }
+    const execExpr = `(() => {
+        try {
+            return { value: document.body.innerText };
+        } catch (error) {
+            return { error: error.message };
+        }
+    })()`;
+    const result = await wc.executeJavaScript(execExpr);
+    if (result.error) {
+        throw new Error(result.error);
+    }
+    return result.value;
+}
+
+/**
+ * Simulates a click on a web element identified by a CSS selector.
+ * @param wc The WebContents of the webview.
+ * @param selector The CSS selector of the element to click.
+ */
+export async function webClick(wc: WebContents, selector: string): Promise<void> {
+    if (!wc || !selector) {
+        return;
+    }
+    const escapedSelector = selector
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t");
+    const execExpr = `(() => {
+        try {
+            const el = document.querySelector("${escapedSelector}");
+            if (el) {
+                (el as HTMLElement).click();
+                return { success: true };
+            }
+            return { error: "element not found: " + "${escapedSelector}" };
+        } catch (error) {
+            return { error: error.message };
+        }
+    })()`;
+    const result = await wc.executeJavaScript(execExpr);
+    if (result.error) {
+        throw new Error(result.error);
+    }
+}
+
+/**
+ * Types text into a web element and dispatches input/change events.
+ * @param wc The WebContents of the webview.
+ * @param selector The CSS selector of the input/textarea element.
+ * @param text The text to enter into the element.
+ */
+export async function webType(wc: WebContents, selector: string, text: string): Promise<void> {
+    if (!wc || !selector) {
+        return;
+    }
+    const escapedSelector = selector
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t");
+    const escapedText = text
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t");
+    const execExpr = `(() => {
+        try {
+            const el = document.querySelector("${escapedSelector}");
+            if (el) {
+                (el as HTMLInputElement | HTMLTextAreaElement).value = "${escapedText}";
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                return { success: true };
+            }
+            return { error: "element not found: " + "${escapedSelector}" };
+        } catch (error) {
+            return { error: error.message };
+        }
+    })()`;
+    const result = await wc.executeJavaScript(execExpr);
+    if (result.error) {
+        throw new Error(result.error);
+    }
+}

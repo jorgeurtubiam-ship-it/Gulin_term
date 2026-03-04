@@ -20,6 +20,17 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
+func init() {
+	uctypes.NativeMessageUnmarshalers[uctypes.APIType_OpenAIChat] = func(data []byte) (uctypes.GenAIMessage, error) {
+		var msg StoredChatMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return &msg, nil
+	}
+}
+
 const (
 	OpenAIChatDefaultMaxTokens = 4096
 )
@@ -358,85 +369,108 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 		Messages:   make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages)),
 	}
 
-	for _, genMsg := range aiChat.NativeMessages {
-		chatMsg, ok := genMsg.(*StoredChatMessage)
-		if !ok {
-			continue
-		}
+	for i, genMsg := range aiChat.NativeMessages {
+		if chatMsg, ok := genMsg.(*StoredChatMessage); ok {
+			var parts []uctypes.UIMessagePart
 
-		var parts []uctypes.UIMessagePart
-
-		if len(chatMsg.Message.ContentParts) > 0 {
-			for _, cp := range chatMsg.Message.ContentParts {
-				switch cp.Type {
-				case "text":
-					if found, part := aiutil.ConvertDataUserFile(cp.Text); found {
-						if part != nil {
-							parts = append(parts, *part)
+			if len(chatMsg.Message.ContentParts) > 0 {
+				for _, cp := range chatMsg.Message.ContentParts {
+					switch cp.Type {
+					case "text":
+						if found, part := aiutil.ConvertDataUserFile(cp.Text); found {
+							if part != nil {
+								parts = append(parts, *part)
+							}
+						} else {
+							parts = append(parts, uctypes.UIMessagePart{
+								Type: "text",
+								Text: cp.Text,
+							})
 						}
-					} else {
+					case "image_url":
+						mimeType := cp.MimeType
+						if mimeType == "" {
+							mimeType = "image/*"
+						}
 						parts = append(parts, uctypes.UIMessagePart{
-							Type: "text",
-							Text: cp.Text,
+							Type: "data-userfile",
+							Data: uctypes.UIMessageDataUserFile{
+								FileName:   cp.FileName,
+								MimeType:   mimeType,
+								PreviewUrl: cp.PreviewUrl,
+							},
 						})
 					}
-				case "image_url":
-					mimeType := cp.MimeType
-					if mimeType == "" {
-						mimeType = "image/*"
+				}
+			} else if chatMsg.Message.Content != "" {
+				parts = append(parts, uctypes.UIMessagePart{
+					Type: "text",
+					Text: chatMsg.Message.Content,
+				})
+			}
+			// ... (tool call logic continues)
+
+			// Add tool calls if present (assistant requesting tool use)
+			if len(chatMsg.Message.ToolCalls) > 0 {
+				for _, toolCall := range chatMsg.Message.ToolCalls {
+					if toolCall.Type != "function" {
+						continue
 					}
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-userfile",
-						Data: uctypes.UIMessageDataUserFile{
-							FileName:   cp.FileName,
-							MimeType:   mimeType,
-							PreviewUrl: cp.PreviewUrl,
-						},
+
+					// Only add if ToolUseData is available
+					if toolCall.ToolUseData != nil {
+						parts = append(parts, uctypes.UIMessagePart{
+							Type: "data-tooluse",
+							ID:   toolCall.ID,
+							Data: *toolCall.ToolUseData,
+						})
+					}
+				}
+			}
+
+			// Tool result messages (role "tool") are not converted to UIMessage
+			if chatMsg.Message.Role == "tool" && chatMsg.Message.ToolCallID != "" {
+				continue
+			}
+
+			// Skip messages with no parts
+			if len(parts) == 0 {
+				continue
+			}
+
+			uiMsg := uctypes.UIMessage{
+				ID:    chatMsg.MessageId,
+				Role:  chatMsg.Message.Role,
+				Parts: parts,
+			}
+
+			uiChat.Messages = append(uiChat.Messages, uiMsg)
+		} else if aiMsg, ok := genMsg.(*uctypes.AIMessage); ok {
+			// Fallback for generic AI messages
+			var fallbackParts []uctypes.UIMessagePart
+			for _, part := range aiMsg.Parts {
+				if part.Type == uctypes.AIMessagePartTypeText {
+					fallbackParts = append(fallbackParts, uctypes.UIMessagePart{
+						Type: "text",
+						Text: part.Text,
+					})
+				} else if part.Type == uctypes.AIMessagePartTypeFile {
+					fallbackParts = append(fallbackParts, uctypes.UIMessagePart{
+						Type:      "file",
+						URL:       part.URL,
+						MediaType: part.MimeType,
+						Filename:  part.FileName,
 					})
 				}
 			}
-		} else if chatMsg.Message.Content != "" {
-			parts = append(parts, uctypes.UIMessagePart{
-				Type: "text",
-				Text: chatMsg.Message.Content,
+			uiChat.Messages = append(uiChat.Messages, uctypes.UIMessage{
+				ID:    aiMsg.MessageId,
+				Role:  aiMsg.Role,
+				Parts: fallbackParts,
 			})
+		} else {
+			return nil, fmt.Errorf("message %d: expected *StoredChatMessage or *uctypes.AIMessage, got %T", i, genMsg)
 		}
-
-		// Add tool calls if present (assistant requesting tool use)
-		if len(chatMsg.Message.ToolCalls) > 0 {
-			for _, toolCall := range chatMsg.Message.ToolCalls {
-				if toolCall.Type != "function" {
-					continue
-				}
-
-				// Only add if ToolUseData is available
-				if toolCall.ToolUseData != nil {
-					parts = append(parts, uctypes.UIMessagePart{
-						Type: "data-tooluse",
-						ID:   toolCall.ID,
-						Data: *toolCall.ToolUseData,
-					})
-				}
-			}
-		}
-
-		// Tool result messages (role "tool") are not converted to UIMessage
-		if chatMsg.Message.Role == "tool" && chatMsg.Message.ToolCallID != "" {
-			continue
-		}
-
-		// Skip messages with no parts
-		if len(parts) == 0 {
-			continue
-		}
-
-		uiMsg := uctypes.UIMessage{
-			ID:    chatMsg.MessageId,
-			Role:  chatMsg.Message.Role,
-			Parts: parts,
-		}
-
-		uiChat.Messages = append(uiChat.Messages, uiMsg)
 	}
 
 	return uiChat, nil

@@ -63,6 +63,12 @@ const versions: VersionConfig[] = [
         version: "v0.14.0",
         content: () => <UpgradeOnboardingModal_v0_14_0_Content />,
         prevText: "Prev (v0.13.1)",
+        nextText: "Next (v2.0.0)",
+    },
+    {
+        version: "v2.0.0",
+        content: () => <UpgradeOnboardingModal_v0_14_0_Content />,
+        prevText: "Prev (v0.14.0)",
     },
 ];
 

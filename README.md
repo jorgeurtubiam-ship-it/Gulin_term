@@ -9,7 +9,9 @@
   <br/>
 </p>
 
-# Wave Terminal
+# GuLiN Terminal (formerly Wave)
+
+> **🚀 Nueva Funcionalidad:** ¡Interrupción Universal y Memoria Proactiva ya disponibles! Consulta la [Guía Maestra de Funcionalidades](./GULIN_FEATURES.md).
 
 <div align="center">
 

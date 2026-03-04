@@ -26,7 +26,7 @@ export const AIPanelHeader = memo(() => {
         >
             <h2 className="text-white text-sm @xs:text-lg font-semibold flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
                 <i className="fa fa-sparkles text-accent"></i>
-                Wave AI
+                Gulin IA
             </h2>
 
             <div className="flex items-center flex-shrink-0 whitespace-nowrap">
@@ -41,26 +41,31 @@ export const AIPanelHeader = memo(() => {
                                     model.focusInput();
                                 }, 0);
                             }}
-                            className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${
-                                widgetAccess ? "bg-accent-600" : "bg-zinc-600"
-                            }`}
+                            className={`relative inline-flex h-6 w-14 items-center rounded-full transition-colors cursor-pointer ${widgetAccess ? "bg-accent-600" : "bg-zinc-600"
+                                }`}
                             title={`Widget Access ${widgetAccess ? "ON" : "OFF"}`}
                         >
                             <span
-                                className={`absolute inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    widgetAccess ? "translate-x-8" : "translate-x-1"
-                                }`}
+                                className={`absolute inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${widgetAccess ? "translate-x-8" : "translate-x-1"
+                                    }`}
                             />
                             <span
-                                className={`relative z-10 text-xs text-white transition-all ${
-                                    widgetAccess ? "ml-2.5 mr-6 text-left" : "ml-6 mr-1 text-right"
-                                }`}
+                                className={`relative z-10 text-xs text-white transition-all ${widgetAccess ? "ml-2.5 mr-6 text-left" : "ml-6 mr-1 text-right"
+                                    }`}
                             >
                                 {widgetAccess ? "ON" : "OFF"}
                             </span>
                         </button>
                     </div>
                 )}
+
+                <button
+                    onClick={() => model.toggleSidebar()}
+                    className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-2 focus:outline-none"
+                    title="Historial de chats"
+                >
+                    <i className="fa fa-history"></i>
+                </button>
 
                 <button
                     onClick={handleKebabClick}

@@ -1,7 +1,19 @@
-// Copyright 2025, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
 import { ChatRequestOptions, FileUIPart, UIMessage, UIMessagePart } from "ai";
+
+export interface ChatSummary {
+    chatid: string;
+    lastupdate: number;
+    model: string;
+    snippet: string;
+    messagecount: number;
+}
+
+export interface BrainSummary {
+    filename: string;
+    title: string;
+    lastupdate: number;
+    snippet: string;
+}
 
 type WaveUIDataTypes = {
     // pkg/aiusechat/uctypes/uctypes.go UIMessageDataUserFile
@@ -42,25 +54,25 @@ export type UseChatSetMessagesType = (
 export type UseChatSendMessageType = (
     message?:
         | (Omit<WaveUIMessage, "id" | "role"> & {
-              id?: string;
-              role?: "system" | "user" | "assistant";
-          } & {
-              text?: never;
-              files?: never;
-              messageId?: string;
-          })
+            id?: string;
+            role?: "system" | "user" | "assistant";
+        } & {
+            text?: never;
+            files?: never;
+            messageId?: string;
+        })
         | {
-              text: string;
-              files?: FileList | FileUIPart[];
-              metadata?: unknown;
-              parts?: never;
-              messageId?: string;
-          }
+            text: string;
+            files?: FileList | FileUIPart[];
+            metadata?: unknown;
+            parts?: never;
+            messageId?: string;
+        }
         | {
-              files: FileList | FileUIPart[];
-              metadata?: unknown;
-              parts?: never;
-              messageId?: string;
-          },
+            files: FileList | FileUIPart[];
+            metadata?: unknown;
+            parts?: never;
+            messageId?: string;
+        },
     options?: ChatRequestOptions
 ) => Promise<void>;

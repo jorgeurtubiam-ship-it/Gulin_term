@@ -139,6 +139,20 @@ func (m *OpenAIChatMessage) GetMessageId() string {
 	return m.MessageId
 }
 
+func (m *OpenAIChatMessage) GetContent() string {
+	if m.Message != nil && m.Message.Content != nil {
+		for _, block := range m.Message.Content {
+			if block.Type == "output_text" || block.Type == "input_text" {
+				return block.Text
+			}
+		}
+	}
+	if m.Message != nil && m.Message.Role == "assistant" && len(m.Message.Content) == 0 {
+		return "Thinking..."
+	}
+	return ""
+}
+
 func (m *OpenAIChatMessage) GetRole() string {
 	if m.Message != nil {
 		return m.Message.Role
@@ -504,10 +518,18 @@ func RunOpenAIChatStep(
 	// Convert GenAIMessages to input objects (OpenAIMessage or OpenAIFunctionCallInput)
 	var inputs []any
 	for _, genMsg := range chat.NativeMessages {
-		// Cast to OpenAIChatMessage
-		chatMsg, ok := genMsg.(*OpenAIChatMessage)
-		if !ok {
-			return nil, nil, nil, fmt.Errorf("expected OpenAIChatMessage, got %T", genMsg)
+		var chatMsg *OpenAIChatMessage
+		var ok bool
+		if chatMsg, ok = genMsg.(*OpenAIChatMessage); !ok {
+			if aiMsg, ok := genMsg.(*uctypes.AIMessage); ok {
+				var err error
+				chatMsg, err = ConvertAIMessageToOpenAIChatMessage(*aiMsg)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("failed to convert fallback AIMessage: %w", err)
+				}
+			} else {
+				return nil, nil, nil, fmt.Errorf("expected OpenAIChatMessage or *uctypes.AIMessage, got %T", genMsg)
+			}
 		}
 
 		// Convert to appropriate input type based on what's populated

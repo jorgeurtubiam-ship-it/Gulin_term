@@ -47,7 +47,7 @@ const WCloudWebShareUpdateTimeout = 15 * time.Second
 const MaxUpdatePayloadSize = 1 * (1024 * 1024)
 
 const TelemetryUrl = "/telemetry"
-const TEventsUrl = "/tevents"
+const TEventsUrl = ""
 const NoTelemetryUrl = "/no-telemetry"
 const WebShareUpdateUrl = "/auth/web-share-update"
 const PingUrl = "/ping"
@@ -208,25 +208,7 @@ func sendTEventsBatch(clientId string) (bool, int, error) {
 }
 
 func sendTEvents(clientId string) (int, error) {
-	numIters := 0
-	totalEvents := 0
-	for {
-		numIters++
-		done, numEvents, err := sendTEventsBatch(clientId)
-		if err != nil {
-			log.Printf("error sending telemetry events: %v\n", err)
-			break
-		}
-		totalEvents += numEvents
-		if done {
-			break
-		}
-		if numIters > TEventsMaxBatches {
-			log.Printf("sendTEvents, hit %d iterations, stopping\n", numIters)
-			break
-		}
-	}
-	return totalEvents, nil
+	return 0, nil
 }
 
 func SendAllTelemetry(clientId string) error {

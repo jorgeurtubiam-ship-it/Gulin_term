@@ -685,6 +685,21 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandWebClickData
+    type CommandWebClickData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+        selector: string;
+    };
+
+    // wshrpc.CommandWebGetTextData
+    type CommandWebGetTextData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+    };
+
     // wshrpc.CommandWebSelectorData
     type CommandWebSelectorData = {
         workspaceid: string;
@@ -692,6 +707,15 @@ declare global {
         tabid: string;
         selector: string;
         opts?: WebSelectorOpts;
+    };
+
+    // wshrpc.CommandWebTypeData
+    type CommandWebTypeData = {
+        workspaceid: string;
+        blockid: string;
+        tabid: string;
+        selector: string;
+        text: string;
     };
 
     // wshrpc.CommandWriteAppFileData

@@ -22,7 +22,7 @@ const config = {
         {
             from: "./dist",
             to: "./dist",
-            filter: ["**/*", "!bin/*", "bin/wavesrv.${arch}*", "bin/wsh*", "!tsunamiscaffold/**/*"],
+            filter: ["**/*", "!bin/**/*", "!tsunamiscaffold/**/*"],
         },
         {
             from: ".",
@@ -31,48 +31,45 @@ const config = {
         },
         "!node_modules", // We don't need electron-builder to package in Node modules as Vite has already bundled any code that our program is using.
     ],
+    asarUnpack: [
+        "dist/schema/**/*", // schema files for Monaco editor
+    ],
     extraResources: [
         {
             from: "dist/tsunamiscaffold",
             to: "tsunamiscaffold",
         },
-    ],
-    directories: {
-        output: "make",
-    },
-    asarUnpack: [
-        "dist/bin/**/*", // wavesrv and wsh binaries
-        "dist/schema/**/*", // schema files for Monaco editor
+        {
+            from: "dist/bin",
+            to: "bin",
+            filter: ["wavesrv*", "wsh*"],
+        },
     ],
     mac: {
         target: [
             {
-                target: "zip",
-                arch: ["arm64", "x64"],
-            },
-            {
                 target: "dmg",
-                arch: ["arm64", "x64"],
+                arch: ["arm64"],
             },
         ],
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
-        mergeASARs: true,
-        singleArchFiles: "**/dist/bin/wavesrv.*",
+        mergeASARs: false,
+        singleArchFiles: "**/bin/wavesrv.arm64",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
         extendInfo: {
-            NSContactsUsageDescription: "A CLI application running in Wave wants to use your contacts.",
-            NSRemindersUsageDescription: "A CLI application running in Wave wants to use your reminders.",
+            NSContactsUsageDescription: "A CLI application running in GuLiN wants to use your contacts.",
+            NSRemindersUsageDescription: "A CLI application running in GuLiN wants to use your reminders.",
             NSLocationWhenInUseUsageDescription:
-                "A CLI application running in Wave wants to use your location information while active.",
+                "A CLI application running in GuLiN wants to use your location information while active.",
             NSLocationAlwaysUsageDescription:
-                "A CLI application running in Wave wants to use your location information, even in the background.",
-            NSCameraUsageDescription: "A CLI application running in Wave wants to use the camera.",
-            NSMicrophoneUsageDescription: "A CLI application running in Wave wants to use your microphone.",
-            NSCalendarsUsageDescription: "A CLI application running in Wave wants to use Calendar data.",
-            NSLocationUsageDescription: "A CLI application running in Wave wants to use your location information.",
-            NSAppleEventsUsageDescription: "A CLI application running in Wave wants to use AppleScript.",
+                "A CLI application running in GuLiN wants to use your location information, even in the background.",
+            NSCameraUsageDescription: "A CLI application running in GuLiN wants to use the camera.",
+            NSMicrophoneUsageDescription: "A CLI application running in GuLiN wants to use your microphone.",
+            NSCalendarsUsageDescription: "A CLI application running in GuLiN wants to use Calendar data.",
+            NSLocationUsageDescription: "A CLI application running in GuLiN wants to use your location information.",
+            NSAppleEventsUsageDescription: "A CLI application running in GuLiN wants to use AppleScript.",
         },
     },
     linux: {
@@ -96,7 +93,7 @@ const config = {
         afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
-        target: ["nsis", "msi", "zip"],
+        target: ["nsis", "zip"],
         signtoolOptions: windowsShouldSign && {
             signingHashAlgorithms: ["sha256"],
             publisherName: "Command Line Inc",
@@ -122,20 +119,25 @@ const config = {
         url: "https://dl.waveterm.dev/releases-w2",
     },
     afterPack: (context) => {
-        // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.
-        if (context.electronPlatformName === "darwin" && context.arch === Arch.universal) {
+        // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging.
+        if (context.electronPlatformName === "darwin") {
             const packageBinDir = path.resolve(
                 context.appOutDir,
-                `${pkg.productName}.app/Contents/Resources/app.asar.unpacked/dist/bin`
+                `${pkg.productName}.app/Contents/Resources/bin`
             );
 
-            // Reapply file permissions to the wavesrv binaries in the final app package
-            fs.readdirSync(packageBinDir, {
-                recursive: true,
-                withFileTypes: true,
-            })
-                .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
-                .forEach((f) => fs.chmodSync(path.resolve(f.parentPath ?? f.path, f.name), 0o755)); // 0o755 corresponds to -rwxr-xr-x
+            if (fs.existsSync(packageBinDir)) {
+                // Reapply file permissions to the wavesrv binaries in the final app package
+                fs.readdirSync(packageBinDir, {
+                    recursive: true,
+                    withFileTypes: true,
+                })
+                    .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
+                    .forEach((f) => {
+                        const filePath = path.resolve(f.parentPath ?? f.path, f.name);
+                        fs.chmodSync(filePath, 0o755); // 0o755 corresponds to -rwxr-xr-x
+                    });
+            }
         }
     },
 };

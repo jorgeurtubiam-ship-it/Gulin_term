@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
 	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
@@ -23,6 +24,7 @@ const (
 	OpenRouterChatEndpoint         = "https://openrouter.ai/api/v1/chat/completions"
 	NanoGPTChatEndpoint            = "https://nano-gpt.com/api/v1/chat/completions"
 	GroqChatEndpoint               = "https://api.groq.com/openai/v1/chat/completions"
+	DeepSeekChatEndpoint           = "https://api.deepseek.com/chat/completions"
 	AzureLegacyEndpointTemplate    = "https://%s.openai.azure.com/openai/deployments/%s/chat/completions?api-version=%s"
 	AzureResponsesEndpointTemplate = "https://%s.openai.azure.com/openai/v1/responses"
 	AzureChatEndpointTemplate      = "https://%s.openai.azure.com/openai/v1/chat/completions"
@@ -34,14 +36,21 @@ const (
 	OpenRouterAPITokenSecretName  = "OPENROUTER_KEY"
 	NanoGPTAPITokenSecretName     = "NANOGPT_KEY"
 	GroqAPITokenSecretName        = "GROQ_KEY"
+	DeepSeekAPITokenSecretName    = "DEEPSEEK_KEY"
 	AzureOpenAIAPITokenSecretName = "AZURE_OPENAI_KEY"
 	GoogleAIAPITokenSecretName    = "GOOGLE_AI_KEY"
 )
 
 func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeConfigType, error) {
 	mode := requestedMode
+	baseMode := mode
+	if strings.HasSuffix(mode, "@plan") {
+		baseMode = strings.TrimSuffix(mode, "@plan")
+	} else if strings.HasSuffix(mode, "@act") {
+		baseMode = strings.TrimSuffix(mode, "@act")
+	}
 
-	config, err := getAIModeConfig(mode)
+	config, err := getAIModeConfig(baseMode)
 	if err != nil {
 		return "", nil, err
 	}
@@ -54,6 +63,7 @@ func resolveAIMode(requestedMode string, premium bool) (string, *wconfig.AIModeC
 		}
 	}
 
+	log.Printf("DEBUG: resolveAIMode requestedMode=%q baseMode=%q\n", requestedMode, baseMode)
 	return mode, config, nil
 }
 
@@ -123,6 +133,20 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 		}
 		if config.APITokenSecretName == "" {
 			config.APITokenSecretName = GroqAPITokenSecretName
+		}
+	}
+	if config.Provider == uctypes.AIProvider_DeepSeek {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = DeepSeekChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = DeepSeekAPITokenSecretName
+		}
+		if len(config.Capabilities) == 0 {
+			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
 		}
 	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
@@ -271,13 +295,13 @@ func handleConfigUpdate(fullConfig wconfig.FullConfigType) {
 
 func ComputeResolvedAIModeConfigs(fullConfig wconfig.FullConfigType) map[string]wconfig.AIModeConfigType {
 	resolvedConfigs := make(map[string]wconfig.AIModeConfigType)
-	
+
 	for modeName, modeConfig := range fullConfig.WaveAIModes {
 		resolved := modeConfig
 		applyProviderDefaults(&resolved)
 		resolvedConfigs[modeName] = resolved
 	}
-	
+
 	return resolvedConfigs
 }
 
@@ -285,7 +309,7 @@ func broadcastAIModeConfigs(configs map[string]wconfig.AIModeConfigType) {
 	update := wconfig.AIModeConfigUpdate{
 		Configs: configs,
 	}
-	
+
 	wps.Broker.Publish(wps.WaveEvent{
 		Event: wps.Event_AIModeConfig,
 		Data:  update,

@@ -5,6 +5,7 @@ package aiusechat
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -81,8 +82,8 @@ func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error)
 	return result, nil
 }
 
-func getTermScrollbackOutput(tabId string, widgetId string, rpcData wshrpc.CommandTermGetScrollbackLinesData) (*TermGetScrollbackToolOutput, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+func getTermScrollbackOutput(ctx context.Context, tabId string, widgetId string, rpcData wshrpc.CommandTermGetScrollbackLinesData) (*TermGetScrollbackToolOutput, error) {
+	ctx, cancelFn := context.WithTimeout(ctx, 5*time.Second)
 	defer cancelFn()
 
 	fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, widgetId)
@@ -190,7 +191,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 			lineEnd := parsed.LineStart + parsed.Count
 			return fmt.Sprintf("reading terminal output from %s (lines %d-%d)", parsed.WidgetId, parsed.LineStart, lineEnd)
 		},
-		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			parsed, err := parseTermGetScrollbackInput(input)
 			if err != nil {
 				return nil, err
@@ -198,6 +199,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 
 			lineEnd := parsed.LineStart + parsed.Count
 			output, err := getTermScrollbackOutput(
+				ctx,
 				tabId,
 				parsed.WidgetId,
 				wshrpc.CommandTermGetScrollbackLinesData{
@@ -265,14 +267,11 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 			}
 			return fmt.Sprintf("reading last command output from %s", parsed.WidgetId)
 		},
-		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			parsed, err := parseTermCommandOutputInput(input)
 			if err != nil {
 				return nil, err
 			}
-
-			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancelFn()
 
 			fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, parsed.WidgetId)
 			if err != nil {
@@ -286,6 +285,7 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 			}
 
 			output, err := getTermScrollbackOutput(
+				ctx,
 				tabId,
 				parsed.WidgetId,
 				wshrpc.CommandTermGetScrollbackLinesData{
@@ -296,6 +296,108 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 				return nil, fmt.Errorf("failed to get command output: %w", err)
 			}
 			return output, nil
+		},
+	}
+}
+
+type TermRunCommandToolInput struct {
+	WidgetId string `json:"widget_id"`
+	Command  string `json:"command"`
+}
+
+func parseTermRunCommandInput(input any) (*TermRunCommandToolInput, error) {
+	result := &TermRunCommandToolInput{}
+
+	if input == nil {
+		return nil, fmt.Errorf("widget_id and command are required")
+	}
+
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal input: %w", err)
+	}
+
+	if err := json.Unmarshal(inputBytes, result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal input: %w", err)
+	}
+
+	if result.WidgetId == "" {
+		return nil, fmt.Errorf("widget_id is required")
+	}
+	if result.Command == "" {
+		return nil, fmt.Errorf("command is required")
+	}
+
+	return result, nil
+}
+
+func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "term_run_command",
+		DisplayName: "Run Command in Terminal",
+		Description: "Execute a command in the specified terminal widget by sending the command string. Always use this instead of asking the user to copy-paste. Useful for creating folders, cloning repos, running server commands, testing, or general workflow.",
+		ToolLogName: "term:runcommand",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"widget_id": map[string]any{
+					"type":        "string",
+					"description": "8-character widget ID of the terminal widget",
+				},
+				"command": map[string]any{
+					"type":        "string",
+					"description": "The command string to execute",
+				},
+			},
+			"required":             []string{"widget_id", "command"},
+			"additionalProperties": false,
+		},
+		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
+			parsed, err := parseTermRunCommandInput(input)
+			if err != nil {
+				return fmt.Sprintf("error parsing input: %v", err)
+			}
+			return fmt.Sprintf("running command in %s: %s", parsed.WidgetId, parsed.Command)
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			parsed, err := parseTermRunCommandInput(input)
+			if err != nil {
+				return nil, err
+			}
+
+			fullBlockId, err := wcore.ResolveBlockIdFromPrefix(ctx, tabId, parsed.WidgetId)
+			if err != nil {
+				return nil, err
+			}
+
+			rpcClient := wshclient.GetBareRpcClient()
+
+			blockORef := waveobj.MakeORef(waveobj.OType_Block, fullBlockId)
+			rtInfo := wstore.GetRTInfo(blockORef)
+
+			// We need to base64 encode the command + terminator
+			// PowerShell/Windows PTYs require \r to trigger execution
+			// For others, \n is the standard. We trim any existing terminator first.
+			cleanCmd := strings.TrimRight(parsed.Command, "\r\n")
+			terminator := "\n"
+			if rtInfo != nil && (rtInfo.ShellType == "pwsh" || rtInfo.ShellType == "powershell") {
+				terminator = "\r"
+			}
+			cmdWithTerminator := cleanCmd + terminator
+			b64Data := base64.StdEncoding.EncodeToString([]byte(cmdWithTerminator))
+
+			err = wshclient.ControllerInputCommand(
+				rpcClient,
+				wshrpc.CommandBlockInputData{
+					BlockId:     fullBlockId,
+					InputData64: b64Data,
+				},
+				&wshrpc.RpcOpts{},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("failed to run command in terminal: %w", err)
+			}
+			return "Command sent to terminal successfully and is running/ran.", nil
 		},
 	}
 }

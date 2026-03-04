@@ -50,5 +50,15 @@
                 "view": "sysinfo"
             }
         }
+    },
+    "defwidget@memories": {
+        "display:order": 0,
+        "icon": "brain",
+        "label": "memorias",
+        "blockdef": {
+            "meta": {
+                "view": "memory-grid"
+            }
+        }
     }
 }

@@ -19,6 +19,25 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
 )
 
+func init() {
+	uctypes.NativeMessageUnmarshalers[uctypes.APIType_OpenAIResponses] = func(data []byte) (uctypes.GenAIMessage, error) {
+		var msg OpenAIChatMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return &msg, nil
+	}
+	uctypes.NativeMessageUnmarshalers[uctypes.APIType_OpenAIChat] = func(data []byte) (uctypes.GenAIMessage, error) {
+		var msg OpenAIChatMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return &msg, nil
+	}
+}
+
 const (
 	OpenAIDefaultAPIVersion = "2024-12-31"
 	OpenAIDefaultMaxTokens  = 4096
@@ -511,7 +530,6 @@ func ConvertToolResultsToOpenAIChatMessage(toolResults []uctypes.AIToolResult) (
 	return messages, nil
 }
 
-// convertToUIMessage converts an OpenAIChatMessage to a UIMessage
 func (m *OpenAIChatMessage) convertToUIMessage() *uctypes.UIMessage {
 	var parts []uctypes.UIMessagePart
 	var role string
@@ -554,13 +572,36 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 	}
 	uiMessages := make([]uctypes.UIMessage, 0, len(aiChat.NativeMessages))
 	for i, nativeMsg := range aiChat.NativeMessages {
-		openaiMsg, ok := nativeMsg.(*OpenAIChatMessage)
-		if !ok {
-			return nil, fmt.Errorf("message %d: expected *OpenAIChatMessage, got %T", i, nativeMsg)
-		}
-		uiMsg := openaiMsg.convertToUIMessage()
-		if uiMsg != nil {
-			uiMessages = append(uiMessages, *uiMsg)
+		if openaiMsg, ok := nativeMsg.(*OpenAIChatMessage); ok {
+			uiMsg := openaiMsg.convertToUIMessage()
+			if uiMsg != nil {
+				uiMessages = append(uiMessages, *uiMsg)
+			}
+		} else if aiMsg, ok := nativeMsg.(*uctypes.AIMessage); ok {
+			// Fallback for generic AI messages
+			var fallbackParts []uctypes.UIMessagePart
+			for _, part := range aiMsg.Parts {
+				if part.Type == uctypes.AIMessagePartTypeText {
+					fallbackParts = append(fallbackParts, uctypes.UIMessagePart{
+						Type: "text",
+						Text: part.Text,
+					})
+				} else if part.Type == uctypes.AIMessagePartTypeFile {
+					fallbackParts = append(fallbackParts, uctypes.UIMessagePart{
+						Type:      "file",
+						URL:       part.URL,
+						MediaType: part.MimeType,
+						Filename:  part.FileName,
+					})
+				}
+			}
+			uiMessages = append(uiMessages, uctypes.UIMessage{
+				ID:    aiMsg.MessageId,
+				Role:  aiMsg.Role,
+				Parts: fallbackParts,
+			})
+		} else {
+			return nil, fmt.Errorf("message %d: expected *OpenAIChatMessage or *uctypes.AIMessage, got %T", i, nativeMsg)
 		}
 	}
 	return &uctypes.UIChat{

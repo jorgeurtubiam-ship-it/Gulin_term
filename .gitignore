@@ -38,3 +38,5 @@ test-results.xml
 docsite/
 
 .kilo-format-temp-*
+workspace_embeddings.json
+test-arm64

@@ -9,8 +9,14 @@
         "ai:model": "gpt-5-mini",
         "ai:thinkinglevel": "low",
         "ai:verbosity": "low",
-        "ai:capabilities": ["tools", "images", "pdfs"],
-        "ai:switchcompat": ["wavecloud"]
+        "ai:capabilities": [
+            "tools",
+            "images",
+            "pdfs"
+        ],
+        "ai:switchcompat": [
+            "wavecloud"
+        ]
     },
     "waveai@balanced": {
         "display:name": "Balanced",
@@ -22,9 +28,15 @@
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "low",
         "ai:verbosity": "low",
-        "ai:capabilities": ["tools", "images", "pdfs"],
+        "ai:capabilities": [
+            "tools",
+            "images",
+            "pdfs"
+        ],
         "waveai:premium": true,
-        "ai:switchcompat": ["wavecloud"]
+        "ai:switchcompat": [
+            "wavecloud"
+        ]
     },
     "waveai@deep": {
         "display:name": "Deep",
@@ -36,8 +48,54 @@
         "ai:model": "gpt-5.1",
         "ai:thinkinglevel": "medium",
         "ai:verbosity": "low",
-        "ai:capabilities": ["tools", "images", "pdfs"],
+        "ai:capabilities": [
+            "tools",
+            "images",
+            "pdfs"
+        ],
         "waveai:premium": true,
-        "ai:switchcompat": ["wavecloud"]
+        "ai:switchcompat": [
+            "wavecloud"
+        ]
+    },
+    "gulin@plan": {
+        "display:name": "PLAN Mode",
+        "display:order": 1,
+        "display:icon": "clipboard-list",
+        "display:description": "Research and analysis mode.\nGulin investigates and proposes a plan without acting.",
+        "ai:provider": "wave",
+        "ai:apitype": "openai-responses",
+        "ai:model": "gpt-5.1",
+        "ai:thinkinglevel": "medium",
+        "ai:verbosity": "high",
+        "ai:capabilities": [
+            "tools",
+            "images",
+            "pdfs"
+        ],
+        "waveai:premium": true,
+        "ai:switchcompat": [
+            "wavecloud"
+        ]
+    },
+    "gulin@act": {
+        "display:name": "ACT Mode",
+        "display:order": 2,
+        "display:icon": "rocket",
+        "display:description": "Autonomous action mode.\nGulin solves problems pro-actively using all tools.",
+        "ai:provider": "wave",
+        "ai:apitype": "openai-responses",
+        "ai:model": "gpt-5.1",
+        "ai:thinkinglevel": "medium",
+        "ai:verbosity": "low",
+        "ai:capabilities": [
+            "tools",
+            "images",
+            "pdfs"
+        ],
+        "waveai:premium": true,
+        "ai:switchcompat": [
+            "wavecloud"
+        ]
     }
 }

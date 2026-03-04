@@ -7,7 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { Notification, net, safeStorage, shell } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { unamePlatform } from "./emain-platform";
-import { getWebContentsByBlockId, webGetSelector } from "./emain-web";
+import { getWebContentsByBlockId, webClick, webGetSelector, webGetText, webType } from "./emain-web";
 import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
 
 export class ElectronWshClientType extends WshClient {
@@ -29,6 +29,52 @@ export class ElectronWshClientType extends WshClient {
         }
         const rtn = await webGetSelector(wc, data.selector, data.opts);
         return rtn;
+    }
+
+    async handle_webgettext(rh: RpcResponseHelper, data: CommandWebGetTextData): Promise<string> {
+        if (!data.tabid || !data.blockid || !data.workspaceid) {
+            throw new Error("tabid and blockid are required");
+        }
+        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        if (ww == null) {
+            throw new Error(`no window found with workspace ${data.workspaceid}`);
+        }
+        const wc = await getWebContentsByBlockId(ww, data.tabid, data.blockid);
+        if (wc == null) {
+            throw new Error(`no webcontents found with blockid ${data.blockid}`);
+        }
+        const rtn = await webGetText(wc);
+        return rtn;
+    }
+
+    async handle_webclick(rh: RpcResponseHelper, data: CommandWebClickData): Promise<void> {
+        if (!data.tabid || !data.blockid || !data.workspaceid) {
+            throw new Error("tabid and blockid are required");
+        }
+        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        if (ww == null) {
+            throw new Error(`no window found with workspace ${data.workspaceid}`);
+        }
+        const wc = await getWebContentsByBlockId(ww, data.tabid, data.blockid);
+        if (wc == null) {
+            throw new Error(`no webcontents found with blockid ${data.blockid}`);
+        }
+        await webClick(wc, data.selector);
+    }
+
+    async handle_webtype(rh: RpcResponseHelper, data: CommandWebTypeData): Promise<void> {
+        if (!data.tabid || !data.blockid || !data.workspaceid) {
+            throw new Error("tabid and blockid are required");
+        }
+        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        if (ww == null) {
+            throw new Error(`no window found with workspace ${data.workspaceid}`);
+        }
+        const wc = await getWebContentsByBlockId(ww, data.tabid, data.blockid);
+        if (wc == null) {
+            throw new Error(`no webcontents found with blockid ${data.blockid}`);
+        }
+        await webType(wc, data.selector, data.text);
     }
 
     async handle_notify(rh: RpcResponseHelper, notificationOptions: WaveNotificationOptions) {

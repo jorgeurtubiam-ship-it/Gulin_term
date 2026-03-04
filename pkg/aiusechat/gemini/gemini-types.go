@@ -23,6 +23,15 @@ func (m *GeminiChatMessage) GetMessageId() string {
 	return m.MessageId
 }
 
+func (m *GeminiChatMessage) GetContent() string {
+	for _, part := range m.Parts {
+		if part.Text != "" {
+			return part.Text
+		}
+	}
+	return ""
+}
+
 func (m *GeminiChatMessage) GetRole() string {
 	return m.Role
 }
@@ -80,14 +89,14 @@ func (p *GeminiMessagePart) Clean() *GeminiMessagePart {
 // GeminiInlineData represents inline binary data
 type GeminiInlineData struct {
 	MimeType    string `json:"mimeType"`
-	Data        string `json:"data"` // base64 encoded
+	Data        string `json:"data"`                  // base64 encoded
 	DisplayName string `json:"displayName,omitempty"` // for multimodal function responses
 }
 
 // GeminiFileData represents uploaded file reference
 type GeminiFileData struct {
 	MimeType    string `json:"mimeType"`
-	FileUri     string `json:"fileUri"` // gs:// URI from file upload
+	FileUri     string `json:"fileUri"`               // gs:// URI from file upload
 	DisplayName string `json:"displayName,omitempty"` // for multimodal function responses
 }
 

@@ -4,6 +4,7 @@
 package aiusechat
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -130,7 +131,7 @@ func verifyWriteTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolU
 	return nil
 }
 
-func writeTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+func writeTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseWriteTextFileInput(input)
 	if err != nil {
 		return nil, err
@@ -210,7 +211,7 @@ func GetWriteTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("writing %q", params.Filename)
 		},
 		ToolAnyCallback: writeTextFileCallback,
-		ToolApproval: func(input any) string {
+		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyWriteTextFileInput,
@@ -308,7 +309,7 @@ func EditTextFileDryRun(input any, fileOverride string) ([]byte, []byte, error) 
 	return originalContent, modifiedContent, nil
 }
 
-func editTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+func editTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseEditTextFileInput(input)
 	if err != nil {
 		return nil, err
@@ -402,7 +403,7 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("editing %q (%d %s)", params.Filename, editCount, editWord)
 		},
 		ToolAnyCallback: editTextFileCallback,
-		ToolApproval: func(input any) string {
+		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyEditTextFileInput,
@@ -455,7 +456,7 @@ func verifyDeleteTextFileInput(input any, toolUseData *uctypes.UIMessageDataTool
 	return nil
 }
 
-func deleteTextFileCallback(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+func deleteTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 	params, err := parseDeleteTextFileInput(input)
 	if err != nil {
 		return nil, err
@@ -518,7 +519,7 @@ func GetDeleteTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("deleting %q", params.Filename)
 		},
 		ToolAnyCallback: deleteTextFileCallback,
-		ToolApproval: func(input any) string {
+		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyDeleteTextFileInput,

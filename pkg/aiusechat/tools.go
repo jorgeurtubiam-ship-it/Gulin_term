@@ -165,7 +165,7 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		// - openai-responses API type
 		// - google-gemini API type with Gemini 3+ models
 		if chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses ||
-		   (chatOpts.Config.APIType == uctypes.APIType_GoogleGemini && aiutil.GeminiSupportsImageToolResults(chatOpts.Config.Model)) {
+			(chatOpts.Config.APIType == uctypes.APIType_GoogleGemini && aiutil.GeminiSupportsImageToolResults(chatOpts.Config.Model)) {
 			tools = append(tools, GetCaptureScreenshotToolDefinition(tabid))
 		}
 		tools = append(tools, GetReadTextFileToolDefinition())
@@ -173,6 +173,11 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetWriteTextFileToolDefinition())
 		tools = append(tools, GetEditTextFileToolDefinition())
 		tools = append(tools, GetDeleteTextFileToolDefinition())
+		tools = append(tools, GetGulinBrainUpdateToolDefinition())
+		tools = append(tools, GetGulinBrainListToolDefinition())
+		tools = append(tools, GetGulinBrainSearchToolDefinition())
+		tools = append(tools, GetWorkspaceSearchToolDefinition())
+		tools = append(tools, GetCreateDashboardToolDefinition(tabid))
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
 			if block.Meta == nil {
@@ -190,10 +195,17 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		}
 		if viewTypes["term"] {
 			tools = append(tools, GetTermGetScrollbackToolDefinition(tabid))
+			if !strings.HasSuffix(chatOpts.Config.AIMode, "@plan") {
+				tools = append(tools, GetTermRunCommandToolDefinition(tabid))
+			}
+			tools = append(tools, GetTermSearchToolDefinition(tabid))
 			// tools = append(tools, GetTermCommandOutputToolDefinition(tabid))
 		}
 		if viewTypes["web"] {
 			tools = append(tools, GetWebNavigateToolDefinition(tabid))
+			tools = append(tools, GetWebReadPageToolDefinition(tabid))
+			tools = append(tools, GetWebClickToolDefinition(tabid))
+			tools = append(tools, GetWebTypeToolDefinition(tabid))
 		}
 	}
 	return tabState, tools, nil
@@ -261,6 +273,121 @@ func generateToolsForTsunamiBlock(block *waveobj.Block) []uctypes.ToolDefinition
 	return tools
 }
 
+func GetGulinBrainUpdateToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "brain_update",
+		DisplayName: "Update Gulin Brain",
+		Description: "Save important knowledge, habits, or project context to Gulin's long-term memory. Use .md extension for files.",
+		ToolLogName: "brain:update",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"filename": map[string]any{
+					"type":        "string",
+					"description": "Name of the memory file (e.g., 'habits.md', 'project_x.md')",
+				},
+				"content": map[string]any{
+					"type":        "string",
+					"description": "The information to save in Markdown format",
+				},
+			},
+			"required":             []string{"filename", "content"},
+			"additionalProperties": false,
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			m, ok := input.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("invalid input format: expected object")
+			}
+			filename, _ := m["filename"].(string)
+			content, _ := m["content"].(string)
+			if filename == "" || content == "" {
+				return nil, fmt.Errorf("missing required parameters: 'filename' and 'content' are required")
+			}
+			err := UpdateGulinMemoryFile(filename, content)
+			if err != nil {
+				return nil, err
+			}
+			return fmt.Sprintf("Conocimiento guardado exitosamente en %s", filename), nil
+		},
+	}
+}
+
+func GetGulinBrainListToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "brain_list",
+		DisplayName: "List Gulin Brain Files",
+		Description: "List all files in Gulin's long-term memory brain.",
+		ToolLogName: "brain:list",
+		InputSchema: map[string]any{
+			"type":                 "object",
+			"properties":           map[string]any{},
+			"additionalProperties": false,
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			files, err := ListGulinMemoryFiles()
+			if err != nil {
+				return nil, err
+			}
+			return files, nil
+		},
+	}
+}
+
+func GetGulinBrainSearchToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "brain_search",
+		DisplayName: "Search Gulin Brain",
+		Description: "Search for relevant knowledge in Gulin's long-term memory using semantic search.",
+		ToolLogName: "brain:search",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "The search query (e.g., 'prefencias de puerto', 'lecciones sobre kubernetes')",
+				},
+			},
+			"required":             []string{"query"},
+			"additionalProperties": false,
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			m, ok := input.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("invalid input format: expected object")
+			}
+			query, _ := m["query"].(string)
+			if query == "" {
+				// Fallback: if the model sent 'filename' instead of 'query' (common Ollama mistake)
+				if fn, ok := m["filename"].(string); ok && fn != "" {
+					query = fn
+				} else {
+					return nil, fmt.Errorf("missing required parameter: 'query' is required")
+				}
+			}
+			files, err := SearchGulinMemory(query)
+			if err != nil {
+				return nil, err
+			}
+			if len(files) == 0 {
+				return "No se encontró información relevante en la memoria para la consulta: " + query, nil
+			}
+
+			var sb strings.Builder
+			sb.WriteString(fmt.Sprintf("Resultados encontrados para '%s':\n", query))
+			for _, file := range files {
+				content, err := ReadGulinMemoryFile(file)
+				if err == nil {
+					sb.WriteString(fmt.Sprintf("\n--- Archivo: %s ---\n", file))
+					sb.WriteString(content)
+					sb.WriteString("\n")
+				}
+			}
+			return sb.String(), nil
+		},
+	}
+}
+
 // Used for internal testing of tool loops
 func GetAdderToolDefinition() uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
@@ -283,7 +410,7 @@ func GetAdderToolDefinition() uctypes.ToolDefinition {
 			"required":             []string{"values"},
 			"additionalProperties": false,
 		},
-		ToolAnyCallback: func(input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
 			inputMap, ok := input.(map[string]any)
 			if !ok {
 				return nil, fmt.Errorf("invalid input format")

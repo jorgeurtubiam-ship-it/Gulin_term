@@ -228,6 +228,18 @@ func (m *StoredChatMessage) GetMessageId() string {
 	return m.MessageId
 }
 
+func (m *StoredChatMessage) GetContent() string {
+	if m.Message.Content != "" {
+		return m.Message.Content
+	}
+	for _, part := range m.Message.ContentParts {
+		if part.Type == "text" {
+			return part.Text
+		}
+	}
+	return ""
+}
+
 func (m *StoredChatMessage) GetRole() string {
 	return m.Message.Role
 }

@@ -314,11 +314,13 @@ export const WaveStreamdown = ({
                 table: false,
                 mermaid: true,
             }}
-            mermaidConfig={{
-                theme: "dark",
-                darkMode: true,
-            }}
-            defaultOrigin="http://localhost"
+            /*
+                        mermaidConfig={{
+                            theme: "dark",
+                            darkMode: true,
+                        }}
+            */
+            // defaultOrigin="http://localhost"
             components={components}
         >
             {text}

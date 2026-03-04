@@ -9,6 +9,8 @@ import (
 	"os"
 	"runtime/debug"
 
+	"path/filepath"
+
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -235,6 +237,10 @@ func Execute() {
 			wshutil.DoShutdown("", WshExitCode, false)
 		}
 	}()
+	baseName := filepath.Base(os.Args[0])
+	if baseName == "gulin" || baseName == "gulin.exe" {
+		os.Args = append([]string{os.Args[0], "gulin"}, os.Args[1:]...)
+	}
 	rootCmd.PersistentFlags().StringVarP(&blockArg, "block", "b", "", "for commands which require a block id")
 	err := rootCmd.Execute()
 	if err != nil {

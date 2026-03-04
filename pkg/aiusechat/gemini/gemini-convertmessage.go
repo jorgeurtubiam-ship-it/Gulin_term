@@ -18,6 +18,17 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
 )
 
+func init() {
+	uctypes.NativeMessageUnmarshalers[uctypes.APIType_GoogleGemini] = func(data []byte) (uctypes.GenAIMessage, error) {
+		var msg GeminiChatMessage
+		err := json.Unmarshal(data, &msg)
+		if err != nil {
+			return nil, err
+		}
+		return &msg, nil
+	}
+}
+
 // cleanSchemaForGemini removes fields from JSON Schema that Gemini doesn't accept
 // Gemini uses a strict subset of JSON Schema and rejects fields like $schema, units, title, etc.
 func cleanSchemaForGemini(schema map[string]any) map[string]any {
