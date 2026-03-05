@@ -56,31 +56,42 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
         }
 
         if (chartType === "grid") {
+            const ROW_LIMIT = 1000;
             const allKeys = Array.from(new Set(chartData.flatMap(item => Object.keys(item))));
+            const displayData = chartData.slice(0, ROW_LIMIT);
+            const isTruncated = chartData.length > ROW_LIMIT;
+
             return (
-                <div className="w-full h-full overflow-auto rounded-md border border-zinc-800/50 bg-zinc-950/20 custom-scrollbar shadow-inner">
-                    <table className="w-full text-left border-collapse min-w-max">
-                        <thead className="sticky top-0 z-10 bg-zinc-900 shadow-sm">
-                            <tr>
-                                {allKeys.map(key => (
-                                    <th key={key} className="px-4 py-3 text-[10px] font-bold text-violet-400 uppercase tracking-widest border-b border-zinc-800">
-                                        {key}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-800/30">
-                            {chartData.map((row, i) => (
-                                <tr key={i} className="hover:bg-violet-500/5 transition-colors group">
+                <div className="flex flex-col w-full h-full">
+                    {isTruncated && (
+                        <div className="mb-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded text-[10px] text-amber-500 flex justify-between items-center italic">
+                            <span>⚠️ Rendimiento optimizado: Mostrando primeras {ROW_LIMIT} de {chartData.length} filas.</span>
+                        </div>
+                    )}
+                    <div className="flex-1 w-full overflow-auto rounded-md border border-zinc-800/50 bg-zinc-950/20 custom-scrollbar shadow-inner">
+                        <table className="w-full text-left border-collapse min-w-max">
+                            <thead className="sticky top-0 z-10 bg-zinc-900 shadow-sm">
+                                <tr>
                                     {allKeys.map(key => (
-                                        <td key={key} className="px-4 py-2.5 text-xs text-zinc-300 font-mono group-hover:text-zinc-100">
-                                            {String(row[key] ?? "-")}
-                                        </td>
+                                        <th key={key} className="px-4 py-3 text-[10px] font-bold text-violet-400 uppercase tracking-widest border-b border-zinc-800">
+                                            {key}
+                                        </th>
                                     ))}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800/30">
+                                {displayData.map((row, i) => (
+                                    <tr key={i} className="hover:bg-violet-500/5 transition-colors group">
+                                        {allKeys.map(key => (
+                                            <td key={key} className="px-4 py-2.5 text-xs text-zinc-300 font-mono group-hover:text-zinc-100">
+                                                {String(row[key] ?? "-")}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             );
         }
