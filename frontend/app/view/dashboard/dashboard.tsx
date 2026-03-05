@@ -55,6 +55,36 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
             return <div className="flex h-full w-full items-center justify-center text-zinc-500 italic">Esperando datos finales de Gulin...</div>
         }
 
+        if (chartType === "grid") {
+            const allKeys = Array.from(new Set(chartData.flatMap(item => Object.keys(item))));
+            return (
+                <div className="w-full h-full overflow-auto rounded-md border border-zinc-800/50 bg-zinc-950/20 custom-scrollbar shadow-inner">
+                    <table className="w-full text-left border-collapse min-w-max">
+                        <thead className="sticky top-0 z-10 bg-zinc-900 shadow-sm">
+                            <tr>
+                                {allKeys.map(key => (
+                                    <th key={key} className="px-4 py-3 text-[10px] font-bold text-violet-400 uppercase tracking-widest border-b border-zinc-800">
+                                        {key}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-800/30">
+                            {chartData.map((row, i) => (
+                                <tr key={i} className="hover:bg-violet-500/5 transition-colors group">
+                                    {allKeys.map(key => (
+                                        <td key={key} className="px-4 py-2.5 text-xs text-zinc-300 font-mono group-hover:text-zinc-100">
+                                            {String(row[key] ?? "-")}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
         const sample = chartData[0];
         const keys = Object.keys(sample).filter(k => k !== "name" && k !== "label" && k !== "id" && k !== "Año" && k !== "month");
         const xAxisKey = Object.keys(sample).find(k => k === "name" || k === "label" || k === "month" || k === "Año" || k === "Nivel" || k === "Equipo") || Object.keys(sample)[0] || "name";

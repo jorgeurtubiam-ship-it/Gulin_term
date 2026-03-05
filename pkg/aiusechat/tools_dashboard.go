@@ -61,12 +61,12 @@ func GetCreateDashboardToolDefinition(tabId string) uctypes.ToolDefinition {
 				},
 				"type": map[string]any{
 					"type":        "string",
-					"enum":        []string{"bar", "line"},
-					"description": "Chart type. Default is 'bar'.",
+					"enum":        []string{"bar", "line", "grid"},
+					"description": "Chart type. Default is 'bar'. Use 'grid' for tabular data like database results or excel-like spreadsheets.",
 				},
 				"data": map[string]any{
 					"type":        "string",
-					"description": "A JSON array string containing the data set. First key is X axis. E.g. '[{\"name\":\"Llama3\",\"speed\":44},{\"name\":\"GPT4\",\"speed\":12}]'",
+					"description": "A JSON array string containing the data set. For charts: first key is X axis. For 'grid': all keys become columns. E.g. '[{\"ID\":1,\"User\":\"Admin\",\"Status\":\"Active\"}]'",
 				},
 			},
 			"required":             []string{"data"},
