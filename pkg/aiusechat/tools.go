@@ -178,6 +178,8 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetGulinBrainSearchToolDefinition())
 		tools = append(tools, GetWorkspaceSearchToolDefinition())
 		tools = append(tools, GetCreateDashboardToolDefinition(tabid))
+		tools = append(tools, GetDBRegisterToolDefinition(tabid))
+		tools = append(tools, GetDBQueryToolDefinition(tabid))
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
 			if block.Meta == nil {

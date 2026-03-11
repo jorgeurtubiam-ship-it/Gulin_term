@@ -111,8 +111,10 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 		appendToLastUserMessage(finalMessages, "<PlatformInfo>\n"+chatOpts.PlatformInfo+"\n</PlatformInfo>")
 	}
 
+	sanitizedMessages := sanitizeOpenAIMessages(finalMessages)
+
 	reqBody := &ChatRequest{
-		Messages: finalMessages,
+		Messages: sanitizedMessages,
 		Stream:   true,
 	}
 
@@ -560,4 +562,70 @@ func RemoveToolUseCall(chatId string, callId string) error {
 	}
 
 	return nil
+}
+
+func sanitizeOpenAIMessages(messages []ChatRequestMessage) []ChatRequestMessage {
+	if len(messages) == 0 {
+		return messages
+	}
+
+	// First, map all tool responses in the history
+	toolResponses := make(map[string]bool)
+	for _, msg := range messages {
+		if msg.Role == "tool" && msg.ToolCallID != "" {
+			toolResponses[msg.ToolCallID] = true
+		}
+	}
+
+	var sanitized []ChatRequestMessage
+	for i, msg := range messages {
+		if msg.Role == "assistant" && len(msg.ToolCalls) > 0 {
+			var validToolCalls []ToolCall
+			for _, tc := range msg.ToolCalls {
+				if toolResponses[tc.ID] {
+					validToolCalls = append(validToolCalls, tc)
+				}
+			}
+
+			// If we removed some tool calls, we need to update the message
+			if len(validToolCalls) != len(msg.ToolCalls) {
+				// If no tool calls left and no content, skip this message entirely
+				if len(validToolCalls) == 0 && msg.Content == "" && len(msg.ContentParts) == 0 {
+					continue
+				}
+				// Create a copy to avoid mutating the original
+				newMsg := msg
+				newMsg.ToolCalls = validToolCalls
+				sanitized = append(sanitized, newMsg)
+				continue
+			}
+		}
+
+		// If this is a tool message, ensure its ID was actually called in an assistant message before it
+		// (OpenAI is strict about this too, though less common to fail here)
+		if msg.Role == "tool" {
+			foundCall := false
+			for j := 0; j < i; j++ {
+				prevMsg := messages[j]
+				if prevMsg.Role == "assistant" {
+					for _, tc := range prevMsg.ToolCalls {
+						if tc.ID == msg.ToolCallID {
+							foundCall = true
+							break
+						}
+					}
+				}
+				if foundCall {
+					break
+				}
+			}
+			if !foundCall {
+				continue // Skip orphaned tool response
+			}
+		}
+
+		sanitized = append(sanitized, msg)
+	}
+
+	return sanitized
 }

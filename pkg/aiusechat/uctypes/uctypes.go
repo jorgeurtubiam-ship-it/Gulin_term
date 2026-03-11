@@ -664,4 +664,28 @@ func AreModelsCompatible(apiType, model1, model2 string) bool {
 	return false
 }
 
+func AreAPITypesCompatible(apiType1, apiType2 string) bool {
+	if apiType1 == apiType2 {
+		return true
+	}
+	// openai-chat and openai-responses are compatible as they use the same underlying message format
+	isOpenAI1 := (apiType1 == APIType_OpenAIChat || apiType1 == APIType_OpenAIResponses)
+	isOpenAI2 := (apiType2 == APIType_OpenAIChat || apiType2 == APIType_OpenAIResponses)
+	if isOpenAI1 && isOpenAI2 {
+		return true
+	}
+	return false
+}
+
 var NativeMessageUnmarshalers = make(map[string]func(data []byte) (GenAIMessage, error))
+
+type APIEndpointInfo struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	Username  string `json:"username,omitempty"`
+	Password  string `json:"password,omitempty"`
+	Token     string `json:"token,omitempty"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
+}

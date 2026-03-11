@@ -196,7 +196,7 @@ tasks:
               ignore_error: true
             - task: build:server:internal
               vars:
-                  ARCHS: arm64
+                  ARCHS: arm64,amd64
 
     build:server:quickdev:
         desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
@@ -204,7 +204,7 @@ tasks:
         cmds:
             - task: build:server:internal
               vars:
-                  ARCHS: arm64
+                  ARCHS: arm64,amd64
         deps:
             - go:mod:tidy
         sources:

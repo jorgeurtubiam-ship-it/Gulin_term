@@ -15,6 +15,11 @@ export interface BrainSummary {
     snippet: string;
 }
 
+export interface DBConnectionInfo {
+    name: string;
+    type: string;
+}
+
 type WaveUIDataTypes = {
     // pkg/aiusechat/uctypes/uctypes.go UIMessageDataUserFile
     userfile: {

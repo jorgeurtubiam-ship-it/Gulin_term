@@ -450,6 +450,8 @@ func RunWebServer(listener net.Listener) {
 
 	// Create separate routers for different timeout requirements
 	waveRouter := mux.NewRouter()
+	waveRouter.HandleFunc("/wave/api-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIApiListHandler))
+	waveRouter.HandleFunc("/wave/api-register", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIApiRegisterHandler))
 	waveRouter.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
 	waveRouter.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	waveRouter.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
@@ -458,7 +460,9 @@ func RunWebServer(listener net.Listener) {
 	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))
 	waveRouter.HandleFunc("/wave/chat-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatListHandler))
 	waveRouter.HandleFunc("/wave/brain-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIBrainListHandler))
-
+	waveRouter.HandleFunc("/wave/db-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIDBListHandler))
+	waveRouter.HandleFunc("/wave/db-schema", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIDBSchemaHandler))
+	waveRouter.HandleFunc("/wave/db-query", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIDBQueryHandler))
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
 

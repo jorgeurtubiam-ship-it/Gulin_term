@@ -14,9 +14,12 @@ import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
-import { VDomModel } from "@/app/view/vdom/vdom-model";
+import { APIEndpointManagerViewModel } from "@/app/view/waveai/apimanager";
+import { DBConnectionsViewModel } from "@/app/view/waveai/dbconnections";
+import { DBExplorerViewModel } from "@/app/view/waveai/dbexplorer";
 import { MemoryGridViewModel } from "@/app/view/waveai/memorygrid";
 import { ErrorBoundary } from "@/element/errorboundary";
+import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc } from "@/store/counters";
@@ -62,6 +65,9 @@ BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
 BlockRegistry.set("waveconfig", WaveConfigViewModel);
 BlockRegistry.set("memory-grid", MemoryGridViewModel);
+BlockRegistry.set("db-connections", DBConnectionsViewModel);
+BlockRegistry.set("db-explorer", DBExplorerViewModel);
+BlockRegistry.set("api-manager", APIEndpointManagerViewModel);
 BlockRegistry.set("dashboard", DashboardViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {

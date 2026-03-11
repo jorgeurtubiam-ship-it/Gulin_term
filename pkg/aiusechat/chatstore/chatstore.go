@@ -106,9 +106,13 @@ func (cs *ChatStore) PostMessage(chatId string, aiOpts *uctypes.AIOptsType, mess
 		cs.chats[chatId] = chat
 	} else {
 		// Verify that the AI options match
-		if chat.APIType != aiOpts.APIType {
+		if !uctypes.AreAPITypesCompatible(chat.APIType, aiOpts.APIType) {
 			cs.lock.Unlock()
 			return fmt.Errorf("API type mismatch: expected %s, got %s (must start a new chat)", chat.APIType, aiOpts.APIType)
+		}
+		// Update chat APIType if they are compatible but different
+		if chat.APIType != aiOpts.APIType {
+			chat.APIType = aiOpts.APIType
 		}
 		if !uctypes.AreModelsCompatible(chat.APIType, chat.Model, aiOpts.Model) {
 			cs.lock.Unlock()

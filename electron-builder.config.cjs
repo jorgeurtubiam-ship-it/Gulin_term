@@ -49,13 +49,13 @@ const config = {
         target: [
             {
                 target: "dmg",
-                arch: ["arm64"],
+                arch: ["arm64", "x64"],
             },
         ],
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
         mergeASARs: false,
-        singleArchFiles: "**/bin/wavesrv.arm64",
+        singleArchFiles: "**/bin/wavesrv.*",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
         extendInfo: {

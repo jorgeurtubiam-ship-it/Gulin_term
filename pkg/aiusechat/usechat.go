@@ -5,6 +5,7 @@ package aiusechat
 
 import (
 	"context"
+	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -33,6 +34,8 @@ import (
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/pkg/web/sse"
 	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/waveterm/pkg/wstore"
 )
 
@@ -700,12 +703,178 @@ func WaveAIBrainListHandler(w http.ResponseWriter, r *http.Request) {
 			Snippet:    snippet,
 		})
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(summaries)
 }
 
+func WaveAIDBSchemaHandler(w http.ResponseWriter, r *http.Request) {
+	connName := r.URL.Query().Get("connection")
+	if connName == "" {
+		http.Error(w, "connection parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	val, exists, _ := secretstore.GetSecret(DBConnectionsSecretKey)
+	if !exists {
+		http.Error(w, "no connections registered", http.StatusNotFound)
+		return
+	}
+	connections := make(map[string]DBRegisterInput)
+	json.Unmarshal([]byte(val), &connections)
+
+	connInfo, ok := connections[connName]
+	if !ok {
+		http.Error(w, fmt.Sprintf("connection '%s' not found", connName), http.StatusNotFound)
+		return
+	}
+
+	if connInfo.Type != "sqlite" {
+		http.Error(w, "only 'sqlite' is supported currently", http.StatusBadRequest)
+		return
+	}
+
+	db, err := sql.Open("sqlite3", connInfo.URL)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to open db: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to query schema: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err == nil {
+			tables = append(tables, name)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tables)
+}
+
+func WaveAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
+	connName := r.URL.Query().Get("connection")
+	sqlStr := r.URL.Query().Get("sql")
+	tabId := r.URL.Query().Get("tabid")
+
+	if connName == "" || sqlStr == "" || tabId == "" {
+		http.Error(w, "connection, sql, and tabid parameters are required", http.StatusBadRequest)
+		return
+	}
+
+	val, exists, _ := secretstore.GetSecret(DBConnectionsSecretKey)
+	if !exists {
+		http.Error(w, "no connections registered", http.StatusNotFound)
+		return
+	}
+	connections := make(map[string]DBRegisterInput)
+	json.Unmarshal([]byte(val), &connections)
+
+	connInfo, ok := connections[connName]
+	if !ok {
+		http.Error(w, fmt.Sprintf("connection '%s' not found", connName), http.StatusNotFound)
+		return
+	}
+
+	if connInfo.Type != "sqlite" {
+		http.Error(w, "only 'sqlite' is supported currently", http.StatusBadRequest)
+		return
+	}
+
+	db, err := sql.Open("sqlite3", connInfo.URL)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to open db: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.QueryContext(r.Context(), sqlStr)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to execute query: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	cols, _ := rows.Columns()
+	var results []map[string]any
+
+	for rows.Next() {
+		columns := make([]any, len(cols))
+		columnPointers := make([]any, len(cols))
+		for i := range columns {
+			columnPointers[i] = &columns[i]
+		}
+
+		if err := rows.Scan(columnPointers...); err != nil {
+			http.Error(w, fmt.Sprintf("failed to scan row: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		m := make(map[string]any)
+		for i, colName := range cols {
+			val := columns[i]
+			if b, ok := val.([]byte); ok {
+				m[colName] = string(b)
+			} else {
+				m[colName] = val
+			}
+		}
+		results = append(results, m)
+	}
+
+	// Create the block in the UI
+	rpcClient := wshclient.GetBareRpcClient()
+	dataJson, _ := json.Marshal(results)
+	_, err = wshclient.CreateBlockCommand(rpcClient, wshrpc.CommandCreateBlockData{
+		TabId: tabId,
+		BlockDef: &waveobj.BlockDef{
+			Meta: map[string]any{
+				"view":          "db-explorer",
+				"db:title":      fmt.Sprintf("Table: %s", connName),
+				"db:connection": connName,
+				"db:data":       string(dataJson),
+			},
+		},
+	}, nil)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to create block: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+func WaveAIDBListHandler(w http.ResponseWriter, r *http.Request) {
+	val, exists, _ := secretstore.GetSecret(DBConnectionsSecretKey)
+	if !exists {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]any{})
+		return
+	}
+	connections := make(map[string]DBRegisterInput)
+	json.Unmarshal([]byte(val), &connections)
+
+	var result []DBConnectionInfo
+	for name, conn := range connections {
+		result = append(result, DBConnectionInfo{
+			Name: name,
+			Type: conn.Type,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 func WaveAIGetChatListHandler(w http.ResponseWriter, r *http.Request) {
+	// Only allow GET method
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
