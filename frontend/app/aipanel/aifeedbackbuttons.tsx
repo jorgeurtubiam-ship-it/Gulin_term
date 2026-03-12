@@ -1,15 +1,17 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useTranslation } from "@/app/store/i18n";
 import { cn, makeIconClass } from "@/util/util";
 import { memo, useState } from "react";
-import { WaveAIModel } from "./waveai-model";
+import { GulinAIModel } from "./gulinai-model";
 
 interface AIFeedbackButtonsProps {
     messageText: string;
 }
 
 export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) => {
+    const { t } = useTranslation();
     const [thumbsUpClicked, setThumbsUpClicked] = useState(false);
     const [thumbsDownClicked, setThumbsDownClicked] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -20,7 +22,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
             setThumbsDownClicked(false);
         }
         if (!thumbsUpClicked) {
-            WaveAIModel.getInstance().handleAIFeedback("good");
+            GulinAIModel.getInstance().handleAIFeedback("good");
         }
     };
 
@@ -30,7 +32,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
             setThumbsUpClicked(false);
         }
         if (!thumbsDownClicked) {
-            WaveAIModel.getInstance().handleAIFeedback("bad");
+            GulinAIModel.getInstance().handleAIFeedback("bad");
         }
     };
 
@@ -50,7 +52,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                         ? "text-accent"
                         : "text-secondary hover:bg-zinc-700 hover:text-primary"
                 )}
-                title="Good Response"
+                title={t("gulin.ai.feedback.good")}
             >
                 <i className={makeIconClass(thumbsUpClicked ? "solid@thumbs-up" : "regular@thumbs-up", false)} />
             </button>
@@ -62,7 +64,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                         ? "text-accent"
                         : "text-secondary hover:bg-zinc-700 hover:text-primary"
                 )}
-                title="Bad Response"
+                title={t("gulin.ai.feedback.bad")}
             >
                 <i className={makeIconClass(thumbsDownClicked ? "solid@thumbs-down" : "regular@thumbs-down", false)} />
             </button>
@@ -75,7 +77,7 @@ export const AIFeedbackButtons = memo(({ messageText }: AIFeedbackButtonsProps) 
                             ? "text-success"
                             : "text-secondary hover:bg-zinc-700 hover:text-primary"
                     )}
-                    title="Copy Message"
+                    title={t("gulin.ai.feedback.copy")}
                 >
                     <i className={makeIconClass(copied ? "solid@check" : "regular@copy", false)} />
                 </button>

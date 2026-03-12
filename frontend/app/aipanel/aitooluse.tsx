@@ -1,15 +1,16 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useTranslation } from "@/app/store/i18n";
 import { BlockModel } from "@/app/block/block-model";
 import { Modal } from "@/app/modals/modal";
 import { recordTEvent } from "@/app/store/global";
 import { cn, fireAndForget } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useEffect, useRef, useState } from "react";
-import { WaveUIMessagePart } from "./aitypes";
+import { GulinUIMessagePart } from "./aitypes";
 import { RestoreBackupModal } from "./restorebackupmodal";
-import { WaveAIModel } from "./waveai-model";
+import { GulinAIModel } from "./gulinai-model";
 
 // matches pkg/filebackup/filebackup.go
 const BackupRetentionDays = 5;
@@ -88,8 +89,9 @@ interface AIToolApprovalButtonsProps {
 }
 
 const AIToolApprovalButtons = memo(({ count, onApprove, onDeny }: AIToolApprovalButtonsProps) => {
-    const approveText = count > 1 ? `Approve All (${count})` : "Approve";
-    const denyText = count > 1 ? "Deny All" : "Deny";
+    const { t } = useTranslation();
+    const approveText = count > 1 ? t("gulin.ai.tool.approve_all").replace("{count}", count.toString()) : t("gulin.ai.tool.approve");
+    const denyText = count > 1 ? t("gulin.ai.tool.deny_all") : t("gulin.ai.tool.deny");
 
     return (
         <div className="mt-2 flex gap-2">
@@ -112,19 +114,20 @@ const AIToolApprovalButtons = memo(({ count, onApprove, onDeny }: AIToolApproval
 AIToolApprovalButtons.displayName = "AIToolApprovalButtons";
 
 interface AIToolUseBatchItemProps {
-    part: WaveUIMessagePart & { type: "data-tooluse" };
+    part: GulinUIMessagePart & { type: "data-tooluse" };
     effectiveApproval: string;
 }
 
 const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItemProps) => {
+    const { t } = useTranslation();
     const statusIcon = part.data.status === "completed" ? "✓" : part.data.status === "error" ? "✗" : "•";
     const statusColor =
         part.data.status === "completed"
             ? "text-success"
             : part.data.status === "error"
-              ? "text-error"
-              : "text-gray-400";
-    const effectiveErrorMessage = part.data.errormessage || (effectiveApproval === "timeout" ? "Not approved" : null);
+                ? "text-error"
+                : "text-gray-400";
+    const effectiveErrorMessage = part.data.errormessage || (effectiveApproval === "timeout" ? t("gulin.ai.tool.not_approved") : null);
 
     return (
         <div className="text-sm pl-2 flex items-start gap-1.5">
@@ -140,11 +143,12 @@ const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItem
 AIToolUseBatchItem.displayName = "AIToolUseBatchItem";
 
 interface AIToolUseBatchProps {
-    parts: Array<WaveUIMessagePart & { type: "data-tooluse" }>;
+    parts: Array<GulinUIMessagePart & { type: "data-tooluse" }>;
     isStreaming: boolean;
 }
 
 const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
+    const { t } = useTranslation();
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
 
     const firstTool = parts[0].data;
@@ -154,21 +158,21 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
         parts.forEach((part) => {
-            WaveAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-approved");
+            GulinAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-approved");
         });
     };
 
     const handleDeny = () => {
         setUserApprovalOverride("user-denied");
         parts.forEach((part) => {
-            WaveAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-denied");
+            GulinAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-denied");
         });
     };
 
     return (
         <div className="flex items-start gap-2 p-2 rounded bg-zinc-800/60 border border-zinc-700">
             <div className="flex-1">
-                <div className="font-semibold">Reading Files</div>
+                <div className="font-semibold">{t("gulin.ai.tool.reading_files")}</div>
                 <div className="mt-1 space-y-0.5">
                     {parts.map((part, idx) => (
                         <AIToolUseBatchItem key={idx} part={part} effectiveApproval={effectiveApproval} />
@@ -185,14 +189,15 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
 AIToolUseBatch.displayName = "AIToolUseBatch";
 
 interface AIToolUseProps {
-    part: WaveUIMessagePart & { type: "data-tooluse" };
+    part: GulinUIMessagePart & { type: "data-tooluse" };
     isStreaming: boolean;
 }
 
 const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const toolData = part.data;
+    const { t } = useTranslation();
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
     const restoreModalToolCallId = useAtomValue(model.restoreBackupModalToolCallId);
     const showRestoreModal = restoreModalToolCallId === toolData.toolcallid;
     const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -217,12 +222,12 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
-        WaveAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-approved");
+        GulinAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-approved");
     };
 
     const handleDeny = () => {
         setUserApprovalOverride("user-denied");
-        WaveAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-denied");
+        GulinAIModel.getInstance().toolUseSendApproval(toolData.toolcallid, "user-denied");
     };
 
     const handleMouseEnter = () => {
@@ -261,8 +266,8 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     };
 
     const handleOpenDiff = () => {
-        recordTEvent("waveai:showdiff");
-        fireAndForget(() => WaveAIModel.getInstance().openDiff(toolData.inputfilename, toolData.toolcallid));
+        recordTEvent("gulinai:showdiff");
+        fireAndForget(() => GulinAIModel.getInstance().openDiff(toolData.inputfilename, toolData.toolcallid));
     };
 
     return (
@@ -282,13 +287,13 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     Date.now() - toolData.runts < BackupRetentionDays * 24 * 60 * 60 * 1000 && (
                         <button
                             onClick={() => {
-                                recordTEvent("waveai:revertfile", { "waveai:action": "revertfile:open" });
+                                recordTEvent("gulinai:revertfile", { "gulinai:action": "revertfile:open" });
                                 model.openRestoreBackupModal(toolData.toolcallid);
                             }}
                             className="flex-shrink-0 px-1.5 py-0.5 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-zinc-400"
-                            title="Restore backup file"
+                            title={t("gulin.ai.tool.restore_title")}
                         >
-                            <span className="text-xs">Revert File</span>
+                            <span className="text-xs">{t("gulin.ai.tool.revert_file")}</span>
                             <i className="fa fa-clock-rotate-left text-xs"></i>
                         </button>
                     )}
@@ -296,16 +301,16 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     <button
                         onClick={handleOpenDiff}
                         className="flex-shrink-0 px-1.5 py-0.5 border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700 rounded cursor-pointer transition-colors flex items-center gap-1 text-zinc-400"
-                        title="Open in diff viewer"
+                        title={t("gulin.ai.tool.diff_title")}
                     >
-                        <span className="text-xs">Show Diff</span>
+                        <span className="text-xs">{t("gulin.ai.tool.show_diff")}</span>
                         <i className="fa fa-arrow-up-right-from-square text-xs"></i>
                     </button>
                 )}
             </div>
             {toolData.tooldesc && <ToolDesc text={toolData.tooldesc} className="text-sm text-gray-400 pl-6" />}
             {(toolData.errormessage || effectiveApproval === "timeout") && (
-                <div className="text-sm text-red-300 pl-6">{toolData.errormessage || "Not approved"}</div>
+                <div className="text-sm text-red-300 pl-6">{toolData.errormessage || t("gulin.ai.tool.not_approved")}</div>
             )}
             {effectiveApproval === "needs-approval" && (
                 <div className="pl-6">
@@ -320,7 +325,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 AIToolUse.displayName = "AIToolUse";
 
 interface AIToolProgressProps {
-    part: WaveUIMessagePart & { type: "data-toolprogress" };
+    part: GulinUIMessagePart & { type: "data-toolprogress" };
 }
 
 const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
@@ -342,37 +347,37 @@ const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
 AIToolProgress.displayName = "AIToolProgress";
 
 interface AIToolUseGroupProps {
-    parts: Array<WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }>;
+    parts: Array<GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }>;
     isStreaming: boolean;
 }
 
 type ToolGroupItem =
-    | { type: "batch"; parts: Array<WaveUIMessagePart & { type: "data-tooluse" }> }
-    | { type: "single"; part: WaveUIMessagePart & { type: "data-tooluse" } }
-    | { type: "progress"; part: WaveUIMessagePart & { type: "data-toolprogress" } };
+    | { type: "batch"; parts: Array<GulinUIMessagePart & { type: "data-tooluse" }> }
+    | { type: "single"; part: GulinUIMessagePart & { type: "data-tooluse" } }
+    | { type: "progress"; part: GulinUIMessagePart & { type: "data-toolprogress" } };
 
 export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps) => {
     const tooluseParts = parts.filter((p) => p.type === "data-tooluse") as Array<
-        WaveUIMessagePart & { type: "data-tooluse" }
+        GulinUIMessagePart & { type: "data-tooluse" }
     >;
     const toolprogressParts = parts.filter((p) => p.type === "data-toolprogress") as Array<
-        WaveUIMessagePart & { type: "data-toolprogress" }
+        GulinUIMessagePart & { type: "data-toolprogress" }
     >;
 
     const tooluseCallIds = new Set(tooluseParts.map((p) => p.data.toolcallid));
     const filteredProgressParts = toolprogressParts.filter((p) => !tooluseCallIds.has(p.data.toolcallid));
 
-    const isFileOp = (part: WaveUIMessagePart & { type: "data-tooluse" }) => {
+    const isFileOp = (part: GulinUIMessagePart & { type: "data-tooluse" }) => {
         const toolName = part.data?.toolname;
         return toolName === "read_text_file" || toolName === "read_dir";
     };
 
-    const needsApproval = (part: WaveUIMessagePart & { type: "data-tooluse" }) => {
+    const needsApproval = (part: GulinUIMessagePart & { type: "data-tooluse" }) => {
         return getEffectiveApprovalStatus(part.data?.approval, isStreaming) === "needs-approval";
     };
 
-    const readFileNeedsApproval: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
-    const readFileOther: Array<WaveUIMessagePart & { type: "data-tooluse" }> = [];
+    const readFileNeedsApproval: Array<GulinUIMessagePart & { type: "data-tooluse" }> = [];
+    const readFileOther: Array<GulinUIMessagePart & { type: "data-tooluse" }> = [];
 
     for (const part of tooluseParts) {
         if (isFileOp(part)) {

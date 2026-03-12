@@ -8,6 +8,7 @@ import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { shouldIncludeWidgetForWorkspace } from "@/app/workspace/widgetfilter";
 import { atoms, createBlock, isDev } from "@/store/global";
 import { fireAndForget, isBlank, makeIconClass } from "@/util/util";
+import { useTranslation } from "@/app/store/i18n";
 import {
     FloatingPortal,
     autoUpdate,
@@ -226,17 +227,18 @@ const SettingsFloatingWindow = memo(
 
         const dismiss = useDismiss(context);
         const { getFloatingProps } = useInteractions([dismiss]);
+        const { t } = useTranslation();
 
         if (!isOpen) return null;
 
         const menuItems = [
             {
                 icon: "gear",
-                label: "Settings",
+                label: t("settings.menu.settings"),
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
-                            view: "waveconfig",
+                            view: "gulinconfig",
                         },
                     };
                     createBlock(blockDef, false, true);
@@ -245,7 +247,7 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "lightbulb",
-                label: "Tips",
+                label: t("settings.menu.tips"),
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
@@ -258,11 +260,11 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "lock",
-                label: "Secrets",
+                label: t("settings.menu.secrets"),
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
-                            view: "waveconfig",
+                            view: "gulinconfig",
                             file: "secrets",
                         },
                     };
@@ -272,7 +274,7 @@ const SettingsFloatingWindow = memo(
             },
             {
                 icon: "circle-question",
-                label: "Help",
+                label: t("settings.menu.help"),
                 onClick: () => {
                     const blockDef: BlockDef = {
                         meta: {
@@ -321,7 +323,7 @@ const Widgets = memo(() => {
     const containerRef = useRef<HTMLDivElement>(null);
     const measurementRef = useRef<HTMLDivElement>(null);
 
-    const featureWaveAppBuilder = fullConfig?.settings?.["feature:waveappbuilder"] ?? false;
+    const featureGulinAppBuilder = fullConfig?.settings?.["feature:gulinappbuilder"] ?? false;
     const widgetsMap = fullConfig?.widgets ?? {};
     const filteredWidgets = Object.fromEntries(
         Object.entries(widgetsMap).filter(([key, widget]) => {
@@ -392,7 +394,7 @@ const Widgets = memo(() => {
                     fireAndForget(async () => {
                         const blockDef: BlockDef = {
                             meta: {
-                                view: "waveconfig",
+                                view: "gulinconfig",
                                 file: "widgets.json",
                             },
                         };
@@ -420,13 +422,13 @@ const Widgets = memo(() => {
                         </div>
                         <div className="flex-grow" />
                         <div className="grid grid-cols-2 gap-0 w-full">
-                            {isDev() || featureWaveAppBuilder ? (
+                            {isDev() || featureGulinAppBuilder ? (
                                 <div
                                     ref={appsButtonRef}
                                     className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
                                     onClick={() => setIsAppsOpen(!isAppsOpen)}
                                 >
-                                    <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                    <Tooltip content="Local GulinApps" placement="left" disable={isAppsOpen}>
                                         <div>
                                             <i className={makeIconClass("cube", true)}></i>
                                         </div>
@@ -452,13 +454,13 @@ const Widgets = memo(() => {
                             <Widget key={`widget-${idx}`} widget={data} mode={mode} />
                         ))}
                         <div className="flex-grow" />
-                        {isDev() || featureWaveAppBuilder ? (
+                        {isDev() || featureGulinAppBuilder ? (
                             <div
                                 ref={appsButtonRef}
                                 className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-secondary text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-white cursor-pointer"
                                 onClick={() => setIsAppsOpen(!isAppsOpen)}
                             >
-                                <Tooltip content="Local WaveApps" placement="left" disable={isAppsOpen}>
+                                <Tooltip content="Local GulinApps" placement="left" disable={isAppsOpen}>
                                     <div className="flex flex-col items-center w-full">
                                         <div>
                                             <i className={makeIconClass("cube", true)}></i>
@@ -488,13 +490,13 @@ const Widgets = memo(() => {
                 {isDev() ? (
                     <div
                         className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
-                        title="Running Wave Dev Build"
+                        title="Running Gulin Dev Build"
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />
                     </div>
                 ) : null}
             </div>
-            {(isDev() || featureWaveAppBuilder) && appsButtonRef.current && (
+            {(isDev() || featureGulinAppBuilder) && appsButtonRef.current && (
                 <AppsFloatingWindow
                     isOpen={isAppsOpen}
                     onClose={() => setIsAppsOpen(false)}
@@ -534,7 +536,7 @@ const Widgets = memo(() => {
                 {isDev() ? (
                     <div
                         className="flex justify-center items-center w-full py-1 text-accent text-[30px]"
-                        title="Running Wave Dev Build"
+                        title="Running Gulin Dev Build"
                     >
                         <i className="fa fa-brands fa-dev fa-fw" />
                     </div>

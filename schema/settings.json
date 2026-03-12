@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/wavetermdev/waveterm/pkg/wconfig/settings-type",
+  "$id": "https://github.com/gulindev/gulin/pkg/wconfig/settings-type",
   "$ref": "#/$defs/SettingsType",
   "$defs": {
     "SettingsType": {
@@ -43,7 +43,14 @@
             "term"
           ]
         },
-        "feature:waveappbuilder": {
+        "app:language": {
+          "type": "string",
+          "enum": [
+            "en",
+            "es"
+          ]
+        },
+        "feature:gulinappbuilder": {
           "type": "boolean"
         },
         "ai:*": {
@@ -88,10 +95,10 @@
         "ai:fixedfontsize": {
           "type": "number"
         },
-        "waveai:showcloudmodes": {
+        "gulinai:showcloudmodes": {
           "type": "boolean"
         },
-        "waveai:defaultmode": {
+        "gulinai:defaultmode": {
           "type": "string"
         },
         "term:*": {

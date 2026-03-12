@@ -1,12 +1,14 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useTranslation } from "@/app/store/i18n";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WaveAIModel } from "./waveai-model";
+import { GulinAIModel } from "./gulinai-model";
 
 const BYOKAnnouncement = () => {
-    const model = WaveAIModel.getInstance();
+    const { t } = useTranslation();
+    const model = GulinAIModel.getInstance();
 
     const handleOpenConfig = async () => {
         RpcApi.RecordTEventCommand(
@@ -14,12 +16,12 @@ const BYOKAnnouncement = () => {
             {
                 event: "action:other",
                 props: {
-                    "action:type": "waveai:configuremodes:panel",
+                    "action:type": "gulinai:configuremodes:panel",
                 },
             },
             { noresponse: true }
         );
-        await model.openWaveAIConfig();
+        await model.openGulinAIConfig();
     };
 
     const handleViewDocs = () => {
@@ -28,7 +30,7 @@ const BYOKAnnouncement = () => {
             {
                 event: "action:other",
                 props: {
-                    "action:type": "waveai:viewdocs:panel",
+                    "action:type": "gulinai:viewdocs:panel",
                 },
             },
             { noresponse: true }
@@ -40,26 +42,25 @@ const BYOKAnnouncement = () => {
             <div className="flex items-start gap-3">
                 <i className="fa fa-key text-blue-400 text-lg mt-0.5"></i>
                 <div className="text-left flex-1">
-                    <div className="text-blue-400 font-medium mb-1">New: BYOK & Local AI Support</div>
+                    <div className="text-blue-400 font-medium mb-1">{t("gulin.ai.byok.title")}</div>
                     <div className="text-secondary text-sm mb-3">
-                        Wave AI now supports bring-your-own-key (BYOK) with OpenAI, Google Gemini, Azure, and
-                        OpenRouter, plus local models via Ollama, LM Studio, and other OpenAI-compatible providers.
+                        {t("gulin.ai.byok.desc")}
                     </div>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={handleOpenConfig}
                             className="border border-blue-400 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 px-3 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors"
                         >
-                            Configure AI Modes
+                            {t("gulin.ai.byok.config_btn")}
                         </button>
                         <a
-                            href="https://docs.waveterm.dev/waveai-modes"
+                            href="https://docs.gulin.dev/gulinai-modes"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={handleViewDocs}
                             className="text-blue-400! hover:text-blue-300! hover:underline text-sm cursor-pointer transition-colors flex items-center gap-1"
                         >
-                            View Docs <i className="fa fa-external-link text-xs"></i>
+                            {t("gulin.ai.byok.docs_btn")} <i className="fa fa-external-link text-xs"></i>
                         </a>
                     </div>
                 </div>

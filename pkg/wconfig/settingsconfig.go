@@ -15,10 +15,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig/defaultconfig"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig/defaultconfig"
 )
 
 const SettingsFile = "settings.json"
@@ -64,8 +64,9 @@ type SettingsType struct {
 	AppDisableCtrlShiftArrows     bool   `json:"app:disablectrlshiftarrows,omitempty"`
 	AppDisableCtrlShiftDisplay    bool   `json:"app:disablectrlshiftdisplay,omitempty"`
 	AppFocusFollowsCursor         string `json:"app:focusfollowscursor,omitempty" jsonschema:"enum=off,enum=on,enum=term"`
+	AppLanguage                   string `json:"app:language,omitempty" jsonschema:"enum=en,enum=es"`
 
-	FeatureWaveAppBuilder bool `json:"feature:waveappbuilder,omitempty"`
+	FeatureGulinAppBuilder bool `json:"feature:gulinappbuilder,omitempty"`
 
 	AiClear         bool    `json:"ai:*,omitempty"`
 	AiPreset        string  `json:"ai:preset,omitempty"`
@@ -82,8 +83,8 @@ type SettingsType struct {
 	AiFontSize      float64 `json:"ai:fontsize,omitempty"`
 	AiFixedFontSize float64 `json:"ai:fixedfontsize,omitempty"`
 
-	WaveAiShowCloudModes bool   `json:"waveai:showcloudmodes,omitempty"`
-	WaveAiDefaultMode    string `json:"waveai:defaultmode,omitempty"`
+	GulinAiShowCloudModes bool   `json:"gulinai:showcloudmodes,omitempty"`
+	GulinAiDefaultMode    string `json:"gulinai:defaultmode,omitempty"`
 
 	TermClear               bool     `json:"term:*,omitempty"`
 	TermFontSize            float64  `json:"term:fontsize,omitempty"`
@@ -272,13 +273,13 @@ type WebBookmark struct {
 	DisplayOrder float64 `json:"display:order,omitempty"`
 }
 
-// Wave AI panel mode configuration (NEW)
+// Gulin AI panel mode configuration (NEW)
 type AIModeConfigType struct {
 	DisplayName        string   `json:"display:name"`
 	DisplayOrder       float64  `json:"display:order,omitempty"`
 	DisplayIcon        string   `json:"display:icon,omitempty"`
 	DisplayDescription string   `json:"display:description,omitempty"`
-	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=wave,enum=google,enum=groq,enum=openrouter,enum=nanogpt,enum=openai,enum=deepseek,enum=azure,enum=azure-legacy,enum=custom"`
+	Provider           string   `json:"ai:provider,omitempty" jsonschema:"enum=gulin,enum=google,enum=groq,enum=openrouter,enum=nanogpt,enum=openai,enum=deepseek,enum=azure,enum=azure-legacy,enum=custom"`
 	APIType            string   `json:"ai:apitype,omitempty" jsonschema:"enum=google-gemini,enum=openai-responses,enum=openai-chat"`
 	Model              string   `json:"ai:model,omitempty"`
 	ThinkingLevel      string   `json:"ai:thinkinglevel,omitempty" jsonschema:"enum=low,enum=medium,enum=high"`
@@ -291,8 +292,8 @@ type AIModeConfigType struct {
 	AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
 	Capabilities       []string `json:"ai:capabilities,omitempty" jsonschema:"enum=pdfs,enum=images,enum=tools"`
 	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
-	WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
-	WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
+	GulinAICloud        bool     `json:"gulinai:cloud,omitempty"`
+	GulinAIPremium      bool     `json:"gulinai:premium,omitempty"`
 }
 
 type AIModeConfigUpdate struct {
@@ -304,11 +305,11 @@ type FullConfigType struct {
 	MimeTypes      map[string]MimeTypeConfigType  `json:"mimetypes"`
 	DefaultWidgets map[string]WidgetConfigType    `json:"defaultwidgets"`
 	Widgets        map[string]WidgetConfigType    `json:"widgets"`
-	Presets        map[string]waveobj.MetaMapType `json:"presets"`
+	Presets        map[string]gulinobj.MetaMapType `json:"presets"`
 	TermThemes     map[string]TermThemeType       `json:"termthemes"`
 	Connections    map[string]ConnKeywords        `json:"connections"`
 	Bookmarks      map[string]WebBookmark         `json:"bookmarks"`
-	WaveAIModes    map[string]AIModeConfigType    `json:"waveai"`
+	GulinAIModes    map[string]AIModeConfigType    `json:"gulinai"`
 	ConfigErrors   []ConfigError                  `json:"configerrors" configfile:"-"`
 }
 
@@ -388,7 +389,7 @@ func isTrailingCommaError(barr []byte, offset int) bool {
 	return false
 }
 
-func resolveEnvReplacements(m waveobj.MetaMapType) {
+func resolveEnvReplacements(m gulinobj.MetaMapType) {
 	if m == nil {
 		return
 	}
@@ -400,7 +401,7 @@ func resolveEnvReplacements(m waveobj.MetaMapType) {
 				m[key] = resolved
 			}
 		case map[string]interface{}:
-			resolveEnvReplacements(waveobj.MetaMapType(v))
+			resolveEnvReplacements(gulinobj.MetaMapType(v))
 		case []interface{}:
 			resolveEnvArray(v)
 		}
@@ -415,7 +416,7 @@ func resolveEnvArray(arr []interface{}) {
 				arr[i] = resolved
 			}
 		case map[string]interface{}:
-			resolveEnvReplacements(waveobj.MetaMapType(v))
+			resolveEnvReplacements(gulinobj.MetaMapType(v))
 		case []interface{}:
 			resolveEnvArray(v)
 		}
@@ -447,7 +448,7 @@ func resolveEnvValue(value string) (string, bool) {
 	return "", true
 }
 
-func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.MetaMapType, []ConfigError) {
+func readConfigHelper(fileName string, barr []byte, readErr error) (gulinobj.MetaMapType, []ConfigError) {
 	var cerrs []ConfigError
 	if readErr != nil && !os.IsNotExist(readErr) {
 		cerrs = append(cerrs, ConfigError{File: fileName, Err: readErr.Error()})
@@ -455,7 +456,7 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 	if len(barr) == 0 {
 		return nil, cerrs
 	}
-	var rtn waveobj.MetaMapType
+	var rtn gulinobj.MetaMapType
 	err := json.Unmarshal(barr, &rtn)
 	if err != nil {
 		if syntaxErr, ok := err.(*json.SyntaxError); ok {
@@ -482,7 +483,7 @@ func readConfigHelper(fileName string, barr []byte, readErr error) (waveobj.Meta
 	return rtn, cerrs
 }
 
-func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.MetaMapType, []ConfigError) {
+func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (gulinobj.MetaMapType, []ConfigError) {
 	barr, readErr := fs.ReadFile(fsys, fileName)
 	if readErr != nil {
 		// If we get an error, we may be using the wrong path separator for the given FS interface. Try switching the separator.
@@ -491,18 +492,18 @@ func readConfigFileFS(fsys fs.FS, logPrefix string, fileName string) (waveobj.Me
 	return readConfigHelper(logPrefix+fileName, barr, readErr)
 }
 
-func ReadDefaultsConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
+func ReadDefaultsConfigFile(fileName string) (gulinobj.MetaMapType, []ConfigError) {
 	return readConfigFileFS(defaultconfig.ConfigFS, "defaults:", fileName)
 }
 
-func ReadWaveHomeConfigFile(fileName string) (waveobj.MetaMapType, []ConfigError) {
-	configDirAbsPath := wavebase.GetWaveConfigDir()
+func ReadGulinHomeConfigFile(fileName string) (gulinobj.MetaMapType, []ConfigError) {
+	configDirAbsPath := gulinbase.GetGulinConfigDir()
 	configDirFsys := os.DirFS(configDirAbsPath)
 	return readConfigFileFS(configDirFsys, "", fileName)
 }
 
-func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
-	configDirAbsPath := wavebase.GetWaveConfigDir()
+func WriteGulinHomeConfigFile(fileName string, m gulinobj.MetaMapType) error {
+	configDirAbsPath := gulinbase.GetGulinConfigDir()
 	fullFileName := filepath.Join(configDirAbsPath, fileName)
 	barr, err := jsonMarshalConfigInOrder(m)
 	if err != nil {
@@ -512,7 +513,7 @@ func WriteWaveHomeConfigFile(fileName string, m waveobj.MetaMapType) error {
 }
 
 // simple merge that overwrites
-func mergeMetaMapSimple(m waveobj.MetaMapType, toMerge waveobj.MetaMapType) waveobj.MetaMapType {
+func mergeMetaMapSimple(m gulinobj.MetaMapType, toMerge gulinobj.MetaMapType) gulinobj.MetaMapType {
 	if m == nil {
 		return toMerge
 	}
@@ -532,11 +533,11 @@ func mergeMetaMapSimple(m waveobj.MetaMapType, toMerge waveobj.MetaMapType) wave
 	return m
 }
 
-func mergeMetaMap(m waveobj.MetaMapType, toMerge waveobj.MetaMapType, simpleMerge bool) waveobj.MetaMapType {
+func mergeMetaMap(m gulinobj.MetaMapType, toMerge gulinobj.MetaMapType, simpleMerge bool) gulinobj.MetaMapType {
 	if simpleMerge {
 		return mergeMetaMapSimple(m, toMerge)
 	} else {
-		return waveobj.MergeMeta(m, toMerge, true)
+		return gulinobj.MergeMeta(m, toMerge, true)
 	}
 }
 
@@ -561,11 +562,11 @@ func SortFileNameDescend(files []fs.DirEntry) {
 }
 
 // Read and merge all files in the specified directory matching the supplied suffix
-func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileName string, simpleMerge bool) (gulinobj.MetaMapType, []ConfigError) {
 	dirEnts, _ := fs.ReadDir(fsys, dirName)
 	suffixEnts := selectDirEntsBySuffix(dirEnts, fileName+".json")
 	SortFileNameDescend(suffixEnts)
-	var rtn waveobj.MetaMapType
+	var rtn gulinobj.MetaMapType
 	var errs []ConfigError
 	for _, ent := range suffixEnts {
 		fileVal, cerrs := readConfigFileFS(fsys, logPrefix, filepath.Join(dirName, ent.Name()))
@@ -576,7 +577,7 @@ func readConfigFilesForDir(fsys fs.FS, logPrefix string, dirName string, fileNam
 }
 
 // Read and merge all files in the specified config filesystem matching the patterns `<partName>.json` and `<partName>/*.json`
-func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
+func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMerge bool) (gulinobj.MetaMapType, []ConfigError) {
 	config, errs := readConfigFilesForDir(fsys, logPrefix, partName, "", simpleMerge)
 	allErrs := errs
 	rtn := config
@@ -586,8 +587,8 @@ func readConfigPartForFS(fsys fs.FS, logPrefix string, partName string, simpleMe
 }
 
 // Combine files from the defaults and home directory for the specified config part name
-func readConfigPart(partName string, simpleMerge bool) (waveobj.MetaMapType, []ConfigError) {
-	configDirAbsPath := wavebase.GetWaveConfigDir()
+func readConfigPart(partName string, simpleMerge bool) (gulinobj.MetaMapType, []ConfigError) {
+	configDirAbsPath := gulinbase.GetGulinConfigDir()
 	configDirFsys := os.DirFS(configDirAbsPath)
 	defaultConfigs, cerrs := readConfigPartForFS(defaultconfig.ConfigFS, "defaults:", partName, simpleMerge)
 	homeConfigs, cerrs1 := readConfigPartForFS(configDirFsys, "", partName, simpleMerge)
@@ -614,7 +615,7 @@ func ReadFullConfig() FullConfigType {
 		}
 		jsonTag := utilfn.GetJsonTag(field)
 		simpleMerge := field.Tag.Get("merge") == ""
-		var configPart waveobj.MetaMapType
+		var configPart gulinobj.MetaMapType
 		var errs []ConfigError
 		if jsonTag == "-" || jsonTag == "" {
 			continue
@@ -634,7 +635,7 @@ func GetConfigSubdirs() []string {
 	var fullConfig FullConfigType
 	configRType := reflect.TypeOf(fullConfig)
 	var retVal []string
-	configDirAbsPath := wavebase.GetWaveConfigDir()
+	configDirAbsPath := gulinbase.GetGulinConfigDir()
 	for fieldIdx := 0; fieldIdx < configRType.NumField(); fieldIdx++ {
 		field := configRType.Field(fieldIdx)
 		if field.PkgPath != "" {
@@ -673,7 +674,7 @@ func getConfigKeyNamespace(key string) string {
 	return key[:colonIdx]
 }
 
-func orderConfigKeys(m waveobj.MetaMapType) []string {
+func orderConfigKeys(m gulinobj.MetaMapType) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -711,7 +712,7 @@ func reindentJson(barr []byte, indentStr string) []byte {
 	return bytes.Join(outputLines, []byte("\n"))
 }
 
-func jsonMarshalConfigInOrder(m waveobj.MetaMapType) ([]byte, error) {
+func jsonMarshalConfigInOrder(m gulinobj.MetaMapType) ([]byte, error) {
 	if len(m) == 0 {
 		return []byte("{}"), nil
 	}
@@ -768,13 +769,13 @@ func convertJsonNumber(num json.Number, ctype reflect.Type) (interface{}, error)
 	return nil, fmt.Errorf("cannot convert number to %s", ctype)
 }
 
-func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
-	m, cerrs := ReadWaveHomeConfigFile(SettingsFile)
+func SetBaseConfigValue(toMerge gulinobj.MetaMapType) error {
+	m, cerrs := ReadGulinHomeConfigFile(SettingsFile)
 	if len(cerrs) > 0 {
 		return fmt.Errorf("error reading config file: %v", cerrs[0])
 	}
 	if m == nil {
-		m = make(waveobj.MetaMapType)
+		m = make(gulinobj.MetaMapType)
 	}
 	for configKey, val := range toMerge {
 		ctype := getConfigKeyType(configKey)
@@ -803,26 +804,26 @@ func SetBaseConfigValue(toMerge waveobj.MetaMapType) error {
 			m[configKey] = val
 		}
 	}
-	return WriteWaveHomeConfigFile(SettingsFile, m)
+	return WriteGulinHomeConfigFile(SettingsFile, m)
 }
 
-func SetConnectionsConfigValue(connName string, toMerge waveobj.MetaMapType) error {
-	m, cerrs := ReadWaveHomeConfigFile(ConnectionsFile)
+func SetConnectionsConfigValue(connName string, toMerge gulinobj.MetaMapType) error {
+	m, cerrs := ReadGulinHomeConfigFile(ConnectionsFile)
 	if len(cerrs) > 0 {
 		return fmt.Errorf("error reading config file: %v", cerrs[0])
 	}
 	if m == nil {
-		m = make(waveobj.MetaMapType)
+		m = make(gulinobj.MetaMapType)
 	}
 	connData := m.GetMap(connName)
 	if connData == nil {
-		connData = make(waveobj.MetaMapType)
+		connData = make(gulinobj.MetaMapType)
 	}
 	for configKey, val := range toMerge {
 		connData[configKey] = val
 	}
 	m[connName] = connData
-	return WriteWaveHomeConfigFile(ConnectionsFile, m)
+	return WriteGulinHomeConfigFile(ConnectionsFile, m)
 }
 
 type WidgetConfigType struct {
@@ -834,7 +835,7 @@ type WidgetConfigType struct {
 	Description   string           `json:"description,omitempty"`
 	Workspaces    []string         `json:"workspaces,omitempty"`
 	Magnified     bool             `json:"magnified,omitempty"`
-	BlockDef      waveobj.BlockDef `json:"blockdef"`
+	BlockDef      gulinobj.BlockDef `json:"blockdef"`
 }
 
 type BgPresetsType struct {
@@ -893,11 +894,11 @@ func (fc *FullConfigType) CountCustomWidgets() int {
 }
 
 // CountCustomAIPresets returns the number of custom AI presets the user has defined.
-// Custom AI presets are identified as presets that start with "ai@" but aren't "ai@global" or "ai@wave".
+// Custom AI presets are identified as presets that start with "ai@" but aren't "ai@global" or "ai@gulin".
 func (fc *FullConfigType) CountCustomAIPresets() int {
 	count := 0
 	for presetID := range fc.Presets {
-		if strings.HasPrefix(presetID, "ai@") && presetID != "ai@global" && presetID != "ai@wave" {
+		if strings.HasPrefix(presetID, "ai@") && presetID != "ai@global" && presetID != "ai@gulin" {
 			count++
 		}
 	}
@@ -905,11 +906,11 @@ func (fc *FullConfigType) CountCustomAIPresets() int {
 }
 
 // CountCustomAIModes returns the number of custom AI modes the user has defined.
-// Custom AI modes are identified as modes that don't start with "waveai@".
+// Custom AI modes are identified as modes that don't start with "gulinai@".
 func (fc *FullConfigType) CountCustomAIModes() int {
 	count := 0
-	for modeID := range fc.WaveAIModes {
-		if !strings.HasPrefix(modeID, "waveai@") {
+	for modeID := range fc.GulinAIModes {
+		if !strings.HasPrefix(modeID, "gulinai@") {
 			count++
 		}
 	}
@@ -920,7 +921,7 @@ func (fc *FullConfigType) CountCustomAIModes() int {
 // This excludes telemetry:enabled and autoupdate:channel which don't count as customizations.
 func CountCustomSettings() int {
 	// Load user settings
-	userSettings, _ := ReadWaveHomeConfigFile("settings.json")
+	userSettings, _ := ReadGulinHomeConfigFile("settings.json")
 	if userSettings == nil {
 		return 0
 	}

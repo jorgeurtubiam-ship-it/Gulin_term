@@ -1,0 +1,62 @@
+---
+sidebar_position: 11
+id: "i18n"
+title: "Internationalization (i18n)"
+---
+
+Gulin Terminal supports multiple languages to provide a localized experience for users worldwide. The internationalization system allows for real-time language switching across the entire application.
+
+## Supported Languages
+
+| Language | Code | Status |
+|----------|------|--------|
+| English  | `en` | Fully Supported |
+| Spanish (Español) | `es` | Fully Supported |
+
+## Changing the Language
+
+You can change the application language through the user interface:
+
+1. Open **Settings** by clicking the gear icon in the sidebar.
+2. Navigate to the **General** section.
+3. Select the **Visual** tab.
+4. Choose your preferred language from the **Language** dropdown menu.
+
+The UI will update immediately to reflect your choice.
+
+## Configuration
+
+The language preference is stored in the `app:language` key within your `settings.json` file.
+
+```json
+{
+  "app:language": "es"
+}
+```
+
+## Technical Implementation
+
+Gulin uses a reactive i18n system built with Jotai for state management. 
+
+### Localized Components
+
+The following areas are fully localized:
+- **Sidebar & Settings**: All menu items and configuration labels.
+- **AI Panel**: 
+    - Welcome screen and descriptions.
+    - Input placeholders and tooltips.
+    - Chat history and model selectors.
+    - AI tool usage and feedback buttons.
+- **Onboarding & Telemetry**: Privacy policies and initial setup screens.
+
+### Adding New Translations
+
+Translations are managed in `frontend/app/store/i18n.ts`. To add a new string:
+1. Define the key in the `Dictionary` type.
+2. Add the translation to both `en` and `es` dictionaries.
+3. Use the `useTranslation` hook in your React component:
+
+```typescript
+const { t } = useTranslation();
+return <div>{t("your.key.here")}</div>;
+```

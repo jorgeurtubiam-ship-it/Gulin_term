@@ -1,9 +1,10 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useTranslation } from "@/app/store/i18n";
 import { formatFileSizeError, isAcceptableFile, validateFileSize } from "@/app/aipanel/ai-utils";
-import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
-import { type WaveAIModel } from "@/app/aipanel/waveai-model";
+import { gulinAIHasFocusWithin } from "@/app/aipanel/gulinai-focus-utils";
+import { type GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { Tooltip } from "@/element/tooltip";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
@@ -12,7 +13,7 @@ import { memo, useCallback, useEffect, useRef } from "react";
 interface AIPanelInputProps {
     onSubmit: (e: React.FormEvent) => void;
     status: string;
-    model: WaveAIModel;
+    model: GulinAIModel;
 }
 
 export interface AIPanelInputRef {
@@ -23,19 +24,21 @@ export interface AIPanelInputRef {
 
 export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps) => {
     const [input, setInput] = useAtom(model.inputAtom);
-    const isFocused = useAtomValue(model.isWaveAIFocusedAtom);
+    const isFocused = useAtomValue(model.isGulinAIFocusedAtom);
     const isChatEmpty = useAtomValue(model.isChatEmptyAtom);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isPanelOpen = useAtomValue(model.getPanelVisibleAtom());
 
+    const { t } = useTranslation();
+
     let placeholder: string;
     if (!isChatEmpty) {
-        placeholder = "Continue...";
+        placeholder = t("gulin.ai.input.placeholder.continue");
     } else if (model.inBuilder) {
-        placeholder = "What would you like to build...";
+        placeholder = t("gulin.ai.input.placeholder.build");
     } else {
-        placeholder = "Ask Wave AI anything...";
+        placeholder = t("gulin.ai.input.placeholder.ask");
     }
 
     const resizeTextarea = useCallback(() => {
@@ -75,7 +78,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     };
 
     const handleFocus = useCallback(() => {
-        model.requestWaveAIFocus();
+        model.requestGulinAIFocus();
     }, [model]);
 
     const handleBlur = useCallback(
@@ -84,7 +87,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                 return;
             }
 
-            if (waveAIHasFocusWithin(e.relatedTarget)) {
+            if (gulinAIHasFocusWithin(e.relatedTarget)) {
                 return;
             }
 
@@ -164,7 +167,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                             ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/50 shadow-[0_0_8px_rgba(99,102,241,0.2)]"
                             : "bg-zinc-800/50 text-zinc-500 border-transparent hover:text-zinc-400"
                     )}
-                    title="Planning Mode: Gulin investigates and proposes a plan without acting."
+                    title={t("gulin.ai.input.plan_title")}
                 >
                     <i className="fa-solid fa-clipboard-list text-[10px]"></i>
                     PLAN
@@ -178,7 +181,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                             ? "bg-red-500/20 text-red-300 border-red-500/50 shadow-[0_0_8px_rgba(239,68,68,0.2)]"
                             : "bg-zinc-800/50 text-zinc-500 border-transparent hover:text-zinc-400"
                     )}
-                    title="Action Mode: Gulin solves problems pro-actively using all tools."
+                    title={t("gulin.ai.input.act_title")}
                 >
                     <i className="fa-solid fa-rocket text-[10px]"></i>
                     ACT
@@ -208,7 +211,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         style={{ fontSize: "13px" }}
                         rows={2}
                     />
-                    <Tooltip content="Attach files" placement="top" divClassName="absolute bottom-6.5 right-1">
+                    <Tooltip content={t("gulin.ai.input.attach_tooltip")} placement="top" divClassName="absolute bottom-6.5 right-1">
                         <button
                             type="button"
                             onClick={handleUploadClick}
@@ -220,7 +223,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                         </button>
                     </Tooltip>
                     {status === "streaming" ? (
-                        <Tooltip content="Stop Response" placement="top" divClassName="absolute bottom-1.5 right-1">
+                        <Tooltip content={t("gulin.ai.input.stop_tooltip")} placement="top" divClassName="absolute bottom-1.5 right-1">
                             <button
                                 type="button"
                                 onClick={() => model.stopResponse()}
@@ -233,7 +236,7 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                             </button>
                         </Tooltip>
                     ) : (
-                        <Tooltip content="Send message (Enter)" placement="top" divClassName="absolute bottom-1.5 right-1">
+                        <Tooltip content={t("gulin.ai.input.send_tooltip")} placement="top" divClassName="absolute bottom-1.5 right-1">
                             <button
                                 type="submit"
                                 disabled={status !== "ready" || !input.trim()}

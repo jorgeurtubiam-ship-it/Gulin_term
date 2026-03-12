@@ -1,14 +1,15 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveStreamdown } from "@/app/element/streamdown";
+import { useTranslation } from "@/app/store/i18n";
+import { GulinStreamdown } from "@/app/element/streamdown";
 import { cn } from "@/util/util";
 import { memo, useEffect, useRef } from "react";
 import { getFileIcon } from "./ai-utils";
 import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
-import { WaveUIMessage, WaveUIMessagePart } from "./aitypes";
-import { WaveAIModel } from "./waveai-model";
+import { GulinUIMessage, GulinUIMessagePart } from "./aitypes";
+import { GulinAIModel } from "./gulinai-model";
 
 const AIThinking = memo(
     ({
@@ -20,6 +21,8 @@ const AIThinking = memo(
         reasoningText?: string;
         isWaitingApproval?: boolean;
     }) => {
+        const { t } = useTranslation();
+        const thinkingMessage = message || t("gulin.ai.message.thinking");
         const scrollRef = useRef<HTMLDivElement>(null);
 
         useEffect(() => {
@@ -47,7 +50,7 @@ const AIThinking = memo(
                             <i className="fa fa-circle text-[10px]"></i>
                         </div>
                     )}
-                    {message && <span className="text-sm text-gray-400">{message}</span>}
+                    {thinkingMessage && <span className="text-sm text-gray-400">{thinkingMessage}</span>}
                 </div>
                 <div ref={scrollRef} className="text-sm text-gray-500 overflow-y-auto h-[3lh] max-w-[600px] pl-9">
                     {displayText}
@@ -60,10 +63,11 @@ const AIThinking = memo(
 AIThinking.displayName = "AIThinking";
 
 interface UserMessageFilesProps {
-    fileParts: Array<WaveUIMessagePart & { type: "data-userfile" }>;
+    fileParts: Array<GulinUIMessagePart & { type: "data-userfile" }>;
 }
 
 const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
+    const { t } = useTranslation();
     if (fileParts.length === 0) return null;
 
     return (
@@ -76,7 +80,7 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
                                 {file.data?.previewurl ? (
                                     <img
                                         src={file.data.previewurl}
-                                        alt={file.data?.filename || "File"}
+                                        alt={file.data?.filename || t("gulin.ai.message.file")}
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
@@ -90,9 +94,9 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
                             </div>
                             <div
                                 className="text-[10px] text-gray-200 truncate w-full max-w-16"
-                                title={file.data?.filename || "File"}
+                                title={file.data?.filename || t("gulin.ai.message.file")}
                             >
-                                {file.data?.filename || "File"}
+                                {file.data?.filename || t("gulin.ai.message.file")}
                             </div>
                         </div>
                     </div>
@@ -105,13 +109,13 @@ const UserMessageFiles = memo(({ fileParts }: UserMessageFilesProps) => {
 UserMessageFiles.displayName = "UserMessageFiles";
 
 interface AIMessagePartProps {
-    part: WaveUIMessagePart;
+    part: GulinUIMessagePart;
     role: string;
     isStreaming: boolean;
 }
 
 const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => {
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
 
     if (part.type === "text") {
         const content = part.text ?? "";
@@ -120,7 +124,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
             return <div className="whitespace-pre-wrap break-words">{content}</div>;
         } else {
             return (
-                <WaveStreamdown
+                <GulinStreamdown
                     text={content}
                     parseIncompleteMarkdown={isStreaming}
                     className="text-gray-100"
@@ -136,11 +140,11 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
 AIMessagePart.displayName = "AIMessagePart";
 
 interface AIMessageProps {
-    message: WaveUIMessage;
+    message: GulinUIMessage;
     isStreaming: boolean;
 }
 
-const isDisplayPart = (part: WaveUIMessagePart): boolean => {
+const isDisplayPart = (part: GulinUIMessagePart): boolean => {
     return (
         part.type === "text" ||
         part.type === "data-tooluse" ||
@@ -150,16 +154,16 @@ const isDisplayPart = (part: WaveUIMessagePart): boolean => {
 };
 
 type MessagePart =
-    | { type: "single"; part: WaveUIMessagePart }
-    | { type: "toolgroup"; parts: Array<WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }> };
+    | { type: "single"; part: GulinUIMessagePart }
+    | { type: "toolgroup"; parts: Array<GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }> };
 
-const groupMessageParts = (parts: WaveUIMessagePart[]): MessagePart[] => {
+const groupMessageParts = (parts: GulinUIMessagePart[]): MessagePart[] => {
     const grouped: MessagePart[] = [];
-    let currentToolGroup: Array<WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }> = [];
+    let currentToolGroup: Array<GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }> = [];
 
     for (const part of parts) {
         if (part.type === "data-tooluse" || part.type === "data-toolprogress") {
-            currentToolGroup.push(part as WaveUIMessagePart & { type: "data-tooluse" | "data-toolprogress" });
+            currentToolGroup.push(part as GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" });
         } else {
             if (currentToolGroup.length > 0) {
                 grouped.push({ type: "toolgroup", parts: currentToolGroup });
@@ -177,9 +181,10 @@ const groupMessageParts = (parts: WaveUIMessagePart[]): MessagePart[] => {
 };
 
 const getThinkingMessage = (
-    parts: WaveUIMessagePart[],
+    parts: GulinUIMessagePart[],
     isStreaming: boolean,
-    role: string
+    role: string,
+    t: (key: string) => string
 ): { message: string; reasoningText?: string; isWaitingApproval?: boolean } | null => {
     if (!isStreaming || role !== "assistant") {
         return null;
@@ -190,14 +195,14 @@ const getThinkingMessage = (
     );
 
     if (hasPendingApprovals) {
-        return { message: "Waiting for Tool Approvals...", isWaitingApproval: true };
+        return { message: t("gulin.ai.message.waiting_approval"), isWaitingApproval: true };
     }
 
     const lastPart = parts[parts.length - 1];
 
     if (lastPart?.type === "reasoning") {
         const reasoningContent = lastPart.text || "";
-        return { message: "AI is thinking...", reasoningText: reasoningContent };
+        return { message: t("gulin.ai.message.thinking"), reasoningText: reasoningContent };
     }
 
     if (lastPart?.type === "text" && lastPart.text) {
@@ -211,10 +216,11 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     const parts = message.parts || [];
     const displayParts = parts.filter(isDisplayPart);
     const fileParts = parts.filter(
-        (part): part is WaveUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
+        (part): part is GulinUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
     );
+    const { t } = useTranslation();
 
-    const thinkingData = getThinkingMessage(parts, isStreaming, message.role);
+    const thinkingData = getThinkingMessage(parts, isStreaming, message.role, t);
     const groupedParts = groupMessageParts(displayParts);
 
     return (
@@ -228,7 +234,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                 )}
             >
                 {displayParts.length === 0 && !isStreaming && !thinkingData ? (
-                    <div className="whitespace-pre-wrap break-words">(no text content)</div>
+                    <div className="whitespace-pre-wrap break-words">{t("gulin.ai.message.no_content")}</div>
                 ) : (
                     <>
                         {groupedParts.map((group, index: number) =>

@@ -1,8 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { handleWaveAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
-import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
+import { handleGulinAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
+import { gulinAIHasSelection } from "@/app/aipanel/gulinai-focus-utils";
 import { ErrorBoundary } from "@/app/element/errorboundary";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
@@ -11,6 +11,7 @@ import { maybeUseTabModel } from "@/app/store/tab-model";
 import { checkKeyPressed, keydownWrapper } from "@/util/keyutil";
 import { isMacOS, isWindows } from "@/util/platformutil";
 import { cn } from "@/util/util";
+import { useTranslation } from "@/app/store/i18n";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import * as jotai from "jotai";
@@ -23,11 +24,11 @@ import { AIPanelHeader } from "./aipanelheader";
 import { AIPanelInput } from "./aipanelinput";
 import { AIPanelMessages } from "./aipanelmessages";
 import { AIRateLimitStrip } from "./airatelimitstrip";
-import { WaveUIMessage } from "./aitypes";
+import { GulinUIMessage } from "./aitypes";
 import { AIHistorySidebar } from "./aihistorysidebar";
 import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
-import { WaveAIModel } from "./waveai-model";
+import { GulinAIModel } from "./gulinai-model";
 
 const AIBlockMask = memo(() => {
     return (
@@ -54,6 +55,7 @@ const AIBlockMask = memo(() => {
 AIBlockMask.displayName = "AIBlockMask";
 
 const AIDragOverlay = memo(() => {
+    const { t } = useTranslation();
     return (
         <div
             key="drag-overlay"
@@ -61,8 +63,8 @@ const AIDragOverlay = memo(() => {
         >
             <div className="text-accent text-center">
                 <i className="fa fa-upload text-3xl mb-2"></i>
-                <div className="text-lg font-semibold">Drop files here</div>
-                <div className="text-sm">Images, PDFs, and text/code files supported</div>
+                <div className="text-lg font-semibold">{t("gulin.ai.welcome.drop_files")}</div>
+                <div className="text-sm">{t("gulin.ai.welcome.supported_files")}</div>
             </div>
         </div>
     );
@@ -86,38 +88,36 @@ const KeyCap = memo(({ children, className }: { children: React.ReactNode; class
 KeyCap.displayName = "KeyCap";
 
 const AIWelcomeMessage = memo(() => {
+    const { t } = useTranslation();
     const modKey = isMacOS() ? "⌘" : "Alt";
-    const aiModeConfigs = jotai.useAtomValue(atoms.waveaiModeConfigAtom);
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
+    const aiModeConfigs = jotai.useAtomValue(atoms.gulinaiModeConfigAtom);
+    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("gulinai@"));
     return (
         <div className="text-secondary py-8">
             <div className="text-center">
                 <i className="fa fa-sparkles text-4xl text-accent mb-2 block"></i>
-                <p className="text-lg font-bold text-primary">Welcome to Gulin IA</p>
+                <p className="text-lg font-bold text-primary">{t("gulin.ai.welcome.title")}</p>
             </div>
             <div className="mt-4 text-left max-w-md mx-auto">
-                <p className="text-sm mb-6">
-                    Gulin IA is your terminal assistant with context. I can read your terminal output, analyze widgets,
-                    access files, and help you solve problems faster.
-                </p>
+                <p className="text-sm mb-6">{t("gulin.ai.welcome.desc")}</p>
                 <div className="bg-accent/10 border border-accent/30 rounded-lg p-4">
-                    <div className="text-sm font-semibold mb-3 text-accent">Getting Started:</div>
+                    <div className="text-sm font-semibold mb-3 text-accent">{t("gulin.ai.welcome.getting_started")}</div>
                     <div className="space-y-3 text-sm">
                         <div className="flex items-start gap-3">
                             <div className="w-4 text-center flex-shrink-0">
                                 <i className="fa-solid fa-plug text-accent"></i>
                             </div>
                             <div>
-                                <span className="font-bold">Widget Context</span>
-                                <div className="">When ON, I can read your terminal and analyze widgets.</div>
-                                <div className="">When OFF, I'm sandboxed with no system access.</div>
+                                <span className="font-bold">{t("gulin.ai.welcome.widget_context.title")}</span>
+                                <div className="">{t("gulin.ai.welcome.widget_context.on")}</div>
+                                <div className="">{t("gulin.ai.welcome.widget_context.off")}</div>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-4 text-center flex-shrink-0">
                                 <i className="fa-solid fa-file-import text-accent"></i>
                             </div>
-                            <div>Drag & drop files or images for analysis</div>
+                            <div>{t("gulin.ai.welcome.drag_drop")}</div>
                         </div>
                         <div className="flex items-start gap-3">
                             <div className="w-4 text-center flex-shrink-0">
@@ -127,27 +127,27 @@ const AIWelcomeMessage = memo(() => {
                                 <div>
                                     <KeyCap>{modKey}</KeyCap>
                                     <KeyCap className="ml-1">K</KeyCap>
-                                    <span className="ml-1.5">to start a new chat</span>
+                                    <span className="ml-1.5">{t("gulin.ai.welcome.new_chat")}</span>
                                 </div>
                                 <div>
                                     <KeyCap>{modKey}</KeyCap>
                                     <KeyCap className="ml-1">Shift</KeyCap>
                                     <KeyCap className="ml-1">A</KeyCap>
-                                    <span className="ml-1.5">to toggle panel</span>
+                                    <span className="ml-1.5">{t("gulin.ai.welcome.toggle_panel")}</span>
                                 </div>
                                 <div>
                                     {isWindows() ? (
                                         <>
                                             <KeyCap>Alt</KeyCap>
                                             <KeyCap className="ml-1">0</KeyCap>
-                                            <span className="ml-1.5">to focus</span>
+                                            <span className="ml-1.5">{t("gulin.ai.welcome.focus")}</span>
                                         </>
                                     ) : (
                                         <>
                                             <KeyCap>Ctrl</KeyCap>
                                             <KeyCap className="ml-1">Shift</KeyCap>
                                             <KeyCap className="ml-1">0</KeyCap>
-                                            <span className="ml-1.5">to focus</span>
+                                            <span className="ml-1.5">{t("gulin.ai.welcome.focus")}</span>
                                         </>
                                     )}
                                 </div>
@@ -158,14 +158,14 @@ const AIWelcomeMessage = memo(() => {
                                 <i className="fa-brands fa-discord text-accent"></i>
                             </div>
                             <div>
-                                Questions or feedback?{" "}
+                                {t("gulin.ai.welcome.questions")}
                                 <a
                                     target="_blank"
                                     href="https://discord.gg/XfvZ334gwU"
                                     rel="noopener"
                                     className="text-accent hover:underline cursor-pointer"
                                 >
-                                    Join our Discord
+                                    {t("gulin.ai.welcome.discord")}
                                 </a>
                             </div>
                         </div>
@@ -184,11 +184,11 @@ const AIBuilderWelcomeMessage = memo(() => {
         <div className="text-secondary py-8">
             <div className="text-center">
                 <i className="fa fa-sparkles text-4xl text-accent mb-4 block"></i>
-                <p className="text-lg font-bold text-primary">WaveApp Builder</p>
+                <p className="text-lg font-bold text-primary">GulinApp Builder</p>
             </div>
             <div className="mt-4 text-left max-w-md mx-auto">
                 <p className="text-sm mb-6">
-                    The WaveApp builder helps create wave widgets that integrate seamlessly into Wave Terminal.
+                    The GulinApp builder helps create gulin widgets that integrate seamlessly into Gulin Terminal.
                 </p>
             </div>
         </div>
@@ -198,7 +198,7 @@ const AIBuilderWelcomeMessage = memo(() => {
 AIBuilderWelcomeMessage.displayName = "AIBuilderWelcomeMessage";
 
 const AIErrorMessage = memo(() => {
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
     const errorMessage = jotai.useAtomValue(model.errorMessage);
 
     if (!errorMessage) {
@@ -230,7 +230,7 @@ const AIErrorMessage = memo(() => {
 AIErrorMessage.displayName = "AIErrorMessage";
 
 const ConfigChangeModeFixer = memo(() => {
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
 
@@ -247,23 +247,23 @@ const AIPanelComponentInner = memo(() => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isReactDndDragOver, setIsReactDndDragOver] = useState(false);
     const [initialLoadDone, setInitialLoadDone] = useState(false);
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
     const containerRef = useRef<HTMLDivElement>(null);
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
-    const isFocused = jotai.useAtomValue(model.isWaveAIFocusedAtom);
+    const isFocused = jotai.useAtomValue(model.isGulinAIFocusedAtom);
     const focusFollowsCursorMode = jotai.useAtomValue(getSettingsKeyAtom("app:focusfollowscursor")) ?? "off";
     const telemetryEnabled = jotai.useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const isPanelVisible = jotai.useAtomValue(model.getPanelVisibleAtom());
     const tabModel = maybeUseTabModel();
-    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("waveai:defaultmode")) ?? "waveai@balanced";
+    const defaultMode = jotai.useAtomValue(getSettingsKeyAtom("gulinai:defaultmode")) ?? "gulinai@balanced";
     const aiModeConfigs = jotai.useAtomValue(model.aiModeConfigs);
 
-    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("waveai@"));
-    const isUsingCustomMode = !defaultMode.startsWith("waveai@");
+    const hasCustomModes = Object.keys(aiModeConfigs).some((key) => !key.startsWith("gulinai@"));
+    const isUsingCustomMode = !defaultMode.startsWith("gulinai@");
     const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
 
-    const { messages, sendMessage, status, setMessages, error, stop } = useChat<WaveUIMessage>({
+    const { messages, sendMessage, status, setMessages, error, stop } = useChat<GulinUIMessage>({
         transport: new DefaultChatTransport({
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
@@ -295,8 +295,8 @@ const AIPanelComponentInner = memo(() => {
     (window as any).aichatmessages = messages;
     (window as any).aichatstatus = status;
 
-    const handleKeyDown = (waveEvent: WaveKeyboardEvent): boolean => {
-        if (checkKeyPressed(waveEvent, "Cmd:k")) {
+    const handleKeyDown = (gulinEvent: GulinKeyboardEvent): boolean => {
+        if (checkKeyPressed(gulinEvent, "Cmd:k")) {
             model.clearChat();
             return true;
         }
@@ -502,8 +502,8 @@ const AIPanelComponentInner = memo(() => {
 
     const handleFocusCapture = useCallback(
         (event: React.FocusEvent) => {
-            // console.log("Wave AI focus capture", getElemAsStr(event.target));
-            model.requestWaveAIFocus();
+            // console.log("Gulin AI focus capture", getElemAsStr(event.target));
+            model.requestGulinAIFocus();
         },
         [model]
     );
@@ -526,14 +526,14 @@ const AIPanelComponentInner = memo(() => {
             return;
         }
 
-        const hasSelection = waveAIHasSelection();
+        const hasSelection = gulinAIHasSelection();
         if (hasSelection) {
-            model.requestWaveAIFocus();
+            model.requestGulinAIFocus();
             return;
         }
 
         setTimeout(() => {
-            if (!waveAIHasSelection()) {
+            if (!gulinAIHasSelection()) {
                 model.focusInput();
             }
         }, 0);
@@ -544,7 +544,7 @@ const AIPanelComponentInner = memo(() => {
     return (
         <div
             ref={containerRef}
-            data-waveai-panel="true"
+            data-gulinai-panel="true"
             className={cn(
                 "@container bg-zinc-900/70 flex flex-col relative",
                 model.inBuilder ? "mt-0 h-full" : "mt-1 h-[calc(100%-4px)]",
@@ -580,7 +580,7 @@ const AIPanelComponentInner = memo(() => {
                         {messages.length === 0 && initialLoadDone ? (
                             <div
                                 className="flex-1 overflow-y-auto p-2 relative"
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
+                                onContextMenu={(e) => handleGulinAIContextMenu(e, true)}
                             >
                                 <div className="absolute top-2 left-2 z-10">
                                     <AIModeDropdown />
@@ -591,7 +591,7 @@ const AIPanelComponentInner = memo(() => {
                             <AIPanelMessages
                                 messages={messages}
                                 status={status}
-                                onContextMenu={(e) => handleWaveAIContextMenu(e, true)}
+                                onContextMenu={(e) => handleGulinAIContextMenu(e, true)}
                             />
                         )}
                         <AIErrorMessage />

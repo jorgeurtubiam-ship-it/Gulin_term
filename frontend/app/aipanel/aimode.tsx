@@ -1,6 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useTranslation } from "@/app/store/i18n";
 import { Tooltip } from "@/app/element/tooltip";
 import { atoms, getSettingsKeyAtom } from "@/app/store/global";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -9,7 +10,7 @@ import { cn, fireAndForget, makeIconClass } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo, useRef, useState } from "react";
 import { getFilteredAIModeConfigs, getModeDisplayName } from "./ai-utils";
-import { WaveAIModel } from "./waveai-model";
+import { GulinAIModel } from "./gulinai-model";
 
 interface AIModeMenuItemProps {
     config: AIModeConfigWithMode;
@@ -37,7 +38,7 @@ const AIModeMenuItem = memo(({ config, isSelected, isDisabled, isPremiumDisabled
                 <i className={makeIconClass(config["display:icon"] || "sparkles", false)}></i>
                 <span className={cn("text-sm", isSelected && "font-bold")}>
                     {getModeDisplayName(config)}
-                    {isPremiumDisabled && " (premium)"}
+                    {isPremiumDisabled && useAtomValue(atoms.settingsAtom)["app:language"] === "es" ? " (premium)" : " (premium)"} 
                 </span>
                 {isSelected && <i className="fa fa-check ml-auto"></i>}
             </div>
@@ -65,11 +66,11 @@ interface ConfigSection {
 function computeCompatibleSections(
     currentMode: string,
     aiModeConfigs: Record<string, AIModeConfigType>,
-    waveProviderConfigs: AIModeConfigWithMode[],
+    gulinProviderConfigs: AIModeConfigWithMode[],
     otherProviderConfigs: AIModeConfigWithMode[]
 ): ConfigSection[] {
     const currentConfig = aiModeConfigs[currentMode];
-    const allConfigs = [...waveProviderConfigs, ...otherProviderConfigs];
+    const allConfigs = [...gulinProviderConfigs, ...otherProviderConfigs];
 
     // Gulin Custom: All models are now compatible to allow switching with Unified Memory.
     // We just return one section with all available configs.
@@ -79,8 +80,8 @@ function computeCompatibleSections(
     return sections;
 }
 
-function computeWaveCloudSections(
-    waveProviderConfigs: AIModeConfigWithMode[],
+function computeGulinCloudSections(
+    gulinProviderConfigs: AIModeConfigWithMode[],
     otherProviderConfigs: AIModeConfigWithMode[],
     telemetryEnabled: boolean
 ): ConfigSection[] {
@@ -98,18 +99,18 @@ interface AIModeDropdownProps {
 }
 
 export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdownProps) => {
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
     const currentMode = useAtomValue(model.currentAIMode);
     const aiModeConfigs = useAtomValue(model.aiModeConfigs);
-    const waveaiModeConfigs = useAtomValue(atoms.waveaiModeConfigAtom);
+    const gulinaiModeConfigs = useAtomValue(atoms.gulinaiModeConfigAtom);
     const widgetContextEnabled = useAtomValue(model.widgetAccessAtom);
     const hasPremium = useAtomValue(model.hasPremiumAtom);
-    const showCloudModes = useAtomValue(getSettingsKeyAtom("waveai:showcloudmodes"));
+    const showCloudModes = useAtomValue(getSettingsKeyAtom("gulinai:showcloudmodes"));
     const telemetryEnabled = useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const { waveProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
+    const { gulinProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,
         showCloudModes,
         model.inBuilder,
@@ -117,16 +118,17 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
         currentMode
     );
 
+    const { t } = useTranslation();
     const sections: ConfigSection[] = compatibilityMode
-        ? computeCompatibleSections(currentMode, aiModeConfigs, waveProviderConfigs, otherProviderConfigs)
-        : computeWaveCloudSections(waveProviderConfigs, otherProviderConfigs, telemetryEnabled);
+        ? computeCompatibleSections(currentMode, aiModeConfigs, gulinProviderConfigs, otherProviderConfigs)
+        : computeGulinCloudSections(gulinProviderConfigs, otherProviderConfigs, telemetryEnabled);
 
     const showSectionHeaders = compatibilityMode || sections.length > 1;
 
     const handleSelect = (mode: string) => {
         const config = aiModeConfigs[mode];
         if (!config) return;
-        if (!hasPremium && config["waveai:premium"]) {
+        if (!hasPremium && config["gulinai:premium"]) {
             return;
         }
         model.setAIMode(mode);
@@ -145,19 +147,19 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 {
                     event: "action:other",
                     props: {
-                        "action:type": "waveai:configuremodes:contextmenu",
+                        "action:type": "gulinai:configuremodes:contextmenu",
                     },
                 },
                 { noresponse: true }
             );
-            await model.openWaveAIConfig();
+            await model.openGulinAIConfig();
             setIsOpen(false);
         });
     };
 
     const handleEnableTelemetry = () => {
         fireAndForget(async () => {
-            await RpcApi.WaveAIEnableTelemetryCommand(TabRpcClient);
+            await RpcApi.GulinAIEnableTelemetryCommand(TabRpcClient);
             setTimeout(() => {
                 model.focusInput();
             }, 100);
@@ -177,7 +179,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const displayConfig = aiModeConfigs[baseMode];
     const displayName = displayConfig ? getModeDisplayName(displayConfig) + suffixLabel : `Invalid (${currentMode})`;
     const displayIcon = displayConfig ? displayConfig["display:icon"] || "sparkles" : "question";
-    const resolvedConfig = waveaiModeConfigs[baseMode];
+    const resolvedConfig = gulinaiModeConfigs[baseMode];
     const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
     const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
 
@@ -189,7 +191,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                     "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
                     isOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
                 )}
-                title={`AI Mode: ${displayName}`}
+                title={`${t("gulin.ai.welcome.title")}: ${displayName}`}
             >
                 <i className={cn(makeIconClass(displayIcon, false), "text-[10px]")}></i>
                 <span className={`text-[11px]`}>{displayName}</span>
@@ -200,16 +202,14 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 <Tooltip
                     content={
                         <div className="max-w-xs">
-                            Warning: This custom mode was configured without the "tools" capability in the
-                            "ai:capabilities" array. Without tool support, Wave AI will not be able to interact with
-                            widgets or files.
+                            {t("gulin.ai.mode.tools_warning")}
                         </div>
                     }
                     placement="bottom"
                 >
                     <div className="flex items-center gap-1 text-[10px] text-yellow-600 mt-1 ml-1 cursor-default">
                         <i className="fa fa-triangle-exclamation"></i>
-                        <span>No Tools Support</span>
+                        <span>{t("gulin.ai.mode.no_tools")}</span>
                     </div>
                 </Tooltip>
             )}
@@ -233,11 +233,11 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                                     isFirstSection ? "pt-2" : "pt-0"
                                                 )}
                                             >
-                                                {section.sectionName}
+                                                {section.sectionName === "Available Modes" ? t("gulin.ai.mode.available") : section.sectionName === "Custom" ? t("gulin.ai.mode.custom") : section.sectionName}
                                             </div>
                                             {section.isIncompatible && (
                                                 <div className="text-center text-[11px] text-red-300 pb-1">
-                                                    (Start a New Chat to Switch)
+                                                    {t("gulin.ai.mode.switch_warning")}
                                                 </div>
                                             )}
                                             {section.noTelemetry && (
@@ -245,7 +245,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                                     onClick={handleEnableTelemetry}
                                                     className="text-center text-[11px] text-green-300 hover:text-green-200 pb-1 cursor-pointer transition-colors w-full"
                                                 >
-                                                    (enable telemetry to unlock Wave AI Cloud)
+                                                    {t("gulin.ai.mode.enable_telemetry")}
                                                 </button>
                                             )}
                                         </>
@@ -253,7 +253,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                     {section.configs.map((config, index) => {
                                         const isFirst = index === 0 && isFirstSection && !showSectionHeaders;
                                         const isLast = index === section.configs.length - 1 && isLastSection;
-                                        const isPremiumDisabled = !hasPremium && config["waveai:premium"];
+                                        const isPremiumDisabled = !hasPremium && config["gulinai:premium"];
                                         const isIncompatibleDisabled = section.isIncompatible || false;
                                         const isTelemetryDisabled = section.noTelemetry || false;
                                         const isDisabled =
@@ -281,14 +281,14 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                             className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("plus", false)}></i>
-                            <span className="text-sm">New Chat</span>
+                            <span className="text-sm">{t("gulin.ai.mode.new_chat")}</span>
                         </button>
                         <button
                             onClick={handleConfigureClick}
                             className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
                         >
                             <i className={makeIconClass("gear", false)}></i>
-                            <span className="text-sm">Configure Modes</span>
+                            <span className="text-sm">{t("gulin.ai.mode.configure")}</span>
                         </button>
                     </div>
                 </>

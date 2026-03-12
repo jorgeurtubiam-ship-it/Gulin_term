@@ -1,17 +1,19 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useTranslation } from "@/app/store/i18n";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
-import { WaveAIModel } from "./waveai-model";
+import { GulinAIModel } from "./gulinai-model";
 import { cn, formatRelativeTime } from "@/util/util";
 
 export const AIHistorySidebar = memo(() => {
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
     const isOpen = useAtomValue(model.isSidebarOpen);
     const summaries = useAtomValue(model.chatSummaries);
     const isLoading = useAtomValue(model.isLoadingChatSummaries);
     const activeChatId = useAtomValue(model.chatId);
+    const { t } = useTranslation();
 
     if (!isOpen) {
         return null;
@@ -30,7 +32,7 @@ export const AIHistorySidebar = memo(() => {
                 <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
                     <h3 className="text-primary font-bold flex items-center gap-2">
                         <i className="fa fa-history text-accent"></i>
-                        Historial de Chats
+                        {t("gulin.ai.history.title")}
                     </h3>
                     <button
                         onClick={() => model.toggleSidebar(false)}
@@ -44,13 +46,13 @@ export const AIHistorySidebar = memo(() => {
                     {isLoading && summaries.length === 0 ? (
                         <div className="p-8 text-center text-muted">
                             <i className="fa fa-spinner fa-spin text-2xl mb-2"></i>
-                            <p className="text-xs">Cargando historial...</p>
+                            <p className="text-xs">{t("gulin.ai.history.loading")}</p>
                         </div>
                     ) : (
                         <div className="py-2">
                             {summaries.length === 0 ? (
                                 <div className="p-8 text-center text-muted text-xs">
-                                    No hay chats anteriores.
+                                    {t("gulin.ai.history.no_chats")}
                                 </div>
                             ) : (
                                 summaries.map((s) => (
@@ -73,7 +75,7 @@ export const AIHistorySidebar = memo(() => {
                                                         // model.exportChatLog(s.chatid);
                                                     }}
                                                     className="opacity-0 group-hover:opacity-100 text-muted hover:text-accent transition-all p-1"
-                                                    title="Exportar Log"
+                                                    title={t("gulin.ai.history.export_title")}
                                                 >
                                                     <i className="fa fa-download"></i>
                                                 </button>
@@ -83,11 +85,11 @@ export const AIHistorySidebar = memo(() => {
                                             </div>
                                         </div>
                                         <p className="text-sm text-primary line-clamp-2 leading-snug">
-                                            {s.snippet || "(Sin contenido)"}
+                                            {s.snippet || t("gulin.ai.history.no_content")}
                                         </p>
                                         <div className="mt-1 text-[10px] text-muted flex items-center gap-1">
                                             <i className="fa fa-message text-[8px]"></i>
-                                            {s.messagecount} mensajes
+                                            {s.messagecount} {t("gulin.ai.history.messages")}
                                         </div>
                                     </div>
                                 ))
@@ -105,7 +107,7 @@ export const AIHistorySidebar = memo(() => {
                         className="w-full py-2 bg-accent hover:bg-accent-600 text-white rounded font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg"
                     >
                         <i className="fa fa-plus"></i>
-                        Nuevo Chat
+                        {t("gulin.ai.history.new_chat")}
                     </button>
                 </div>
             </div>
