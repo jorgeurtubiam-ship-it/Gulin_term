@@ -1,23 +1,23 @@
-# Wave Terminal Configuration System
+# Gulin Terminal Configuration System
 
-This document explains how Wave Terminal's configuration system works and provides step-by-step instructions for adding new configuration values.
+This document explains how Gulin Terminal's configuration system works and provides step-by-step instructions for adding new configuration values.
 
 ## Overview
 
-Wave Terminal uses a hierarchical configuration system with the following components:
+Gulin Terminal uses a hierarchical configuration system with the following components:
 
 1. **Go Struct Definitions** - Type-safe configuration structure in Go
 2. **JSON Schema** - Validation schema for configuration files
 3. **Default Values** - Built-in default configuration
-4. **User Configuration** - User-customizable settings in `~/.config/waveterm/settings.json`
+4. **User Configuration** - User-customizable settings in `~/.config/gulin/settings.json`
 5. **Documentation** - User-facing documentation
 
 ## Configuration File Structure
 
-Wave Terminal's configuration system is organized into several key directories and files:
+Gulin Terminal's configuration system is organized into several key directories and files:
 
 ```
-waveterm/
+gulin/
 ├── pkg/wconfig/                          # Go configuration package
 │   ├── settingsconfig.go                 # Main settings struct definitions
 │   ├── defaultconfig/                    # Default configuration files
@@ -31,7 +31,7 @@ waveterm/
 │   └── ...                              # Other schema files
 ├── docs/docs/                           # User documentation
 │   └── config.mdx                       # Configuration documentation
-└── ~/.config/waveterm/                  # User config directory (runtime)
+└── ~/.config/gulin/                  # User config directory (runtime)
     ├── settings.json                    # User settings overrides
     ├── termthemes.json                  # User terminal themes
     ├── presets.json                     # User background presets
@@ -52,22 +52,22 @@ waveterm/
 ### Configuration Hierarchy
 
 1. **Built-in Defaults** (`pkg/wconfig/defaultconfig/settings.json`)
-2. **User Settings** (`~/.config/waveterm/settings.json`)
+2. **User Settings** (`~/.config/gulin/settings.json`)
 3. **Block-level Overrides** (stored in block metadata)
 
 Settings cascade from defaults → user settings → block overrides.
 
 ### Block-Level Metadata Override System
 
-Wave Terminal supports block-level configuration overrides through the metadata system. This allows settings to be applied globally, per-connection, or per-block:
+Gulin Terminal supports block-level configuration overrides through the metadata system. This allows settings to be applied globally, per-connection, or per-block:
 
-1. **Global Settings** (`~/.config/waveterm/settings.json`) - Apply to all blocks by default
+1. **Global Settings** (`~/.config/gulin/settings.json`) - Apply to all blocks by default
 2. **Connection Settings** (in connections config) - Apply to all blocks using a specific connection
 3. **Block Metadata** - Override settings for individual blocks
 
 **Key Files for Block Overrides:**
 
-- **[`pkg/waveobj/wtypemeta.go`](pkg/waveobj/wtypemeta.go)** - Defines the `MetaTSType` struct for block-level metadata
+- **[`pkg/gulinobj/wtypemeta.go`](pkg/gulinobj/wtypemeta.go)** - Defines the `MetaTSType` struct for block-level metadata
 - Block metadata fields should match the corresponding settings fields for consistency
 
 **Frontend Usage:**
@@ -129,7 +129,7 @@ type SettingsType struct {
 
 ### Step 1.5: Add to Block Metadata (Optional)
 
-If your setting should support block-level overrides, also add it to [`pkg/waveobj/wtypemeta.go`](pkg/waveobj/wtypemeta.go):
+If your setting should support block-level overrides, also add it to [`pkg/gulinobj/wtypemeta.go`](pkg/gulinobj/wtypemeta.go):
 
 ```go
 type MetaTSType struct {
@@ -359,9 +359,9 @@ wsh setmeta --block BLOCK_ID term:bellsound="beep"
 
 ## Testing Your Configuration
 
-1. **Build and run** Wave Terminal with your changes
+1. **Build and run** Gulin Terminal with your changes
 2. **Test default behavior** - Ensure the default value works
-3. **Test user override** - Add your setting to `~/.config/waveterm/settings.json`
+3. **Test user override** - Add your setting to `~/.config/gulin/settings.json`
 4. **Test block override** - Set block-specific metadata
 5. **Verify schema validation** - Ensure invalid values are rejected
 

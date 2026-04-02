@@ -155,10 +155,10 @@
             outline: 2px solid var(--accent-color);
         }
 
-        .waveblock {
+        .gulinblock {
             margin: 1.143em 0;
 
-            .wave-block-content {
+            .gulin-block-content {
                 display: flex;
                 align-items: center;
                 padding: 0.857em;
@@ -168,7 +168,7 @@
                 transition: background-color 0.2s ease;
             }
 
-            .wave-block-icon {
+            .gulin-block-icon {
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -179,23 +179,23 @@
                 margin-right: 0.857em;
             }
 
-            .wave-block-icon i {
+            .gulin-block-icon i {
                 font-size: 1.125em;
                 color: var(--secondary-text-color);
             }
 
-            .wave-block-info {
+            .gulin-block-info {
                 display: flex;
                 flex-direction: column;
             }
 
-            .wave-block-filename {
+            .gulin-block-filename {
                 font-size: 1em;
                 font-weight: 500;
                 color: var(--main-text-color);
             }
 
-            .wave-block-size {
+            .gulin-block-size {
                 font-size: 0.857em;
                 color: var(--secondary-text-color);
             }

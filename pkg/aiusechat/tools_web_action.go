@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/wcore"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 type WebClickToolInput struct {
@@ -113,7 +113,7 @@ func GetWebClickToolDefinition(tabId string) uctypes.ToolDefinition {
 			}
 			return "Click successful", nil
 		},
-		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
 			return uctypes.ApprovalNeedsApproval
 		},
 	}

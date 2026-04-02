@@ -13,10 +13,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/suggestion"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/suggestion"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 type JobManagerConnection struct {
@@ -104,7 +104,7 @@ func (impl *ServerImpl) ConnServerInitCommand(ctx context.Context, data wshrpc.C
 	if impl.SockName == "" {
 		return fmt.Errorf("sockname not set in server impl")
 	}
-	symlinkPath, err := wavebase.ExpandHomeDir(wavebase.GetPersistentRemoteSockName(data.ClientId))
+	symlinkPath, err := gulinbase.ExpandHomeDir(gulinbase.GetPersistentRemoteSockName(data.ClientId))
 	if err != nil {
 		return fmt.Errorf("cannot expand symlink path: %w", err)
 	}
@@ -123,9 +123,9 @@ func (impl *ServerImpl) ConnServerInitCommand(ctx context.Context, data wshrpc.C
 
 func (impl *ServerImpl) getWshPath() (string, error) {
 	if impl.IsLocal {
-		return filepath.Join(wavebase.GetWaveDataDir(), "bin", "wsh"), nil
+		return filepath.Join(gulinbase.GetGulinDataDir(), "bin", "wsh"), nil
 	}
-	wshPath, err := wavebase.ExpandHomeDir("~/.waveterm/bin/wsh")
+	wshPath, err := gulinbase.ExpandHomeDir("~/.gulin/bin/wsh")
 	if err != nil {
 		return "", fmt.Errorf("cannot expand wsh path: %w", err)
 	}

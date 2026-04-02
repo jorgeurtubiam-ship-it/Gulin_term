@@ -15,7 +15,7 @@ import { ErrorBoundary } from "@/element/errorboundary";
 import { NodeModel } from "@/layout/index";
 import * as util from "@/util/util";
 import { makeIconClass } from "@/util/util";
-import { computeBgStyleFromMeta } from "@/util/waveutil";
+import { computeBgStyleFromMeta } from "@/util/gulinutil";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -29,7 +29,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
     const isLayoutMode = jotai.useAtomValue(atoms.controlShiftDelayAtom);
     const showOverlayBlockNums = jotai.useAtomValue(getSettingsKeyAtom("app:showoverlayblocknums")) ?? true;
     const blockHighlight = jotai.useAtomValue(BlockModel.getInstance().getBlockHighlightAtom(nodeModel.blockId));
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const [blockData] = WOS.useGulinObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const tabActiveBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:activebordercolor"));
     const tabBorderColor = jotai.useAtomValue(tabModel.getTabMetaAtom("bg:bordercolor"));
     const style: React.CSSProperties = {};
@@ -88,7 +88,7 @@ const BlockMask = React.memo(({ nodeModel }: { nodeModel: NodeModel }) => {
 
 const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const { nodeModel, viewModel, blockModel, preview, numBlocksInTab, children } = props;
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const [blockData] = WOS.useGulinObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     const isFocused = jotai.useAtomValue(nodeModel.isFocused);
     const aiPanelVisible = jotai.useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
     const viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
@@ -205,7 +205,7 @@ const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof Bl
 const BlockFrame = React.memo((props: BlockFrameProps) => {
     const tabModel = useTabModel();
     const blockId = props.nodeModel.blockId;
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = WOS.useGulinObjectValue<Block>(WOS.makeORef("block", blockId));
     const numBlocks = jotai.useAtomValue(tabModel.tabNumBlocksAtom);
     if (!blockId || !blockData) {
         return null;

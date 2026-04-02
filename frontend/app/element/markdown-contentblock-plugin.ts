@@ -45,9 +45,9 @@ export function createContentBlockPlugin(opts: ContentBlockPluginOptions) {
 
                     if (block) {
                         parts.push({
-                            type: "waveblock",
+                            type: "gulinblock",
                             data: {
-                                hName: "waveblock",
+                                hName: "gulinblock",
                                 hProperties: {
                                     blockkey: key,
                                 },

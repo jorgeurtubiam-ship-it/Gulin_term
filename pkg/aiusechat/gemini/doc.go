@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// Package gemini implements the Google Gemini backend for WaveTerm's AI chat system.
+// Package gemini implements the Google Gemini backend for GuLiN's AI chat system.
 //
 // This package provides a complete implementation of the UseChatBackend interface
 // for Google's Gemini API, including:
@@ -39,7 +39,7 @@
 //
 // # Configuration Example
 //
-//   chatOpts := uctypes.WaveChatOpts{
+//   chatOpts := uctypes.GulinChatOpts{
 //       ChatId:   "my-chat-id",
 //       ClientId: "my-client-id",
 //       Config: uctypes.AIOptsType{

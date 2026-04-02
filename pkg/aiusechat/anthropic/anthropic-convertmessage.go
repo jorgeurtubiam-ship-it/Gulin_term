@@ -16,9 +16,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 func init() {
@@ -35,8 +35,30 @@ func init() {
 // these conversions are based off the anthropic spec
 // and the aiprompts/aisdk-uimessage-type.md doc (v5)
 
+func truncateAnthropicLargeMessages(msgs []anthropicInputMessage, isBridgeReq bool) {
+	if !isBridgeReq {
+		return
+	}
+	const MaxMessageLength = 15000
+	for i := range msgs {
+		msg := &msgs[i]
+		for j := range msg.Content {
+			block := &msg.Content[j]
+			if block.Type == "text" && len(block.Text) > MaxMessageLength {
+				truncMsg := fmt.Sprintf("\n\n... [TRUNCATED: The user/tool output was %d bytes, which exceeds the context limit for Gulin Bridge. Only showing the first %d bytes.]", len(block.Text), MaxMessageLength)
+				block.Text = block.Text[:MaxMessageLength] + truncMsg
+			} else if block.Type == "tool_result" && block.Content != nil {
+				if contentStr, ok := block.Content.(string); ok && len(contentStr) > MaxMessageLength {
+					truncMsg := fmt.Sprintf("\n\n... [TRUNCATED: The tool output was %d bytes, exceeding context limits. Only showing %d bytes. Adjust your tool call to return less data.]", len(contentStr), MaxMessageLength)
+					block.Content = contentStr[:MaxMessageLength] + truncMsg
+				}
+			}
+		}
+	}
+}
+
 // buildAnthropicHTTPRequest creates a complete HTTP request for the Anthropic API
-func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
+func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage, chatOpts uctypes.GulinChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 	if opts.Model == "" {
 		return nil, errors.New("ai:model is required")
@@ -110,6 +132,9 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		}
 	}
 
+	isBridgeReq := chatOpts.Config.BridgeProvider != "" || strings.Contains(chatOpts.Config.Endpoint, ":8090") || strings.Contains(chatOpts.Config.Endpoint, "gulinbridge")
+	truncateAnthropicLargeMessages(convertedMsgs, isBridgeReq)
+
 	// Build request body
 	reqBody := &anthropicStreamRequest{
 		Model:     opts.Model,
@@ -177,17 +202,17 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 	}
 	req.Header.Set("anthropic-version", AnthropicDefaultAPIVersion)
 	req.Header.Set("accept", "text/event-stream")
-	// Only send Wave-specific headers when using Wave provider
-	if opts.Provider == uctypes.AIProvider_Wave {
+	// Only send Gulin-specific headers when using Gulin provider
+	if opts.Provider == uctypes.AIProvider_Gulin {
 		if chatOpts.ClientId != "" {
-			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+			req.Header.Set("X-Gulin-ClientId", chatOpts.ClientId)
 		}
 		if chatOpts.ChatId != "" {
-			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+			req.Header.Set("X-Gulin-ChatId", chatOpts.ChatId)
 		}
-		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
-		req.Header.Set("X-Wave-APIType", uctypes.APIType_AnthropicMessages)
-		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
+		req.Header.Set("X-Gulin-Version", gulinbase.GulinVersion)
+		req.Header.Set("X-Gulin-APIType", uctypes.APIType_AnthropicMessages)
+		req.Header.Set("X-Gulin-RequestType", chatOpts.GetGulinRequestType())
 	}
 
 	return req, nil

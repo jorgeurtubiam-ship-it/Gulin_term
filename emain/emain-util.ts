@@ -4,9 +4,9 @@
 import * as electron from "electron";
 import { getWebServerEndpoint } from "../frontend/util/endpoints";
 
-export const WaveAppPathVarName = "WAVETERM_APP_PATH";
-export const WaveAppResourcesPathVarName = "WAVETERM_RESOURCES_PATH";
-export const WaveAppElectronExecPath = "WAVETERM_ELECTRONEXECPATH";
+export const GulinAppPathVarName = "GULIN_APP_PATH";
+export const GulinAppResourcesPathVarName = "GULIN_RESOURCES_PATH";
+export const GulinAppElectronExecPath = "GULIN_ELECTRONEXECPATH";
 
 const MinZoomLevel = 0.4;
 const MaxZoomLevel = 2.6;
@@ -46,26 +46,26 @@ export function handleCtrlShiftFocus(sender: Electron.WebContents, focused: bool
     }
 }
 
-export function handleCtrlShiftState(sender: Electron.WebContents, waveEvent: WaveKeyboardEvent) {
-    if (waveEvent.type == "keyup") {
-        if (waveEvent.key === "Control" || waveEvent.key === "Shift") {
+export function handleCtrlShiftState(sender: Electron.WebContents, gulinEvent: GulinKeyboardEvent) {
+    if (gulinEvent.type == "keyup") {
+        if (gulinEvent.key === "Control" || gulinEvent.key === "Shift") {
             setCtrlShift(sender, false);
         }
-        if (waveEvent.key == "Meta") {
-            if (waveEvent.control && waveEvent.shift) {
+        if (gulinEvent.key == "Meta") {
+            if (gulinEvent.control && gulinEvent.shift) {
                 setCtrlShift(sender, true);
             }
         }
         if (lastCtrlShiftSate) {
-            if (!waveEvent.control || !waveEvent.shift) {
+            if (!gulinEvent.control || !gulinEvent.shift) {
                 setCtrlShift(sender, false);
             }
         }
         return;
     }
-    if (waveEvent.type == "keydown") {
-        if (waveEvent.key === "Control" || waveEvent.key === "Shift" || waveEvent.key === "Meta") {
-            if (waveEvent.control && waveEvent.shift && !waveEvent.meta) {
+    if (gulinEvent.type == "keydown") {
+        if (gulinEvent.key === "Control" || gulinEvent.key === "Shift" || gulinEvent.key === "Meta") {
+            if (gulinEvent.control && gulinEvent.shift && !gulinEvent.meta) {
                 // Set the control and shift without the Meta key
                 setCtrlShift(sender, true);
             } else {
@@ -117,9 +117,9 @@ export function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWill
     if (
         event.frame.name == "pdfview" &&
         (url.startsWith("blob:file:///") ||
-            url.startsWith(getWebServerEndpoint() + "/wave/stream-file?") ||
-            url.startsWith(getWebServerEndpoint() + "/wave/stream-file/") ||
-            url.startsWith(getWebServerEndpoint() + "/wave/stream-local-file?"))
+            url.startsWith(getWebServerEndpoint() + "/gulin/stream-file?") ||
+            url.startsWith(getWebServerEndpoint() + "/gulin/stream-file/") ||
+            url.startsWith(getWebServerEndpoint() + "/gulin/stream-local-file?"))
     ) {
         // allowed
         return;
@@ -232,9 +232,9 @@ export function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rec
     return bounds;
 }
 
-export function waveKeyToElectronKey(waveKey: string): string {
-    const waveParts = waveKey.split(":");
-    const electronParts: Array<string> = waveParts.map((part: string) => {
+export function gulinKeyToElectronKey(gulinKey: string): string {
+    const gulinParts = gulinKey.split(":");
+    const electronParts: Array<string> = gulinParts.map((part: string) => {
         const digitRegexpMatch = new RegExp("^c{Digit([0-9])}$").exec(part);
         const numpadRegexpMatch = new RegExp("^c{Numpad([0-9])}$").exec(part);
         const lowercaseCharMatch = new RegExp("^([a-z])$").exec(part);

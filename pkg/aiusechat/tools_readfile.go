@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/readutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/readutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 const ReadFileDefaultLineCount = 100
@@ -204,7 +204,7 @@ func verifyReadTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUs
 		return err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -237,7 +237,7 @@ func readTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.U
 		return nil, err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -403,7 +403,7 @@ func GetReadTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("reading %q (from start: offset %d lines, count %d lines)", parsed.Filename, offset, count)
 		},
 		ToolAnyCallback: readTextFileCallback,
-		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
 			if strings.HasSuffix(chatOpts.Config.AIMode, "@act") {
 				return uctypes.ApprovalAutoApproved
 			}

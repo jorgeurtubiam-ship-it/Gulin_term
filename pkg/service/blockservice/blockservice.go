@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/blockcontroller"
+	"github.com/gulindev/gulin/pkg/filestore"
+	"github.com/gulindev/gulin/pkg/tsgen/tsgenmeta"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wcore"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 type BlockService struct{}
@@ -43,8 +43,8 @@ func (*BlockService) SaveTerminalState_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, state string, stateType string, ptyOffset int64, termSize waveobj.TermSize) error {
-	_, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, state string, stateType string, ptyOffset int64, termSize gulinobj.TermSize) error {
+	_, err := wstore.DBMustGet[*gulinobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
@@ -68,13 +68,13 @@ func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, s
 	return nil
 }
 
-func (bs *BlockService) SaveWaveAiData(ctx context.Context, blockId string, history []wshrpc.WaveAIPromptMessageType) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+func (bs *BlockService) SaveGulinAiData(ctx context.Context, blockId string, history []wshrpc.GulinAIPromptMessageType) error {
+	block, err := wstore.DBMustGet[*gulinobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
-	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
-	if viewName != "waveai" {
+	viewName := block.Meta.GetString(gulinobj.MetaKey_View, "")
+	if viewName != "gulinai" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
 	historyBytes, err := json.Marshal(history)
@@ -97,9 +97,9 @@ func (*BlockService) CleanupOrphanedBlocks_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (bs *BlockService) CleanupOrphanedBlocks(ctx context.Context, tabId string) (waveobj.UpdatesRtnType, error) {
-	ctx = waveobj.ContextWithUpdates(ctx)
-	layoutAction := waveobj.LayoutActionData{
+func (bs *BlockService) CleanupOrphanedBlocks(ctx context.Context, tabId string) (gulinobj.UpdatesRtnType, error) {
+	ctx = gulinobj.ContextWithUpdates(ctx)
+	layoutAction := gulinobj.LayoutActionData{
 		ActionType: wcore.LayoutActionDataType_CleanupOrphaned,
 		ActionId:   uuid.NewString(),
 	}
@@ -107,5 +107,5 @@ func (bs *BlockService) CleanupOrphanedBlocks(ctx context.Context, tabId string)
 	if err != nil {
 		return nil, fmt.Errorf("error queuing cleanup layout action: %w", err)
 	}
-	return waveobj.ContextGetUpdatesRtn(ctx), nil
+	return gulinobj.ContextGetUpdatesRtn(ctx), nil
 }

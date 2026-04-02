@@ -3,7 +3,7 @@
 
 package engine
 
-import "github.com/wavetermdev/waveterm/tsunami/vdom"
+import "github.com/gulindev/gulin/tsunami/vdom"
 
 // so components either render to another component (or fragment)
 // or to a base element (text or vdom).  base elements can then render children
@@ -19,7 +19,7 @@ type ChildKey struct {
 // identity, state, and lifecycle across renders while the VDomElem input/output
 // structures are ephemeral.
 type ComponentImpl struct {
-	WaveId         string         // Unique identifier for this component instance
+	GulinId         string         // Unique identifier for this component instance
 	Tag            string         // Component type (HTML tag, custom component name, "#text", etc.)
 	Key            string         // User-provided key for reconciliation (like React keys)
 	ContainingComp string         // Which vdom component's render function created this ComponentImpl

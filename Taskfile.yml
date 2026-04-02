@@ -10,8 +10,8 @@ vars:
         sh: node version.cjs
     RMRF: '{{if eq OS "windows"}}powershell Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell Get-Date -UFormat{{else}}date{{end}}'
-    ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
-    RELEASES_BUCKET: dl.waveterm.dev/releases-w2
+    ARTIFACTS_BUCKET: gulin-github-artifacts/staging-w2
+    RELEASES_BUCKET: dl.gulin.dev/releases-w2
     WINGET_PACKAGE: LoRdZeRo.GuLiN
 
 tasks:
@@ -25,11 +25,11 @@ tasks:
             - build:backend
             - build:tsunamiscaffold
         env:
-            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
-            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
-            WAVETERM_NOCONFIRMQUIT: "1"
+            GULIN_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.gulin.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.gulin.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.gulin.dev"
+            GULIN_NOCONFIRMQUIT: "1"
 
     electron:start:
         desc: Run the Electron application directly.
@@ -40,10 +40,10 @@ tasks:
             - npm:install
             - build:backend
         env:
-            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
-            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev"
+            GULIN_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.gulin.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.gulin.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.gulin.dev"
 
     electron:quickdev:
         desc: Run the Electron application via the Vite dev server (quick dev - no docsite, arm64 only, no generate, no wsh).
@@ -52,11 +52,11 @@ tasks:
             - npm:install
             - build:backend:quickdev
         env:
-            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
-            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
-            WAVETERM_NOCONFIRMQUIT: "1"
+            GULIN_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.gulin.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.gulin.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.gulin.dev/"
+            GULIN_NOCONFIRMQUIT: "1"
 
     preview:
         desc: Run the standalone component preview server with HMR (no Electron, no backend).
@@ -79,10 +79,10 @@ tasks:
             - npm:install
             - build:backend:quickdev:windows
         env:
-            WAVETERM_ENVFILE: "{{.ROOT_DIR}}/.env"
-            WCLOUD_PING_ENDPOINT: "https://ping-dev.waveterm.dev/central"
-            WCLOUD_ENDPOINT: "https://api-dev.waveterm.dev/central"
-            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.waveterm.dev/"
+            GULIN_ENVFILE: "{{.ROOT_DIR}}/.env"
+            WCLOUD_PING_ENDPOINT: "https://ping-dev.gulin.dev/central"
+            WCLOUD_ENDPOINT: "https://api-dev.gulin.dev/central"
+            WCLOUD_WS_ENDPOINT: "wss://wsapi-dev.gulin.dev/"
 
     docs:npm:install:
         desc: Runs `npm install` in docs directory
@@ -138,13 +138,13 @@ tasks:
             - npm:install
 
     build:backend:
-        desc: Build the wavesrv and wsh components.
+        desc: Build the gulinsrv and wsh components.
         cmds:
             - task: build:server
             - task: build:wsh
 
     build:backend:quickdev:
-        desc: Build only the wavesrv component for quickdev (arm64 macOS only, no generate, no wsh).
+        desc: Build only the gulinsrv component for quickdev (arm64 macOS only, no generate, no wsh).
         cmds:
             - task: build:server:quickdev
         sources:
@@ -171,7 +171,7 @@ tasks:
             - task: copyfiles:'schema':'dist/schema'
 
     build:server:
-        desc: Build the wavesrv component.
+        desc: Build the gulinsrv component.
         cmds:
             - task: build:server:linux
             - task: build:server:macos
@@ -186,20 +186,20 @@ tasks:
             - "pkg/**/*.sh"
             - tsunami/**/*.go
         generates:
-            - dist/bin/wavesrv.*
+            - dist/bin/gulinsrv.*
 
     build:server:macos:
-        desc: Build the wavesrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
+        desc: Build the gulinsrv component for macOS (Darwin) platforms (generates artifacts for both arm64 and amd64).
         platforms: [darwin]
         cmds:
-            - cmd: rm -f dist/bin/wavesrv*
+            - cmd: rm -f dist/bin/gulinsrv*
               ignore_error: true
             - task: build:server:internal
               vars:
                   ARCHS: arm64,amd64
 
     build:server:quickdev:
-        desc: Build the wavesrv component for quickdev (arm64 macOS only, no generate).
+        desc: Build the gulinsrv component for quickdev (arm64 macOS only, no generate).
         platforms: [darwin]
         cmds:
             - task: build:server:internal
@@ -214,10 +214,10 @@ tasks:
             - "pkg/**/*.sh"
             - "tsunami/**/*.go"
         generates:
-            - dist/bin/wavesrv.*
+            - dist/bin/gulinsrv.*
 
     build:backend:quickdev:windows:
-        desc: Build only the wavesrv component for quickdev (Windows amd64 only, no generate, no wsh).
+        desc: Build only the gulinsrv component for quickdev (Windows amd64 only, no generate, no wsh).
         platforms: [windows]
         cmds:
             - task: build:server:internal
@@ -233,12 +233,12 @@ tasks:
             - "pkg/**/*.sh"
             - "tsunami/**/*.go"
         generates:
-            - dist/bin/wavesrv.x64.exe
+            - dist/bin/gulinsrv.x64.exe
 
     build:server:windows:
-        desc: Build the wavesrv component for Windows platforms.
+        desc: Build the gulinsrv component for Windows platforms.
         cmds:
-            - cmd: '{{.RMRF}} dist/bin/wavesrv.x64.exe'
+            - cmd: '{{.RMRF}} dist/bin/gulinsrv.x64.exe'
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -247,10 +247,10 @@ tasks:
                   GO_ENV_VARS: CC="zig cc -target x86_64-windows-gnu"
 
     build:server:linux:
-        desc: Build the wavesrv component for Linux platforms (only generates artifacts for the current architecture).
+        desc: Build the gulinsrv component for Linux platforms (only generates artifacts for the current architecture).
         platforms: [linux]
         cmds:
-            - cmd: rm -f dist/bin/wavesrv*
+            - cmd: rm -f dist/bin/gulinsrv*
               ignore_error: true
             - task: build:server:internal
               vars:
@@ -266,7 +266,7 @@ tasks:
         vars:
             EXT: '{{if eq .GOOS "windows"}}.exe{{end}}'
         cmd:
-            cmd: CGO_ENABLED=1 GOOS={{.GOOS | default OS}} GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{.EXT}} cmd/server/main-server.go
+            cmd: CGO_ENABLED=1 GOOS={{.GOOS | default OS}} GOARCH={{.GOARCH}} {{.GO_ENV_VARS}} go build -tags "osusergo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.GulinVersion={{.VERSION}}" -o dist/bin/gulinsrv.{{if eq .GOARCH "amd64"}}x64{{else}}{{.GOARCH}}{{end}}{{.EXT}} cmd/server/main-server.go
             for:
                 var: ARCHS
                 split: ","
@@ -334,7 +334,7 @@ tasks:
                 - GOOS
                 - GOARCH
                 - VERSION
-        cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+        cmd: (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$({{.DATE}} +'%Y%m%d%H%M') -X main.GulinVersion={{.VERSION}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.NORMALIZEDARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         internal: true
 
     build:tsunamiscaffold:
@@ -413,7 +413,7 @@ tasks:
             CHANNEL: '{{if contains "beta" .UP_VERSION}}beta{{else}}beta,stable{{end}}'
         cmd: |
             echo "Releasing to channels: [{{.CHANNEL}}]"
-            for file in waveterm_{{.UP_VERSION}}_*.snap; do
+            for file in gulin_{{.UP_VERSION}}_*.snap; do
                 echo "Publishing $file"
                 snapcraft upload --release={{.CHANNEL}} $file
                 echo "Finished publishing $file"
@@ -438,14 +438,14 @@ tasks:
               vars:
                   GOOS: darwin
                   GOARCH: arm64
-            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
+            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/gulin-dev/bin/wsh
 
     dev:clearconfig:
-        desc: Clear the config directory for waveterm-dev
-        cmd: "{{.RMRF}} ~/.config/waveterm-dev"
+        desc: Clear the config directory for gulin-dev
+        cmd: "{{.RMRF}} ~/.config/gulin-dev"
 
     dev:cleardata:
-        desc: Clear the data directory for waveterm-dev
+        desc: Clear the data directory for gulin-dev
         cmds:
             - task: dev:cleardata:windows
             - task: dev:cleardata:linux
@@ -467,17 +467,17 @@ tasks:
     dev:cleardata:windows:
         internal: true
         platforms: [windows]
-        cmd: '{{.RMRF}} %LOCALAPPDATA%\waveterm-dev\Data'
+        cmd: '{{.RMRF}} %LOCALAPPDATA%\gulin-dev\Data'
 
     dev:cleardata:linux:
         internal: true
         platforms: [linux]
-        cmd: "rm -rf ~/.local/share/waveterm-dev"
+        cmd: "rm -rf ~/.local/share/gulin-dev"
 
     dev:cleardata:macos:
         internal: true
         platforms: [darwin]
-        cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
+        cmd: 'rm -rf ~/Library/Application\ Support/gulin-dev'
 
     npm:install:
         desc: Runs `npm install`

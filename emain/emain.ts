@@ -33,24 +33,24 @@ import {
     checkIfRunningUnderARM64Translation,
     getElectronAppBasePath,
     getElectronAppUnpackedBasePath,
-    getWaveConfigDir,
-    getWaveDataDir,
+    getGulinConfigDir,
+    getGulinDataDir,
     isDev,
     unameArch,
     unamePlatform,
 } from "./emain-platform";
 import { ensureHotSpareTab, setMaxTabCacheSize } from "./emain-tabview";
-import { getIsWaveSrvDead, getWaveSrvProc, getWaveSrvReady, runWaveSrv } from "./emain-wavesrv";
+import { getIsGulinSrvDead, getGulinSrvProc, getGulinSrvReady, runGulinSrv } from "./emain-gulinsrv";
 import {
     createBrowserWindow,
-    createNewWaveWindow,
-    focusedWaveWindow,
-    getAllWaveWindows,
-    getWaveWindowById,
-    getWaveWindowByWorkspaceId,
+    createNewGulinWindow,
+    focusedGulinWindow,
+    getAllGulinWindows,
+    getGulinWindowById,
+    getGulinWindowByWorkspaceId,
     registerGlobalHotkey,
     relaunchBrowserWindows,
-    WaveBrowserWindow,
+    GulinBrowserWindow,
 } from "./emain-window";
 import { ElectronWshClient, initElectronWshClient } from "./emain-wsh";
 import { getLaunchSettings } from "./launchsettings";
@@ -60,8 +60,8 @@ const electronApp = electron.app;
 
 let confirmQuit = true;
 
-const waveDataDir = getWaveDataDir();
-const waveConfigDir = getWaveConfigDir();
+const gulinDataDir = getGulinDataDir();
+const gulinConfigDir = getGulinConfigDir();
 
 electron.nativeTheme.themeSource = "dark";
 
@@ -69,8 +69,8 @@ console.log = log;
 console.log(
     sprintf(
         "gulin-app starting, data_dir=%s, config_dir=%s electronpath=%s gopath=%s arch=%s/%s electron=%s",
-        waveDataDir,
-        waveConfigDir,
+        gulinDataDir,
+        gulinConfigDir,
         getElectronAppBasePath(),
         getElectronAppUnpackedBasePath(),
         unamePlatform,
@@ -88,7 +88,7 @@ function handleWSEvent(evtMsg: WSEventType) {
         if (evtMsg.eventtype == "electron:newwindow") {
             console.log("electron:newwindow", evtMsg.data);
             const windowId: string = evtMsg.data;
-            const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+            const windowData: GulinWindow = (await services.ObjectService.GetObject("window:" + windowId)) as GulinWindow;
             if (windowData == null) {
                 return;
             }
@@ -101,14 +101,14 @@ function handleWSEvent(evtMsg: WSEventType) {
         } else if (evtMsg.eventtype == "electron:closewindow") {
             console.log("electron:closewindow", evtMsg.data);
             if (evtMsg.data === undefined) return;
-            const ww = getWaveWindowById(evtMsg.data);
+            const ww = getGulinWindowById(evtMsg.data);
             if (ww != null) {
                 ww.destroy(); // bypass the "are you sure?" dialog
             }
         } else if (evtMsg.eventtype == "electron:updateactivetab") {
             const activeTabUpdate: { workspaceid: string; newactivetabid: string } = evtMsg.data;
             console.log("electron:updateactivetab", activeTabUpdate);
-            const ww = getWaveWindowByWorkspaceId(activeTabUpdate.workspaceid);
+            const ww = getGulinWindowByWorkspaceId(activeTabUpdate.workspaceid);
             if (ww == null) {
                 return;
             }
@@ -169,9 +169,9 @@ function logActiveState() {
     fireAndForget(async () => {
         const astate = getActivityState();
         const activity: ActivityUpdate = { openminutes: 1 };
-        const ww = focusedWaveWindow;
+        const ww = focusedGulinWindow;
         const activeTabView = ww?.activeTabView;
-        const isWaveAIOpen = activeTabView?.isWaveAIOpen ?? false;
+        const isGulinAIOpen = activeTabView?.isGulinAIOpen ?? false;
 
         if (astate.wasInFg) {
             activity.fgminutes = 1;
@@ -206,11 +206,11 @@ function logActiveState() {
         if (termCmdDurableCount > 0) {
             props["activity:termcommands:durable"] = termCmdDurableCount;
         }
-        if (astate.wasActive && isWaveAIOpen) {
-            props["activity:waveaiactiveminutes"] = 1;
+        if (astate.wasActive && isGulinAIOpen) {
+            props["activity:gulinaiactiveminutes"] = 1;
         }
-        if (astate.wasInFg && isWaveAIOpen) {
-            props["activity:waveaifgminutes"] = 1;
+        if (astate.wasInFg && isGulinAIOpen) {
+            props["activity:gulinaifgminutes"] = 1;
         }
 
         try {
@@ -238,7 +238,7 @@ function runActiveTimer() {
     setTimeout(runActiveTimer, 60000);
 }
 
-function hideWindowWithCatch(window: WaveBrowserWindow) {
+function hideWindowWithCatch(window: GulinBrowserWindow) {
     if (window == null) {
         return;
     }
@@ -262,22 +262,22 @@ electronApp.on("window-all-closed", () => {
     }
 });
 electronApp.on("before-quit", (e) => {
-    const allWindows = getAllWaveWindows();
+    const allWindows = getAllGulinWindows();
     const allBuilders = getAllBuilderWindows();
     if (
         confirmQuit &&
         !getForceQuit() &&
         !getUserConfirmedQuit() &&
         (allWindows.length > 0 || allBuilders.length > 0) &&
-        !getIsWaveSrvDead() &&
-        !process.env.WAVETERM_NOCONFIRMQUIT
+        !getIsGulinSrvDead() &&
+        !process.env.GULIN_NOCONFIRMQUIT
     ) {
         e.preventDefault();
         const choice = electron.dialog.showMessageBoxSync(null, {
             type: "question",
             buttons: ["Cancel", "Quit"],
             title: "Confirm Quit",
-            message: "Are you sure you want to quit GuLiN Terminal?",
+            message: "Are you sure you want to quit Gulin Term?",
             defaultId: 0,
             cancelId: 0,
         });
@@ -292,10 +292,10 @@ electronApp.on("before-quit", (e) => {
     updater?.stop();
     if (unamePlatform == "win32") {
         // win32 doesn't have a SIGINT, so we just let electron die, which
-        // ends up killing wavesrv via closing it's stdin.
+        // ends up killing gulinsrv via closing it's stdin.
         return;
     }
-    getWaveSrvProc()?.kill("SIGINT");
+    getGulinSrvProc()?.kill("SIGINT");
     shutdownWshrpc();
     if (getForceQuit()) {
         return;
@@ -307,14 +307,14 @@ electronApp.on("before-quit", (e) => {
     for (const builder of allBuilders) {
         builder.hide();
     }
-    if (getIsWaveSrvDead()) {
-        console.log("wavesrv is dead, quitting immediately");
+    if (getIsGulinSrvDead()) {
+        console.log("gulinsrv is dead, quitting immediately");
         setForceQuit(true);
         electronApp.quit();
         return;
     }
     setTimeout(() => {
-        console.log("waiting for wavesrv to exit...");
+        console.log("waiting for gulinsrv to exit...");
         setForceQuit(true);
         electronApp.quit();
     }, 3000);
@@ -355,15 +355,15 @@ process.on("uncaughtException", (error) => {
     electronApp.quit();
 });
 
-let lastWaveWindowCount = 0;
+let lastGulinWindowCount = 0;
 let lastIsBuilderWindowActive = false;
 globalEvents.on("windows-updated", () => {
-    const wwCount = getAllWaveWindows().length;
+    const wwCount = getAllGulinWindows().length;
     const isBuilderActive = focusedBuilderWindow != null;
-    if (wwCount == lastWaveWindowCount && isBuilderActive == lastIsBuilderWindowActive) {
+    if (wwCount == lastGulinWindowCount && isBuilderActive == lastIsBuilderWindowActive) {
         return;
     }
-    lastWaveWindowCount = wwCount;
+    lastGulinWindowCount = wwCount;
     lastIsBuilderWindowActive = isBuilderActive;
     console.log("windows-updated", wwCount, "builder-active:", isBuilderActive);
     makeAndSetAppMenu();
@@ -379,23 +379,23 @@ async function appMain() {
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
-        console.log("waveterm-app could not get single-instance-lock, shutting down");
+        console.log("gulin-app could not get single-instance-lock, shutting down");
         setUserConfirmedQuit(true);
         electronApp.quit();
         return;
     }
     try {
-        await runWaveSrv(handleWSEvent);
+        await runGulinSrv(handleWSEvent);
     } catch (e) {
         console.log(e.toString());
     }
-    const ready = await getWaveSrvReady();
-    console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
+    const ready = await getGulinSrvReady();
+    console.log("gulinsrv ready signal received", ready, Date.now() - startTs, "ms");
     await electronApp.whenReady();
     configureAuthKeyRequestInjection(electron.session.defaultSession);
     initIpcHandlers();
 
-    await sleep(10); // wait a bit for wavesrv to be ready
+    await sleep(10); // wait a bit for gulinsrv to be ready
     try {
         initElectronWshClient();
         initElectronWshrpc(ElectronWshClient, { authKey: AuthKey });
@@ -422,9 +422,9 @@ async function appMain() {
     }
 
     electronApp.on("activate", () => {
-        const allWindows = getAllWaveWindows();
+        const allWindows = getAllGulinWindows();
         if (allWindows.length === 0) {
-            fireAndForget(createNewWaveWindow);
+            fireAndForget(createNewGulinWindow);
         }
     });
     electron.powerMonitor.on("resume", () => {

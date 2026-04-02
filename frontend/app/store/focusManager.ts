@@ -1,12 +1,12 @@
-import { waveAIHasFocusWithin } from "@/app/aipanel/waveai-focus-utils";
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { gulinAIHasFocusWithin } from "@/app/aipanel/gulinai-focus-utils";
+import { GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { atoms, getBlockComponentModel } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { focusedBlockId } from "@/util/focusutil";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { Atom, atom, type PrimitiveAtom } from "jotai";
 
-export type FocusStrType = "node" | "waveai";
+export type FocusStrType = "node" | "gulinai";
 
 export class FocusManager {
     private static instance: FocusManager | null = null;
@@ -16,7 +16,7 @@ export class FocusManager {
 
     private constructor() {
         this.blockFocusAtom = atom((get) => {
-            if (get(this.focusType) == "waveai") {
+            if (get(this.focusType) == "gulinai") {
                 return null;
             }
             const layoutModel = getLayoutModelForStaticTab();
@@ -32,12 +32,12 @@ export class FocusManager {
         return FocusManager.instance;
     }
 
-    setWaveAIFocused(force: boolean = false) {
-        const isAlreadyFocused = globalStore.get(this.focusType) == "waveai";
+    setGulinAIFocused(force: boolean = false) {
+        const isAlreadyFocused = globalStore.get(this.focusType) == "gulinai";
         if (!force && isAlreadyFocused) {
             return;
         }
-        globalStore.set(this.focusType, "waveai");
+        globalStore.set(this.focusType, "gulinai");
         this.refocusNode();
     }
 
@@ -50,8 +50,8 @@ export class FocusManager {
         this.refocusNode();
     }
 
-    waveAIFocusWithin(): boolean {
-        return waveAIHasFocusWithin();
+    gulinAIFocusWithin(): boolean {
+        return gulinAIHasFocusWithin();
     }
 
     nodeFocusWithin(): boolean {
@@ -62,8 +62,8 @@ export class FocusManager {
         globalStore.set(this.focusType, "node");
     }
 
-    requestWaveAIFocus(): void {
-        globalStore.set(this.focusType, "waveai");
+    requestGulinAIFocus(): void {
+        globalStore.set(this.focusType, "gulinai");
     }
 
     getFocusType(): FocusStrType {
@@ -72,8 +72,8 @@ export class FocusManager {
 
     refocusNode() {
         const ftype = globalStore.get(this.focusType);
-        if (ftype == "waveai") {
-            WaveAIModel.getInstance().focusInput();
+        if (ftype == "gulinai") {
+            GulinAIModel.getInstance().focusInput();
             return;
         }
         const layoutModel = getLayoutModelForStaticTab();

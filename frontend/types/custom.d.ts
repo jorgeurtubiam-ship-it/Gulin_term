@@ -12,7 +12,7 @@ declare global {
         uiContext: jotai.Atom<UIContext>; // driven from windowId, tabId
         workspace: jotai.Atom<Workspace>; // driven from WOS
         fullConfigAtom: jotai.PrimitiveAtom<FullConfigType>; // driven from WOS, settings -- updated via WebSocket
-        waveaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket
+        gulinaiModeConfigAtom: jotai.PrimitiveAtom<Record<string, AIModeConfigType>>; // resolved AI mode configs -- updated via WebSocket
         settingsAtom: jotai.Atom<SettingsType>; // derrived from fullConfig
         hasCustomAIPresetsAtom: jotai.Atom<boolean>; // derived from fullConfig
         staticTabId: jotai.Atom<string>;
@@ -25,10 +25,10 @@ declare global {
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
         reinitVersion: jotai.PrimitiveAtom<number>;
-        waveAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
+        gulinAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
     };
 
-    type WritableWaveObjectAtom<T extends WaveObj> = jotai.WritableAtom<T, [value: T], void>;
+    type WritableGulinObjectAtom<T extends GulinObj> = jotai.WritableAtom<T, [value: T], void>;
 
     type ThrottledValueAtom<T> = jotai.WritableAtom<T, [update: jotai.SetStateAction<T>], void>;
 
@@ -61,7 +61,7 @@ declare global {
         builderId?: string;
     };
 
-    type WaveInitOpts = {
+    type GulinInitOpts = {
         tabId: string;
         clientId: string;
         windowId: string;
@@ -105,7 +105,7 @@ declare global {
         installAppUpdate: () => void; // install-app-update
         onMenuItemAbout: (callback: () => void) => void; // menu-item-about
         updateWindowControlsOverlay: (rect: Dimensions) => void; // update-window-controls-overlay
-        onReinjectKey: (callback: (waveEvent: WaveKeyboardEvent) => void) => void; // reinject-key
+        onReinjectKey: (callback: (gulinEvent: GulinKeyboardEvent) => void) => void; // reinject-key
         setWebviewFocus: (focusedId: number) => void; // webview-focus, focusedId is the getWebContentsId of the webview
         registerGlobalWebviewKeys: (keys: string[]) => void; // register-global-webview-keys
         onControlShiftStateUpdate: (callback: (state: boolean) => void) => void; // control-shift-state-update
@@ -115,8 +115,8 @@ declare global {
         setActiveTab: (tabId: string) => void; // set-active-tab
         createTab: () => void; // create-tab
         closeTab: (workspaceId: string, tabId: string, confirmClose: boolean) => Promise<boolean>; // close-tab
-        setWindowInitStatus: (status: "ready" | "wave-ready") => void; // set-window-init-status
-        onWaveInit: (callback: (initOpts: WaveInitOpts) => void) => void; // wave-init
+        setWindowInitStatus: (status: "ready" | "gulin-ready") => void; // set-window-init-status
+        onGulinInit: (callback: (initOpts: GulinInitOpts) => void) => void; // gulin-init
         onBuilderInit: (callback: (initOpts: BuilderInitOpts) => void) => void; // builder-init
         sendLog: (log: string) => void; // fe-log
         onQuicklook: (filePath: string) => void; // quicklook
@@ -124,7 +124,7 @@ declare global {
         captureScreenshot(rect: Electron.Rectangle): Promise<string>; // capture-screenshot
         setKeyboardChordMode: () => void; // set-keyboard-chord-mode
         clearWebviewStorage: (webContentsId: number) => Promise<void>; // clear-webview-storage
-        setWaveAIOpen: (isOpen: boolean) => void; // set-waveai-open
+        setGulinAIOpen: (isOpen: boolean) => void; // set-gulinai-open
         closeBuilderWindow: () => void; // close-builder-window
         incrementTermCommands: (opts?: { isRemote?: boolean; isWsl?: boolean; isDurable?: boolean }) => void; // increment-term-commands
         nativePaste: () => void; // native-paste
@@ -347,7 +347,7 @@ declare global {
         giveFocus?: () => boolean;
 
         // Handles keydown events within the block.
-        keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
+        keyDownHandler?: (e: GulinKeyboardEvent) => boolean;
 
         // Cleans up resources when the block is disposed.
         dispose?: () => void;

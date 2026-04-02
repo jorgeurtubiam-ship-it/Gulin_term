@@ -88,7 +88,21 @@ function computeGulinCloudSections(
     const sections: ConfigSection[] = [];
 
     if (otherProviderConfigs.length > 0) {
-        sections.push({ sectionName: "Custom", configs: otherProviderConfigs });
+        // Group by provider
+        const groups: Record<string, AIModeConfigWithMode[]> = {};
+        for (const config of otherProviderConfigs) {
+            const provider = (config["ai:provider"] || "other").toUpperCase();
+            if (!groups[provider]) {
+                groups[provider] = [];
+            }
+            groups[provider].push(config);
+        }
+
+        // Sort providers alphabetically but keep certain ones at top if needed
+        const sortedProviders = Object.keys(groups).sort();
+        for (const provider of sortedProviders) {
+            sections.push({ sectionName: provider, configs: groups[provider] });
+        }
     }
 
     return sections;
@@ -106,9 +120,10 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const widgetContextEnabled = useAtomValue(model.widgetAccessAtom);
     const hasPremium = useAtomValue(model.hasPremiumAtom);
     const showCloudModes = useAtomValue(getSettingsKeyAtom("gulinai:showcloudmodes"));
-    const telemetryEnabled = useAtomValue(getSettingsKeyAtom("telemetry:enabled")) ?? false;
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [isProviderOpen, setIsProviderOpen] = useState(false);
+    const [isModelOpen, setIsModelOpen] = useState(false);
+    const providerRef = useRef<HTMLDivElement>(null);
+    const modelRef = useRef<HTMLDivElement>(null);
 
     const { gulinProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,
@@ -119,179 +134,181 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     );
 
     const { t } = useTranslation();
-    const sections: ConfigSection[] = compatibilityMode
-        ? computeCompatibleSections(currentMode, aiModeConfigs, gulinProviderConfigs, otherProviderConfigs)
-        : computeGulinCloudSections(gulinProviderConfigs, otherProviderConfigs, telemetryEnabled);
 
-    const showSectionHeaders = compatibilityMode || sections.length > 1;
+    // Get current provider from currentMode
+    const currentModeConfig = aiModeConfigs[currentMode.split("@")[0]];
+    const currentProvider = currentModeConfig?.["ai:bridge-provider"] || currentModeConfig?.["ai:provider"] || "custom";
 
-    const handleSelect = (mode: string) => {
-        const config = aiModeConfigs[mode];
-        if (!config) return;
-        if (!hasPremium && config["gulinai:premium"]) {
-            return;
+    // All available providers from otherProviderConfigs
+    const providers = Array.from(new Set(otherProviderConfigs.map(c => c["ai:bridge-provider"] || c["ai:provider"] || "custom"))).sort();
+
+    // Models filtered by selected provider (or current provider if not selected)
+    const filteredModels = otherProviderConfigs.filter(c => {
+        const p = c["ai:bridge-provider"] || c["ai:provider"] || "custom";
+        return p === currentProvider;
+    });
+
+    const handleSelectProvider = (provider: string) => {
+        setIsProviderOpen(false);
+        // Find first model for this provider and select it
+        const firstModel = otherProviderConfigs.find(c => (c["ai:bridge-provider"] || c["ai:provider"] || "custom") === provider);
+        if (firstModel) {
+            model.setAIMode(firstModel.mode);
         }
+    };
+
+    const handleSelectModel = (mode: string) => {
+        setIsModelOpen(false);
         model.setAIMode(mode);
-        setIsOpen(false);
     };
 
     const handleNewChatClick = () => {
         model.clearChat();
-        setIsOpen(false);
+        setIsModelOpen(false);
+        setIsProviderOpen(false);
     };
 
     const handleConfigureClick = () => {
         fireAndForget(async () => {
-            RpcApi.RecordTEventCommand(
-                TabRpcClient,
-                {
-                    event: "action:other",
-                    props: {
-                        "action:type": "gulinai:configuremodes:contextmenu",
-                    },
-                },
-                { noresponse: true }
-            );
             await model.openGulinAIConfig();
-            setIsOpen(false);
+            setIsModelOpen(false);
+            setIsProviderOpen(false);
         });
     };
 
-    const handleEnableTelemetry = () => {
-        fireAndForget(async () => {
-            await RpcApi.GulinAIEnableTelemetryCommand(TabRpcClient);
-            setTimeout(() => {
-                model.focusInput();
-            }, 100);
-        });
-    };
-
-    let baseMode = currentMode;
-    let suffixLabel = "";
-    if (currentMode.endsWith("@plan")) {
-        baseMode = currentMode.substring(0, currentMode.length - 5);
-        suffixLabel = " (PLAN)";
-    } else if (currentMode.endsWith("@act")) {
-        baseMode = currentMode.substring(0, currentMode.length - 4);
-        suffixLabel = " (ACT)";
-    }
-
-    const displayConfig = aiModeConfigs[baseMode];
-    const displayName = displayConfig ? getModeDisplayName(displayConfig) + suffixLabel : `Invalid (${currentMode})`;
-    const displayIcon = displayConfig ? displayConfig["display:icon"] || "sparkles" : "question";
-    const resolvedConfig = gulinaiModeConfigs[baseMode];
+    const displayIcon = currentModeConfig ? currentModeConfig["display:icon"] || "sparkles" : "question";
+    const displayName = currentModeConfig ? getModeDisplayName(currentModeConfig) : currentMode;
+    const resolvedConfig = gulinaiModeConfigs[currentMode.split("@")[0]];
     const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
     const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
 
     return (
-        <div className="relative" ref={dropdownRef}>
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={cn(
-                    "group flex items-center gap-1.5 px-2 py-1 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50",
-                    isOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
+        <div className="flex items-center gap-2">
+            {/* Provider Dropdown */}
+            <div className="relative" ref={providerRef}>
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold ml-1">Provider</span>
+                    <button
+                        onClick={() => { setIsProviderOpen(!isProviderOpen); setIsModelOpen(false); }}
+                        className={cn(
+                            "group flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50 min-w-[120px]",
+                            isProviderOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
+                        )}
+                        title="Seleccionar Proveedor"
+                    >
+                        <span className="text-[11px] capitalize font-medium">{currentProvider}</span>
+                        <i className="fa fa-chevron-down text-[8px] opacity-50"></i>
+                    </button>
+                </div>
+                {isProviderOpen && (
+                    <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsProviderOpen(false)} />
+                        <div className="absolute top-full left-0 mt-2 bg-zinc-800 border border-zinc-600 rounded-md shadow-2xl z-50 min-w-[150px] py-1 overflow-hidden">
+                            <div className="px-3 py-1.5 text-[10px] text-gray-400 uppercase tracking-widest border-b border-gray-700/50 mb-1 bg-zinc-900/50">
+                                Proveedores
+                            </div>
+                            {providers.map(p => (
+                                <button
+                                    key={p}
+                                    onClick={() => handleSelectProvider(p)}
+                                    className={cn(
+                                        "w-full px-3 py-2 text-left text-sm hover:bg-zinc-700 transition-colors capitalize flex items-center justify-between",
+                                        currentProvider === p ? "text-blue-400 font-bold bg-blue-500/5" : "text-gray-300"
+                                    )}
+                                >
+                                    {p}
+                                    {currentProvider === p && <i className="fa fa-check text-[10px]"></i>}
+                                </button>
+                            ))}
+                            <div className="border-t border-gray-700 my-1" />
+                            <div className="px-1 py-1">
+                                <button
+                                    onClick={handleConfigureClick}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-zinc-700 rounded transition-colors text-left"
+                                >
+                                    <i className={cn(makeIconClass("gear", false), "text-gray-400")}></i>
+                                    <span className="text-xs">Configurar Modelo</span>
+                                </button>
+                            </div>
+                        </div>
+                    </>
                 )}
-                title={`${t("gulin.ai.welcome.title")}: ${displayName}`}
-            >
-                <i className={cn(makeIconClass(displayIcon, false), "text-[10px]")}></i>
-                <span className={`text-[11px]`}>{displayName}</span>
-                <i className="fa fa-chevron-down text-[8px]"></i>
-            </button>
+            </div>
+
+            {/* Model Dropdown */}
+            <div className="relative" ref={modelRef}>
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold ml-1">Model</span>
+                    <button
+                        onClick={() => { setIsModelOpen(!isModelOpen); setIsProviderOpen(false); }}
+                        className={cn(
+                            "group flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50 min-w-[200px]",
+                            isModelOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
+                        )}
+                        title={`${t("gulin.ai.welcome.title")}: ${displayName}`}
+                    >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <i className={cn(makeIconClass(displayIcon, false), "text-[10px] text-blue-400")}></i>
+                            <span className="text-[11px] truncate font-medium">{displayName}</span>
+                        </div>
+                        <i className="fa fa-chevron-down text-[8px] opacity-50"></i>
+                    </button>
+                </div>
+
+                {isModelOpen && (
+                    <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsModelOpen(false)} />
+                        <div className="absolute top-full left-0 mt-2 bg-zinc-800 border border-zinc-600 rounded-md shadow-2xl z-50 min-w-[300px] py-1 max-h-[450px] overflow-y-auto">
+                            <div className="px-3 py-1.5 text-[10px] text-gray-400 uppercase tracking-widest border-b border-gray-700/50 mb-1 bg-zinc-900/50">
+                                {currentProvider.toUpperCase()} Models
+                            </div>
+                            {filteredModels.map((config, index) => {
+                                const isPremiumDisabled = !hasPremium && config["gulinai:premium"];
+                                const isSelected = currentMode === config.mode;
+                                return (
+                                    <AIModeMenuItem
+                                        key={config.mode}
+                                        config={config}
+                                        isSelected={isSelected}
+                                        isDisabled={isPremiumDisabled}
+                                        isPremiumDisabled={isPremiumDisabled}
+                                        onClick={() => handleSelectModel(config.mode)}
+                                        isFirst={index === 0}
+                                        isLast={index === filteredModels.length - 1}
+                                    />
+                                );
+                            })}
+                            <div className="border-t border-gray-700 my-1" />
+                            <div className="px-1 py-1">
+                                <button
+                                    onClick={handleNewChatClick}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-zinc-700 rounded transition-colors text-left"
+                                >
+                                    <i className={cn(makeIconClass("plus", false), "text-green-400")}></i>
+                                    <span className="text-xs">{t("gulin.ai.mode.new_chat")}</span>
+                                </button>
+                                <button
+                                    onClick={handleConfigureClick}
+                                    className="w-full flex items-center gap-2 px-3 py-2 text-gray-300 hover:bg-zinc-700 rounded transition-colors text-left"
+                                >
+                                    <i className={cn(makeIconClass("gear", false), "text-gray-400")}></i>
+                                    <span className="text-xs">{t("gulin.ai.mode.configure")}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
 
             {showNoToolsWarning && (
                 <Tooltip
-                    content={
-                        <div className="max-w-xs">
-                            {t("gulin.ai.mode.tools_warning")}
-                        </div>
-                    }
+                    content={<div className="max-w-xs">{t("gulin.ai.mode.tools_warning")}</div>}
                     placement="bottom"
                 >
-                    <div className="flex items-center gap-1 text-[10px] text-yellow-600 mt-1 ml-1 cursor-default">
+                    <div className="flex items-center gap-1 text-[10px] text-yellow-600 ml-1 cursor-default">
                         <i className="fa fa-triangle-exclamation"></i>
-                        <span>{t("gulin.ai.mode.no_tools")}</span>
                     </div>
                 </Tooltip>
-            )}
-
-            {isOpen && (
-                <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 bg-zinc-800 border border-zinc-600 rounded shadow-lg z-50 min-w-[280px]">
-                        {sections.map((section, sectionIndex) => {
-                            const isFirstSection = sectionIndex === 0;
-                            const isLastSection = sectionIndex === sections.length - 1;
-
-                            return (
-                                <div key={section.sectionName}>
-                                    {!isFirstSection && <div className="border-t border-gray-600 my-2" />}
-                                    {showSectionHeaders && (
-                                        <>
-                                            <div
-                                                className={cn(
-                                                    "pb-1 text-center text-[10px] text-gray-400 uppercase tracking-wide",
-                                                    isFirstSection ? "pt-2" : "pt-0"
-                                                )}
-                                            >
-                                                {section.sectionName === "Available Modes" ? t("gulin.ai.mode.available") : section.sectionName === "Custom" ? t("gulin.ai.mode.custom") : section.sectionName}
-                                            </div>
-                                            {section.isIncompatible && (
-                                                <div className="text-center text-[11px] text-red-300 pb-1">
-                                                    {t("gulin.ai.mode.switch_warning")}
-                                                </div>
-                                            )}
-                                            {section.noTelemetry && (
-                                                <button
-                                                    onClick={handleEnableTelemetry}
-                                                    className="text-center text-[11px] text-green-300 hover:text-green-200 pb-1 cursor-pointer transition-colors w-full"
-                                                >
-                                                    {t("gulin.ai.mode.enable_telemetry")}
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                    {section.configs.map((config, index) => {
-                                        const isFirst = index === 0 && isFirstSection && !showSectionHeaders;
-                                        const isLast = index === section.configs.length - 1 && isLastSection;
-                                        const isPremiumDisabled = !hasPremium && config["gulinai:premium"];
-                                        const isIncompatibleDisabled = section.isIncompatible || false;
-                                        const isTelemetryDisabled = section.noTelemetry || false;
-                                        const isDisabled =
-                                            isPremiumDisabled || isIncompatibleDisabled || isTelemetryDisabled;
-                                        const isSelected = currentMode === config.mode;
-                                        return (
-                                            <AIModeMenuItem
-                                                key={config.mode}
-                                                config={config}
-                                                isSelected={isSelected}
-                                                isDisabled={isDisabled}
-                                                isPremiumDisabled={isPremiumDisabled}
-                                                onClick={() => handleSelect(config.mode)}
-                                                isFirst={isFirst}
-                                                isLast={isLast}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            );
-                        })}
-                        <div className="border-t border-gray-600 my-1" />
-                        <button
-                            onClick={handleNewChatClick}
-                            className="w-full flex items-center gap-2 px-3 pt-1 pb-1 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
-                        >
-                            <i className={makeIconClass("plus", false)}></i>
-                            <span className="text-sm">{t("gulin.ai.mode.new_chat")}</span>
-                        </button>
-                        <button
-                            onClick={handleConfigureClick}
-                            className="w-full flex items-center gap-2 px-3 pt-1 pb-2 text-gray-300 hover:bg-zinc-700 cursor-pointer transition-colors text-left"
-                        >
-                            <i className={makeIconClass("gear", false)}></i>
-                            <span className="text-sm">{t("gulin.ai.mode.configure")}</span>
-                        </button>
-                    </div>
-                </>
             )}
         </div>
     );

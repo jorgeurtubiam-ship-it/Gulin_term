@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveStreamdown } from "@/app/element/streamdown";
+import { GulinStreamdown } from "@/app/element/streamdown";
 import { memo, useEffect, useRef, useState } from "react";
 
 interface ChatConfig {
@@ -13,33 +13,33 @@ interface ChatConfig {
 
 const chatConfigs: ChatConfig[] = [
     {
-        userPrompt: "Check out ~/waveterm and summarize the project — what it does and how it's organized.",
+        userPrompt: "Check out ~/gulin and summarize the project — what it does and how it's organized.",
         toolName: "read_dir",
-        toolDescription: 'reading directory "~/waveterm"',
-        markdownResponse: `Here's a quick, file-structure–driven overview of this repo (Wave Terminal):
+        toolDescription: 'reading directory "~/gulin"',
+        markdownResponse: `Here's a quick, file-structure–driven overview of this repo (Gulin Terminal):
 
 ## What it is
-- Electron + React front end with a Go backend ("wavesrv"). Provides a terminal with GUI widgets, previews, web, and AI. (README.md)
+- Electron + React front end with a Go backend ("gulinsrv"). Provides a terminal with GUI widgets, previews, web, and AI. (README.md)
 - Licensed Apache-2.0. (LICENSE)
 
 ## Architecture at a glance
 - **Electron main process:** \`emain/*.ts\` configures windows, menus, preload scripts, updater, and ties into the Go backend via local RPC. (\`emain/\`)
 - **Renderer UI:** React/TS built with Vite, Tailwind. (\`frontend/\`, \`index.html\`, \`electron.vite.config.ts\`)
-- **Go backend ("wavesrv"):** starts services, web and websocket listeners, telemetry loops, config watcher, local RPC, filestore and SQLite-backed object store. (\`cmd/server/main-server.go\`, \`pkg/*\`)
+- **Go backend ("gulinsrv"):** starts services, web and websocket listeners, telemetry loops, config watcher, local RPC, filestore and SQLite-backed object store. (\`cmd/server/main-server.go\`, \`pkg/*\`)
 - **CLI/helper ("wsh"):** built for multiple OS/arch; used for shell integration and remote operations. (\`cmd/wsh/\`, \`Taskfile.yml build:wsh\`)
 
 ## Key directories
 - **cmd/:** entrypoints and generators
-  - \`server/\`: wavesrv main
+  - \`server/\`: gulinsrv main
   - \`generategs/\`, \`generatego/\`: TS/Go bindings generation
   - \`wsh/\`: shell helper
 
 - **pkg/:** backend packages
   - \`wcore/\`: startup coordination, initial data, window/workspace creation
   - \`web/\`: HTTP+WS servers, Unix listener
-  - \`waveai/\`: AI backends (OpenAI, Anthropic, Google, Perplexity)
+  - \`gulinai/\`: AI backends (OpenAI, Anthropic, Google, Perplexity)
   - \`wshrpc\`, \`wshutil\`, \`wslconn\`, \`remote/*\`: local/remote RPC, WSL, SSH, fileshare
-  - \`wstore/\`: persistent store (SQLite via sqlx); \`waveobj/\`: object model
+  - \`wstore/\`: persistent store (SQLite via sqlx); \`gulinobj/\`: object model
   - \`filestore/\`: local file cache/storage
   - \`telemetry/\`: metrics/events, periodic reporting`,
     },
@@ -63,14 +63,14 @@ Want deeper triage? Run these and paste results:
 \`\`\`bash
 # 1) Scan recent logs for problems
 grep -Ei 'error|panic|fatal|websocket|1006|1011' \\
-  "$HOME/Library/Application Support/waveterm-dev/waveapp.log" | tail -n 200
+  "$HOME/Library/Application Support/gulin-dev/gulinapp.log" | tail -n 200
 
 # 2) Inspect around the disconnect window
 awk '($0 ~ /2025-10-10 18:08:2[0-9]/){print}' \\
-  "$HOME/Library/Application Support/waveterm-dev/waveapp.log"
+  "$HOME/Library/Application Support/gulin-dev/gulinapp.log"
 
 # 3) Live follow for recurring drops
-tail -f "$HOME/Library/Application Support/waveterm-dev/waveapp.log" \\
+tail -f "$HOME/Library/Application Support/gulin-dev/gulinapp.log" \\
   | grep -Ei 'error|panic|fatal|websocket|close'
 \`\`\`
 
@@ -189,7 +189,7 @@ const FakeAssistantMessage = memo(({ config, onComplete }: { config: ChatConfig;
                         <div className="mb-2">
                             <FakeToolCall toolName={config.toolName} toolDescription={config.toolDescription} />
                         </div>
-                        <WaveStreamdown text={streamedText} parseIncompleteMarkdown={true} className="text-gray-100" />
+                        <GulinStreamdown text={streamedText} parseIncompleteMarkdown={true} className="text-gray-100" />
                     </>
                 )}
             </div>
@@ -204,7 +204,7 @@ const FakeAIPanelHeader = memo(() => {
         <div className="py-2 pl-3 pr-1 border-b border-gray-600 flex items-center justify-between min-w-0 bg-zinc-900">
             <h2 className="text-white text-sm font-semibold flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
                 <i className="fa fa-sparkles text-accent"></i>
-                Wave AI
+                Gulin AI
             </h2>
 
             <div className="flex items-center flex-shrink-0 whitespace-nowrap">

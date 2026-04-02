@@ -8,10 +8,10 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var tabIndicatorCmd = &cobra.Command{
@@ -33,7 +33,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(tabIndicatorCmd)
-	tabIndicatorCmd.Flags().StringVar(&tabIndicatorTabId, "tabid", "", "tab id (defaults to WAVETERM_TABID)")
+	tabIndicatorCmd.Flags().StringVar(&tabIndicatorTabId, "tabid", "", "tab id (defaults to GULIN_TABID)")
 	tabIndicatorCmd.Flags().StringVar(&tabIndicatorColor, "color", "", "indicator color")
 	tabIndicatorCmd.Flags().Float64Var(&tabIndicatorPriority, "priority", 0, "indicator priority")
 	tabIndicatorCmd.Flags().BoolVar(&tabIndicatorClear, "clear", false, "clear the indicator")
@@ -48,10 +48,10 @@ func tabIndicatorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	tabId := tabIndicatorTabId
 	if tabId == "" {
-		tabId = os.Getenv("WAVETERM_TABID")
+		tabId = os.Getenv("GULIN_TABID")
 	}
 	if tabId == "" {
-		return fmt.Errorf("no tab id specified (use --tabid or set WAVETERM_TABID)")
+		return fmt.Errorf("no tab id specified (use --tabid or set GULIN_TABID)")
 	}
 
 	var indicator *wshrpc.TabIndicator
@@ -73,9 +73,9 @@ func tabIndicatorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		Indicator: indicator,
 	}
 
-	event := wps.WaveEvent{
+	event := wps.GulinEvent{
 		Event:  wps.Event_TabIndicator,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Tab, tabId).String()},
+		Scopes: []string{gulinobj.MakeORef(gulinobj.OType_Tab, tabId).String()},
 		Data:   eventData,
 	}
 

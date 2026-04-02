@@ -9,15 +9,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 const (
 	ConnectionTypeWsh = "wsh"
 
 	ConnHostCurrent = "current"
-	ConnHostWaveSrv = "wavesrv"
+	ConnHostGulinSrv = "gulinsrv"
 )
 
 var windowsDriveRegex = regexp.MustCompile(`^[a-zA-Z]:`)

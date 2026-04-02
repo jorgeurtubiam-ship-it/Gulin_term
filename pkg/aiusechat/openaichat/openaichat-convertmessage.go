@@ -11,13 +11,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/aiusechat/aiutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/chatstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 func init() {
@@ -52,24 +53,24 @@ func appendToLastUserMessage(messages []ChatRequestMessage, text string) {
 	}
 }
 
-// convertToolDefinitions converts Wave ToolDefinitions to OpenAI format
+// convertToolDefinitions converts Gulin ToolDefinitions to OpenAI format
 // Only includes tools whose required capabilities are met
-func convertToolDefinitions(waveTools []uctypes.ToolDefinition, capabilities []string) []ToolDefinition {
-	if len(waveTools) == 0 {
+func convertToolDefinitions(gulinTools []uctypes.ToolDefinition, capabilities []string) []ToolDefinition {
+	if len(gulinTools) == 0 {
 		return nil
 	}
 
-	openaiTools := make([]ToolDefinition, 0, len(waveTools))
-	for _, waveTool := range waveTools {
-		if !waveTool.HasRequiredCapabilities(capabilities) {
+	openaiTools := make([]ToolDefinition, 0, len(gulinTools))
+	for _, gulinTool := range gulinTools {
+		if !gulinTool.HasRequiredCapabilities(capabilities) {
 			continue
 		}
 		openaiTool := ToolDefinition{
 			Type: "function",
 			Function: ToolFunctionDef{
-				Name:        waveTool.Name,
-				Description: waveTool.Description,
-				Parameters:  waveTool.InputSchema,
+				Name:        gulinTool.Name,
+				Description: gulinTool.Description,
+				Parameters:  gulinTool.InputSchema,
 			},
 		}
 		openaiTools = append(openaiTools, openaiTool)
@@ -77,10 +78,44 @@ func convertToolDefinitions(waveTools []uctypes.ToolDefinition, capabilities []s
 	return openaiTools
 }
 
+func sanitizeToolDefinitionsForBridge(tools []ToolDefinition) {
+	for i := range tools {
+		if tools[i].Function.Parameters != nil {
+			delete(tools[i].Function.Parameters, "additionalProperties")
+			delete(tools[i].Function.Parameters, "strict")
+		}
+	}
+}
+
+// truncateLargeMessages restricts the byte massive messages (e.g terminal outputs) to prevent Proxy overload
+func truncateLargeMessages(messages []ChatRequestMessage, maxLen int) []ChatRequestMessage {
+	if len(messages) == 0 {
+		return messages
+	}
+	
+	truncMsg := "\n\n... [truncated by Gulin Bridge to prevent payload overload] ..."
+	for i := range messages {
+		// Truncate plain text content
+		if len(messages[i].Content) > maxLen {
+			messages[i].Content = messages[i].Content[:maxLen] + truncMsg
+		}
+		// Truncate text inside content parts
+		if len(messages[i].ContentParts) > 0 {
+			for j := range messages[i].ContentParts {
+				if messages[i].ContentParts[j].Type == "text" && len(messages[i].ContentParts[j].Text) > maxLen {
+					messages[i].ContentParts[j].Text = messages[i].ContentParts[j].Text[:maxLen] + truncMsg
+				}
+			}
+		}
+	}
+	return messages
+}
+
 // buildChatHTTPRequest creates an HTTP request for the OpenAI chat completions API
-func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
+func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, chatOpts uctypes.GulinChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 
+	// ... [omitted check for model and endpoint] 
 	// Model is required for all providers except azure-legacy (which uses deployment name in URL)
 	if opts.Model == "" && opts.Provider != uctypes.AIProvider_AzureLegacy {
 		return nil, errors.New("ai:model is required")
@@ -113,9 +148,23 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 
 	sanitizedMessages := sanitizeOpenAIMessages(finalMessages)
 
+	// For Bridge requests, disable streaming: the Bridge mixes SSE heartbeat with
+	// plain JSON final response, which the SSE decoder cannot handle. Without stream=true
+	// the Bridge returns clean JSON that our non-streaming fallback handles correctly.
+	isBridgeReq := opts.Provider == uctypes.AIProvider_GulinBridge ||
+		opts.BridgeProvider != "" ||
+		strings.Contains(opts.Endpoint, ":3000") ||
+		strings.Contains(opts.Endpoint, ":8090") ||
+		strings.Contains(opts.Endpoint, "gulinbridge") ||
+		strings.Contains(opts.Endpoint, "proxy.gulin.cl")
+		
+	if isBridgeReq {
+		sanitizedMessages = truncateLargeMessages(sanitizedMessages, 15000)
+	}
+
 	reqBody := &ChatRequest{
 		Messages: sanitizedMessages,
-		Stream:   true,
+		Stream:   !isBridgeReq, // We only force stream if it's NOT a bridge request. Bridge handles SSE wrapping.
 	}
 
 	// Model is only added to request for non-azure-legacy providers
@@ -136,19 +185,32 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 		allTools = append(allTools, chatOpts.TabTools...)
 		if len(allTools) > 0 {
 			reqBody.Tools = convertToolDefinitions(allTools, opts.Capabilities)
+			if isBridgeReq {
+				sanitizeToolDefinitionsForBridge(reqBody.Tools)
+			}
 		}
 	}
 
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		log.Printf("openaichat: model %s, messages: %d, tools: %d\n", opts.Model, len(messages), len(allTools))
 	}
 
-	buf, err := json.Marshal(reqBody)
+	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, opts.Endpoint, bytes.NewReader(buf))
+	// ALWAYS dump the full payload to disk so I can inspect exactly which tools are passed!
+	_ = os.WriteFile("bridge_payload.json", reqBytes, 0644)
+
+	if gulinbase.IsDevMode() && (isBridgeReq) {
+		bodyStr := string(reqBytes)
+		if len(bodyStr) > 2000 {
+			bodyStr = bodyStr[:2000] + "...[truncated]"
+		}
+		log.Printf("openaichat BRIDGE body: %s\n", bodyStr)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, opts.Endpoint, bytes.NewReader(reqBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -164,17 +226,32 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 
 	req.Header.Set("Accept", "text/event-stream")
 
-	// Only send Wave-specific headers when using Wave provider
-	if opts.Provider == uctypes.AIProvider_Wave {
+	// Detect if this is a Gulin Bridge request by URL or provider
+	isBridge := opts.Provider == uctypes.AIProvider_Gulin ||
+		opts.Provider == uctypes.AIProvider_GulinBridge ||
+		strings.Contains(opts.Endpoint, ":8090") ||
+		strings.Contains(opts.Endpoint, "gulinbridge")
+
+	if isBridge {
 		if chatOpts.ClientId != "" {
-			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+			req.Header.Set("X-Gulin-ClientId", chatOpts.ClientId)
 		}
 		if chatOpts.ChatId != "" {
-			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+			req.Header.Set("X-Gulin-ChatId", chatOpts.ChatId)
 		}
-		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
-		req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIChat)
-		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
+		req.Header.Set("X-Gulin-Version", gulinbase.GulinVersion)
+		req.Header.Set("X-Gulin-APIType", uctypes.APIType_OpenAIChat)
+		req.Header.Set("X-Gulin-RequestType", chatOpts.GetGulinRequestType())
+		req.Header.Set("X-Gulin-Model", opts.Model)
+
+		// If BridgeProvider is not set, use the current Provider
+		bridgeProv := opts.BridgeProvider
+		if bridgeProv == "" {
+			bridgeProv = opts.Provider
+		}
+		if bridgeProv != "" {
+			req.Header.Set("X-Gulin-BridgeProvider", bridgeProv)
+		}
 	}
 
 	return req, nil
@@ -419,14 +496,23 @@ func ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error) {
 						continue
 					}
 
-					// Only add if ToolUseData is available
-					if toolCall.ToolUseData != nil {
-						parts = append(parts, uctypes.UIMessagePart{
-							Type: "data-tooluse",
-							ID:   toolCall.ID,
-							Data: *toolCall.ToolUseData,
-						})
+					// Always add tool-use part if we have tool calls, even for UI display
+					toolUsePart := uctypes.UIMessagePart{
+						Type: "data-tooluse",
+						ID:   toolCall.ID,
 					}
+					if toolCall.ToolUseData != nil {
+						toolUsePart.Data = *toolCall.ToolUseData
+					} else {
+						// Fallback data if ToolUseData is missing
+						toolUsePart.Data = uctypes.UIMessageDataToolUse{
+							ToolCallId: toolCall.ID,
+							ToolName:   toolCall.Function.Name,
+							ToolDesc:   "Ejecutando " + toolCall.Function.Name + "...",
+							Status:     uctypes.ToolUseStatusPending,
+						}
+					}
+					parts = append(parts, toolUsePart)
 				}
 			}
 
@@ -580,25 +666,11 @@ func sanitizeOpenAIMessages(messages []ChatRequestMessage) []ChatRequestMessage 
 	var sanitized []ChatRequestMessage
 	for i, msg := range messages {
 		if msg.Role == "assistant" && len(msg.ToolCalls) > 0 {
-			var validToolCalls []ToolCall
-			for _, tc := range msg.ToolCalls {
-				if toolResponses[tc.ID] {
-					validToolCalls = append(validToolCalls, tc)
-				}
-			}
-
-			// If we removed some tool calls, we need to update the message
-			if len(validToolCalls) != len(msg.ToolCalls) {
-				// If no tool calls left and no content, skip this message entirely
-				if len(validToolCalls) == 0 && msg.Content == "" && len(msg.ContentParts) == 0 {
-					continue
-				}
-				// Create a copy to avoid mutating the original
-				newMsg := msg
-				newMsg.ToolCalls = validToolCalls
-				sanitized = append(sanitized, newMsg)
-				continue
-			}
+			// RELAXED: We no longer strip tool calls even if responses are missing.
+			// This prevents the assistant message from becoming empty and being deleted,
+			// which causes the AI to 'forget' its recent actions.
+			sanitized = append(sanitized, msg)
+			continue
 		}
 
 		// If this is a tool message, ensure its ID was actually called in an assistant message before it
@@ -622,6 +694,11 @@ func sanitizeOpenAIMessages(messages []ChatRequestMessage) []ChatRequestMessage 
 			if !foundCall {
 				continue // Skip orphaned tool response
 			}
+		}
+
+		// Skip ANY assistant messages that are completely empty (no text, no tools)
+		if msg.Role == "assistant" && msg.Content == "" && len(msg.ContentParts) == 0 && len(msg.ToolCalls) == 0 {
+			continue
 		}
 
 		sanitized = append(sanitized, msg)

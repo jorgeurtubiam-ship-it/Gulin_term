@@ -16,15 +16,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/remote/connparse"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/fsutil"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/remote/connparse"
+	"github.com/gulindev/gulin/pkg/remote/fileshare/fsutil"
+	"github.com/gulindev/gulin/pkg/remote/fileshare/wshfs"
+	"github.com/gulindev/gulin/pkg/util/fileutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 const RemoteFileTransferSizeLimit = 32 * 1024 * 1024
@@ -139,7 +139,7 @@ func (impl *ServerImpl) remoteStreamFileInternal(ctx context.Context, data wshrp
 	if err != nil {
 		return err
 	}
-	path, err := wavebase.ExpandHomeDir(data.Path)
+	path, err := gulinbase.ExpandHomeDir(data.Path)
 	if err != nil {
 		return err
 	}
@@ -286,11 +286,11 @@ func (impl *ServerImpl) RemoteFileCopyCommand(ctx context.Context, data wshrpc.C
 	if err != nil {
 		return false, fmt.Errorf("cannot parse destination URI %q: %w", data.DestUri, err)
 	}
-	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
+	destPathCleaned := filepath.Clean(gulinbase.ExpandHomeDirSafe(destConn.Path))
 	destHasSlash := strings.HasSuffix(data.DestUri, "/")
 
 	if srcConn.Host == destConn.Host {
-		srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
+		srcPathCleaned := filepath.Clean(gulinbase.ExpandHomeDirSafe(srcConn.Path))
 		err := remoteCopyFileInternal(data.SrcUri, data.DestUri, srcPathCleaned, destPathCleaned, destHasSlash, opts.Overwrite)
 		return false, err
 	}
@@ -345,7 +345,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 	ch := make(chan wshrpc.RespOrErrorUnion[wshrpc.CommandRemoteListEntriesRtnData], 16)
 	go func() {
 		defer close(ch)
-		path, err := wavebase.ExpandHomeDir(data.Path)
+		path, err := gulinbase.ExpandHomeDir(data.Path)
 		if err != nil {
 			ch <- wshutil.RespErr[wshrpc.CommandRemoteListEntriesRtnData](err)
 			return
@@ -416,7 +416,7 @@ func (impl *ServerImpl) RemoteListEntriesCommand(ctx context.Context, data wshrp
 func statToFileInfo(fullPath string, finfo fs.FileInfo, extended bool) *wshrpc.FileInfo {
 	mimeType := fileutil.DetectMimeType(fullPath, finfo, extended)
 	rtn := &wshrpc.FileInfo{
-		Path:          wavebase.ReplaceHomeDir(fullPath),
+		Path:          gulinbase.ReplaceHomeDir(fullPath),
 		Dir:           computeDirPart(fullPath),
 		Name:          finfo.Name(),
 		Size:          finfo.Size(),
@@ -461,7 +461,7 @@ func checkIsReadOnly(path string, fileInfo fs.FileInfo, exists bool) bool {
 }
 
 func computeDirPart(path string) string {
-	path = filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	path = filepath.Clean(gulinbase.ExpandHomeDirSafe(path))
 	path = filepath.ToSlash(path)
 	if path == "/" {
 		return "/"
@@ -470,11 +470,11 @@ func computeDirPart(path string) string {
 }
 
 func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInfo, error) {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	cleanedPath := filepath.Clean(gulinbase.ExpandHomeDirSafe(path))
 	finfo, err := os.Stat(cleanedPath)
 	if os.IsNotExist(err) {
 		return &wshrpc.FileInfo{
-			Path:          wavebase.ReplaceHomeDir(path),
+			Path:          gulinbase.ReplaceHomeDir(path),
 			Dir:           computeDirPart(path),
 			NotFound:      true,
 			ReadOnly:      checkIsReadOnly(cleanedPath, finfo, false),
@@ -493,11 +493,11 @@ func (*ServerImpl) fileInfoInternal(path string, extended bool) (*wshrpc.FileInf
 
 func resolvePaths(paths []string) string {
 	if len(paths) == 0 {
-		return wavebase.ExpandHomeDirSafe("~")
+		return gulinbase.ExpandHomeDirSafe("~")
 	}
-	rtnPath := wavebase.ExpandHomeDirSafe(paths[0])
+	rtnPath := gulinbase.ExpandHomeDirSafe(paths[0])
 	for _, path := range paths[1:] {
-		path = wavebase.ExpandHomeDirSafe(path)
+		path = gulinbase.ExpandHomeDirSafe(path)
 		if filepath.IsAbs(path) {
 			rtnPath = path
 			continue
@@ -521,7 +521,7 @@ func (impl *ServerImpl) RemoteFileMultiInfoCommand(ctx context.Context, data wsh
 	if cwd == "" {
 		cwd = "~"
 	}
-	cwd = filepath.Clean(wavebase.ExpandHomeDirSafe(cwd))
+	cwd = filepath.Clean(gulinbase.ExpandHomeDirSafe(cwd))
 	rtn := make(map[string]wshrpc.FileInfo, len(data.Paths))
 	for _, path := range data.Paths {
 		if _, found := rtn[path]; found {
@@ -530,14 +530,14 @@ func (impl *ServerImpl) RemoteFileMultiInfoCommand(ctx context.Context, data wsh
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		cleanedPath := wavebase.ExpandHomeDirSafe(path)
+		cleanedPath := gulinbase.ExpandHomeDirSafe(path)
 		if !filepath.IsAbs(cleanedPath) {
 			cleanedPath = filepath.Join(cwd, cleanedPath)
 		}
 		fileInfo, err := impl.fileInfoInternal(cleanedPath, false)
 		if err != nil {
 			rtn[path] = wshrpc.FileInfo{
-				Path:          wavebase.ReplaceHomeDir(cleanedPath),
+				Path:          gulinbase.ReplaceHomeDir(cleanedPath),
 				Dir:           computeDirPart(cleanedPath),
 				Name:          filepath.Base(cleanedPath),
 				StatError:     err.Error(),
@@ -551,7 +551,7 @@ func (impl *ServerImpl) RemoteFileMultiInfoCommand(ctx context.Context, data wsh
 }
 
 func (impl *ServerImpl) RemoteFileTouchCommand(ctx context.Context, path string) error {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	cleanedPath := filepath.Clean(gulinbase.ExpandHomeDirSafe(path))
 	if _, err := os.Stat(cleanedPath); err == nil {
 		return fmt.Errorf("file %q already exists", path)
 	}
@@ -572,7 +572,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 	if err != nil {
 		return fmt.Errorf("cannot parse destination URI %q: %w", srcUri, err)
 	}
-	destPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(destConn.Path))
+	destPathCleaned := filepath.Clean(gulinbase.ExpandHomeDirSafe(destConn.Path))
 	_, err = os.Stat(destPathCleaned)
 	if err == nil {
 		return fmt.Errorf("destination %q already exists", destUri)
@@ -589,7 +589,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 		return fmt.Errorf("cannot move file %q to %q: different hosts", srcUri, destUri)
 	}
 
-	srcPathCleaned := filepath.Clean(wavebase.ExpandHomeDirSafe(srcConn.Path))
+	srcPathCleaned := filepath.Clean(gulinbase.ExpandHomeDirSafe(srcConn.Path))
 	err = os.Rename(srcPathCleaned, destPathCleaned)
 	if err != nil {
 		return fmt.Errorf("cannot move file %q to %q: %w", srcPathCleaned, destPathCleaned, err)
@@ -598,7 +598,7 @@ func (impl *ServerImpl) RemoteFileMoveCommand(ctx context.Context, data wshrpc.C
 }
 
 func (impl *ServerImpl) RemoteMkdirCommand(ctx context.Context, path string) error {
-	cleanedPath := filepath.Clean(wavebase.ExpandHomeDirSafe(path))
+	cleanedPath := filepath.Clean(gulinbase.ExpandHomeDirSafe(path))
 	if stat, err := os.Stat(cleanedPath); err == nil {
 		if stat.IsDir() {
 			return fmt.Errorf("directory %q already exists", path)
@@ -628,7 +628,7 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 	if append && atOffset > 0 {
 		return fmt.Errorf("cannot specify non-zero offset with append option")
 	}
-	path, err := wavebase.ExpandHomeDir(data.Info.Path)
+	path, err := gulinbase.ExpandHomeDir(data.Info.Path)
 	if err != nil {
 		return err
 	}
@@ -681,7 +681,7 @@ func (*ServerImpl) RemoteWriteFileCommand(ctx context.Context, data wshrpc.FileD
 }
 
 func (*ServerImpl) RemoteFileDeleteCommand(ctx context.Context, data wshrpc.CommandDeleteFileData) error {
-	expandedPath, err := wavebase.ExpandHomeDir(data.Path)
+	expandedPath, err := gulinbase.ExpandHomeDir(data.Path)
 	if err != nil {
 		return fmt.Errorf("cannot delete file %q: %w", data.Path, err)
 	}

@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/baseds"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/baseds"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 type WshRpcProxy struct {

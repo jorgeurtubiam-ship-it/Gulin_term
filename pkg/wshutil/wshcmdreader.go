@@ -9,13 +9,13 @@ import (
 	"io"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/baseds"
+	"github.com/gulindev/gulin/pkg/baseds"
 )
 
 const (
 	Mode_Normal  = "normal"
 	Mode_Esc     = "esc"
-	Mode_WaveEsc = "waveesc"
+	Mode_GulinEsc = "gulinesc"
 )
 
 const MaxBufferedDataSize = 256 * 1024
@@ -34,7 +34,7 @@ type PtyBuffer struct {
 
 // closes messageCh when input is closed (or error)
 func MakePtyBuffer(oscPrefix string, input io.Reader, messageCh chan baseds.RpcInputChType) *PtyBuffer {
-	if len(oscPrefix) != WaveOSCPrefixLen {
+	if len(oscPrefix) != GulinOSCPrefixLen {
 		panic(fmt.Sprintf("invalid OSC prefix length: %d", len(oscPrefix)))
 	}
 	b := &PtyBuffer{
@@ -65,7 +65,7 @@ func (b *PtyBuffer) setEOF() {
 	b.CVar.Broadcast()
 }
 
-func (b *PtyBuffer) processWaveEscSeq(escSeq []byte) {
+func (b *PtyBuffer) processGulinEscSeq(escSeq []byte) {
 	b.MessageCh <- baseds.RpcInputChType{MsgBytes: escSeq}
 }
 
@@ -89,7 +89,7 @@ func (b *PtyBuffer) run() {
 func (b *PtyBuffer) processData(data []byte) {
 	outputBuf := make([]byte, 0, len(data))
 	for _, ch := range data {
-		if b.EscMode == Mode_WaveEsc {
+		if b.EscMode == Mode_GulinEsc {
 			if ch == ESC {
 				// terminates the escape sequence (and the rest was invalid)
 				b.EscMode = Mode_Normal
@@ -97,11 +97,11 @@ func (b *PtyBuffer) processData(data []byte) {
 				outputBuf = append(outputBuf, ch)
 				b.EscSeqBuf = nil
 			} else if ch == BEL || ch == ST {
-				// terminates the escpae sequence (is a valid Wave OSC command)
+				// terminates the escpae sequence (is a valid Gulin OSC command)
 				b.EscMode = Mode_Normal
-				waveEscSeq := b.EscSeqBuf[WaveOSCPrefixLen:]
+				gulinEscSeq := b.EscSeqBuf[GulinOSCPrefixLen:]
 				b.EscSeqBuf = nil
-				b.processWaveEscSeq(waveEscSeq)
+				b.processGulinEscSeq(gulinEscSeq)
 			} else {
 				b.EscSeqBuf = append(b.EscSeqBuf, ch)
 			}
@@ -109,7 +109,7 @@ func (b *PtyBuffer) processData(data []byte) {
 		}
 		if b.EscMode == Mode_Esc {
 			if ch == ESC || ch == BEL || ch == ST {
-				// these all terminate the escape sequence (invalid, not a Wave OSC)
+				// these all terminate the escape sequence (invalid, not a Gulin OSC)
 				b.EscMode = Mode_Normal
 				outputBuf = append(outputBuf, b.EscSeqBuf...)
 				outputBuf = append(outputBuf, ch)
@@ -117,18 +117,18 @@ func (b *PtyBuffer) processData(data []byte) {
 				continue
 			}
 			if ch != b.OSCPrefix[len(b.EscSeqBuf)] {
-				// this is not a Wave OSC sequence, just an escape sequence
+				// this is not a Gulin OSC sequence, just an escape sequence
 				b.EscMode = Mode_Normal
 				outputBuf = append(outputBuf, b.EscSeqBuf...)
 				outputBuf = append(outputBuf, ch)
 				b.EscSeqBuf = nil
 				continue
 			}
-			// we're still building what could be a Wave OSC sequence
+			// we're still building what could be a Gulin OSC sequence
 			b.EscSeqBuf = append(b.EscSeqBuf, ch)
-			// check to see if we have a full Wave OSC prefix
+			// check to see if we have a full Gulin OSC prefix
 			if len(b.EscSeqBuf) == len(b.OSCPrefix) {
-				b.EscMode = Mode_WaveEsc
+				b.EscMode = Mode_GulinEsc
 			}
 			continue
 		}

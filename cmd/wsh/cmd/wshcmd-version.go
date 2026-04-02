@@ -8,10 +8,10 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 var versionVerbose bool
@@ -32,7 +32,7 @@ func init() {
 
 func runVersionCmd(cmd *cobra.Command, args []string) error {
 	if !versionVerbose && !versionJSON {
-		WriteStdout("wsh v%s\n", wavebase.WaveVersion)
+		WriteStdout("wsh v%s\n", gulinbase.GulinVersion)
 		return nil
 	}
 
@@ -41,7 +41,7 @@ func runVersionCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resp, err := wshclient.WaveInfoCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
+	resp, err := wshclient.GulinInfoCommand(RpcClient, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ import * as jotai from "jotai";
 import * as React from "react";
 
 import { useDimensionsWithExistingRef } from "@/app/hook/useDimensions";
-import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { gulinEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms } from "@/store/global";
@@ -80,7 +80,7 @@ for (let i = 0; i < 32; i++) {
     DefaultPlotMeta[`cpu:${i}`] = defaultCpuMeta(`Core ${i}`);
 }
 
-function convertWaveEventToDataItem(event: Extract<WaveEvent, { event: "sysinfo" }>): DataItem {
+function convertGulinEventToDataItem(event: Extract<GulinEvent, { event: "sysinfo" }>): DataItem {
     const eventData = event.data;
     if (eventData == null || eventData.ts == null || eventData.values == null) {
         return null;
@@ -123,7 +123,7 @@ class SysinfoViewModel implements ViewModel {
         this.tabModel = tabModel;
         this.viewType = "sysinfo";
         this.blockId = blockId;
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.blockAtom = WOS.getGulinObjectAtom<Block>(`block:${blockId}`);
         this.addInitialDataAtom = jotai.atom(null, (get, set, points) => {
             const targetLen = get(this.numPoints) + 1;
             try {
@@ -263,7 +263,7 @@ class SysinfoViewModel implements ViewModel {
                 return;
             }
             const newData = this.getDefaultData();
-            const initialDataItems: DataItem[] = initialData.map(convertWaveEventToDataItem);
+            const initialDataItems: DataItem[] = initialData.map(convertGulinEventToDataItem);
             // splice the initial data into the default data (replacing the newest points)
             //newData.splice(newData.length - initialDataItems.length, initialDataItems.length, ...initialDataItems);
             globalStore.set(this.addInitialDataAtom, initialDataItems);
@@ -360,7 +360,7 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
         }
     }, [connStatus.status, connName]);
     React.useEffect(() => {
-        const unsubFn = waveEventSubscribeSingle({
+        const unsubFn = gulinEventSubscribeSingle({
             eventType: "sysinfo",
             scope: connName,
             handler: (event) => {
@@ -368,7 +368,7 @@ function SysinfoView({ model, blockId }: SysinfoViewProps) {
                 if (loading) {
                     return;
                 }
-                const dataItem = convertWaveEventToDataItem(event);
+                const dataItem = convertGulinEventToDataItem(event);
                 const prevData = globalStore.get(model.dataAtom);
                 const prevLastTs = prevData[prevData.length - 1]?.ts ?? 0;
                 if (dataItem.ts - prevLastTs > 2000) {

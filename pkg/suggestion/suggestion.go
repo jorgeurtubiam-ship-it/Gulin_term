@@ -16,12 +16,12 @@ import (
 
 	"github.com/junegunn/fzf/src/algo"
 	"github.com/junegunn/fzf/src/util"
-	"github.com/wavetermdev/waveterm/pkg/faviconcache"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/faviconcache"
+	"github.com/gulindev/gulin/pkg/util/fileutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 const MaxSuggestions = 50
@@ -67,7 +67,7 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 		cwd = "~"
 	}
 	var err error
-	cwd, err = wavebase.ExpandHomeDir(cwd)
+	cwd, err = gulinbase.ExpandHomeDir(cwd)
 	if err != nil {
 		return "", "", "", fmt.Errorf("error expanding home dir: %w", err)
 	}
@@ -78,7 +78,7 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 	tildeSlash := "~" + PathSepStr
 	if query == "~" || strings.HasPrefix(query, tildeSlash) {
 		ogQuery := query
-		query, err = wavebase.ExpandHomeDir(query)
+		query, err = gulinbase.ExpandHomeDir(query)
 		if err != nil {
 			return "", "", "", fmt.Errorf("error expanding query home dir: %w", err)
 		}
@@ -106,7 +106,7 @@ func resolveFileQuery(cwd string, query string) (string, string, string, error) 
 	}
 
 	// For relative queries:
-	// If the query ends with a slash (e.g. "./" or "waveterm/"), then treat it
+	// If the query ends with a slash (e.g. "./" or "gulin/"), then treat it
 	// as a directory listing.
 	if strings.HasSuffix(query, PathSepStr) {
 		fullPath := filepath.Join(cwd, query)

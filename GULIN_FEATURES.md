@@ -9,8 +9,8 @@ El motor de inteligencia de GuLiN no solo responde, sino que **aprende y recuerd
 
 *   **Auto-RAG Proactivo**: GuLiN realiza una búsqueda semántica automática en tus archivos de memoria cada vez que le hablas. No necesitas pedirle que busque; él ya tiene el contexto relevante inyectado en su mente.
 *   **Directorio de Memoria**: Todos tus hábitos, lecciones y contextos se guardan en archivos Markdown en:
-    `~/.config/waveterm/gulin/` (macOS)
-    `%APPDATA%/waveterm/gulin/` (Windows)
+    `~/.config/gulin/gulin/` (macOS)
+    `%APPDATA%/gulin/gulin/` (Windows)
 *   **Herramientas de Memoria**:
     *   `brain_update`: Guarda nuevos conocimientos.
     *   `brain_list`: Lista todo lo que GuLiN sabe.
@@ -52,7 +52,7 @@ Flexibilidad total para elegir tu motor de procesamiento.
 ---
 
 ## 🎨 5. Identidad Visual y Experiencia
-*   **Rebranding Total**: La interfaz ha sido rediseñada para ser **GuLiN**, eliminando rastros de Wave Terminal y la etiqueta BETA.
+*   **Rebranding Total**: La interfaz ha sido rediseñada para ser **GuLiN**, eliminando rastros de Gulin Terminal y la etiqueta BETA.
 *   **Rendimiento Premium**: Transiciones suaves, soporte nativo para dark mode y micro-animaciones.
 *   **Instaladores Nativos**:
     *   macOS: Imagen `.dmg` v2.0.2 optimizada para Apple Silicon e Intel.

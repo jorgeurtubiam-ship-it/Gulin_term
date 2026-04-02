@@ -25,16 +25,16 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/secretstore"
-	"github.com/wavetermdev/waveterm/pkg/trimquotes"
-	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/utilds"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/blocklogger"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/secretstore"
+	"github.com/gulindev/gulin/pkg/trimquotes"
+	"github.com/gulindev/gulin/pkg/userinput"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/utilds"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wconfig"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	xknownhosts "golang.org/x/crypto/ssh/knownhosts"
@@ -83,15 +83,15 @@ const (
 	AuthSubCode_HandshakeFailed = "handshake-failed"
 )
 
-var waveSshConfigUserSettingsInternal *ssh_config.UserSettings
+var gulinSshConfigUserSettingsInternal *ssh_config.UserSettings
 var configUserSettingsOnce = &sync.Once{}
 
-func WaveSshConfigUserSettings() *ssh_config.UserSettings {
+func GulinSshConfigUserSettings() *ssh_config.UserSettings {
 	configUserSettingsOnce.Do(func() {
-		waveSshConfigUserSettingsInternal = ssh_config.DefaultUserSettings
-		waveSshConfigUserSettingsInternal.IgnoreMatchDirective = true
+		gulinSshConfigUserSettingsInternal = ssh_config.DefaultUserSettings
+		gulinSshConfigUserSettingsInternal.IgnoreMatchDirective = true
 	})
-	return waveSshConfigUserSettingsInternal
+	return gulinSshConfigUserSettingsInternal
 }
 
 type UserInputCancelError struct {
@@ -280,7 +280,7 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *wconfig.ConnK
 	// checking the file early prevents us from needing to send a
 	// dummy signer if there's a problem with the signer
 	for _, identityFile := range sshKeywords.SshIdentityFile {
-		filePath, err := wavebase.ExpandHomeDir(identityFile)
+		filePath, err := gulinbase.ExpandHomeDir(identityFile)
 		if err != nil {
 			continue
 		}
@@ -601,7 +601,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 
 	var knownHostsFiles []string
 	for _, filename := range unexpandedKnownHostsFiles {
-		filePath, err := wavebase.ExpandHomeDir(filename)
+		filePath, err := gulinbase.ExpandHomeDir(filename)
 		if err != nil {
 			continue
 		}
@@ -654,9 +654,9 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 		}
 	}
 
-	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) (outErr error) {
+	gulinHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) (outErr error) {
 		defer func() {
-			panicErr := panichandler.PanicHandler("sshclient:wave-hostkey-callback", recover())
+			panicErr := panichandler.PanicHandler("sshclient:gulin-hostkey-callback", recover())
 			if panicErr != nil {
 				outErr = panicErr
 			}
@@ -751,7 +751,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 		return updatedCallback(hostname, remote, key)
 	}
 
-	return waveHostKeyCallback, hostKeyAlgorithms, nil
+	return gulinHostKeyCallback, hostKeyAlgorithms, nil
 }
 
 func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
@@ -876,7 +876,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		JumpNum:       jumpNum,
 	}
 	if jumpNum > SshProxyJumpMaxDepth {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
+		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Gulin's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
 
 	rawName := opts.String()
@@ -968,11 +968,11 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 			outErr = panicErr
 		}
 	}()
-	WaveSshConfigUserSettings().ReloadConfigs()
+	GulinSshConfigUserSettings().ReloadConfigs()
 	sshKeywords := &wconfig.ConnKeywords{}
 	var err error
 
-	userRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "User")
+	userRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "User")
 	if err != nil {
 		return nil, err
 	}
@@ -986,7 +986,7 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 	}
 	sshKeywords.SshUser = &userClean
 
-	hostNameRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "HostName")
+	hostNameRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "HostName")
 	if err != nil {
 		return nil, err
 	}
@@ -998,38 +998,38 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 		sshKeywords.SshHostName = &hostNameRaw
 	}
 
-	portRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "Port")
+	portRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "Port")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.SshPort = utilfn.Ptr(trimquotes.TryTrimQuotes(portRaw))
 
-	identityFileRaw := WaveSshConfigUserSettings().GetAll(hostPattern, "IdentityFile")
+	identityFileRaw := GulinSshConfigUserSettings().GetAll(hostPattern, "IdentityFile")
 	for i := 0; i < len(identityFileRaw); i++ {
 		identityFileRaw[i] = trimquotes.TryTrimQuotes(identityFileRaw[i])
 	}
 	sshKeywords.SshIdentityFile = identityFileRaw
 
-	batchModeRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "BatchMode")
+	batchModeRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "BatchMode")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.SshBatchMode = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(batchModeRaw)) == "yes")
 
 	// we currently do not support host-bound or unbound but will use yes when they are selected
-	pubkeyAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PubkeyAuthentication")
+	pubkeyAuthenticationRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "PubkeyAuthentication")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.SshPubkeyAuthentication = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(pubkeyAuthenticationRaw)) != "no")
 
-	passwordAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PasswordAuthentication")
+	passwordAuthenticationRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "PasswordAuthentication")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.SshPasswordAuthentication = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(passwordAuthenticationRaw)) != "no")
 
-	kbdInteractiveAuthenticationRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "KbdInteractiveAuthentication")
+	kbdInteractiveAuthenticationRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "KbdInteractiveAuthentication")
 	if err != nil {
 		return nil, err
 	}
@@ -1037,24 +1037,24 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 
 	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too
-	preferredAuthenticationsRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "PreferredAuthentications")
+	preferredAuthenticationsRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "PreferredAuthentications")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.SshPreferredAuthentications = strings.Split(trimquotes.TryTrimQuotes(preferredAuthenticationsRaw), ",")
-	addKeysToAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "AddKeysToAgent")
+	addKeysToAgentRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "AddKeysToAgent")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.SshAddKeysToAgent = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(addKeysToAgentRaw)) == "yes")
 
-	identitiesOnly, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentitiesOnly")
+	identitiesOnly, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "IdentitiesOnly")
 	if err != nil {
 		return nil, err
 	}
 	sshKeywords.SshIdentitiesOnly = utilfn.Ptr(strings.ToLower(trimquotes.TryTrimQuotes(identitiesOnly)) == "yes")
 
-	identityAgentRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "IdentityAgent")
+	identityAgentRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "IdentityAgent")
 	if err != nil {
 		return nil, err
 	}
@@ -1070,7 +1070,7 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 				if trimmedSock == "" {
 					log.Printf("SSH_AUTH_SOCK is empty in shell environment")
 				} else {
-					agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(trimmedSock))
+					agentPath, err := gulinbase.ExpandHomeDir(trimquotes.TryTrimQuotes(trimmedSock))
 					if err != nil {
 						return nil, err
 					}
@@ -1081,14 +1081,14 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 			}
 		}
 	} else {
-		agentPath, err := wavebase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))
+		agentPath, err := gulinbase.ExpandHomeDir(trimquotes.TryTrimQuotes(identityAgentRaw))
 		if err != nil {
 			return nil, err
 		}
 		sshKeywords.SshIdentityAgent = utilfn.Ptr(agentPath)
 	}
 
-	proxyJumpRaw, err := WaveSshConfigUserSettings().GetStrict(hostPattern, "ProxyJump")
+	proxyJumpRaw, err := GulinSshConfigUserSettings().GetStrict(hostPattern, "ProxyJump")
 	if err != nil {
 		return nil, err
 	}
@@ -1100,9 +1100,9 @@ func findSshConfigKeywords(hostPattern string) (connKeywords *wconfig.ConnKeywor
 		}
 		sshKeywords.SshProxyJump = append(sshKeywords.SshProxyJump, proxyJumpName)
 	}
-	rawUserKnownHostsFile, _ := WaveSshConfigUserSettings().GetStrict(hostPattern, "UserKnownHostsFile")
+	rawUserKnownHostsFile, _ := GulinSshConfigUserSettings().GetStrict(hostPattern, "UserKnownHostsFile")
 	sshKeywords.SshUserKnownHostsFile = strings.Fields(rawUserKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
-	rawGlobalKnownHostsFile, _ := WaveSshConfigUserSettings().GetStrict(hostPattern, "GlobalKnownHostsFile")
+	rawGlobalKnownHostsFile, _ := GulinSshConfigUserSettings().GetStrict(hostPattern, "GlobalKnownHostsFile")
 	sshKeywords.SshGlobalKnownHostsFile = strings.Fields(rawGlobalKnownHostsFile) // TODO - smarter splitting escaped spaces and quotes
 
 	return sshKeywords, nil

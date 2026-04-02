@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 )
 
 // OpenAI Chat Completions API types (simplified)
@@ -80,7 +80,8 @@ func (cm ChatRequestMessage) MarshalJSON() ([]byte, error) {
 			return nil, err
 		}
 		raw.Content = b
-	} else if cm.Content != "" {
+	} else {
+		// OpenAI and Bridge/Gemini prefer "" over null for content when tool_calls are present
 		b, err := json.Marshal(cm.Content)
 		if err != nil {
 			return nil, err
@@ -188,6 +189,7 @@ type StreamChunk struct {
 type StreamChoice struct {
 	Index        int          `json:"index"`
 	Delta        ContentDelta `json:"delta"`
+	Message      ContentDelta `json:"message"`       // Non-streaming fallback (sometimes provided by Bridge/Proxy)
 	FinishReason *string      `json:"finish_reason"` // "stop", "length" | "tool_calls" | "content_filter"
 }
 
@@ -195,6 +197,7 @@ type StreamChoice struct {
 type ContentDelta struct {
 	Role      string          `json:"role,omitempty"`
 	Content   string          `json:"content,omitempty"`
+	Text      string          `json:"text,omitempty"` // Fallback for Bridge/Anthropic/Google
 	ToolCalls []ToolCallDelta `json:"tool_calls,omitempty"`
 }
 
@@ -245,7 +248,7 @@ func (m *StoredChatMessage) GetRole() string {
 }
 
 func (m *StoredChatMessage) GetUsage() *uctypes.AIUsage {
-	if m.Usage == nil {
+	if m == nil || m.Usage == nil {
 		return nil
 	}
 	return &uctypes.AIUsage{

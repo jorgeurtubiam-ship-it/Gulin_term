@@ -82,13 +82,13 @@ export class LayoutModel {
      */
     treeState: LayoutTreeState;
     /**
-     * Reference to the tab atom for accessing WaveObject
+     * Reference to the tab atom for accessing GulinObject
      */
     private tabAtom: Atom<Tab>;
     /**
-     * WaveObject atom for persistence
+     * GulinObject atom for persistence
      */
-    private waveObjectAtom: WritableWaveObjectAtom<LayoutState>;
+    private gulinObjectAtom: WritableGulinObjectAtom<LayoutState>;
     /**
      * Debounce timer for persistence
      */
@@ -261,7 +261,7 @@ export class LayoutModel {
         this.persistDebounceTimer = null;
         this.processedActionIds = new Set();
 
-        this.waveObjectAtom = getLayoutStateAtomFromTab(tabAtom, getter);
+        this.gulinObjectAtom = getLayoutStateAtomFromTab(tabAtom, getter);
 
         this.localTreeStateAtom = atom<LayoutTreeState>({
             rootNode: undefined,
@@ -350,18 +350,18 @@ export class LayoutModel {
             return this.getPlaceholderTransform(pendingAction);
         });
 
-        this.initializeFromWaveObject();
+        this.initializeFromGulinObject();
     }
 
-    private initializeFromWaveObject() {
-        const waveObjState = this.getter(this.waveObjectAtom);
+    private initializeFromGulinObject() {
+        const gulinObjState = this.getter(this.gulinObjectAtom);
 
         const initialState: LayoutTreeState = {
-            rootNode: waveObjState?.rootnode,
-            focusedNodeId: waveObjState?.focusednodeid,
-            magnifiedNodeId: waveObjState?.magnifiednodeid,
+            rootNode: gulinObjState?.rootnode,
+            focusedNodeId: gulinObjState?.focusednodeid,
+            magnifiedNodeId: gulinObjState?.magnifiednodeid,
             leafOrder: undefined,
-            pendingBackendActions: waveObjState?.pendingbackendactions,
+            pendingBackendActions: gulinObjState?.pendingbackendactions,
         };
 
         this.treeState = initialState;
@@ -376,16 +376,16 @@ export class LayoutModel {
     }
 
     onBackendUpdate() {
-        const waveObj = this.getter(this.waveObjectAtom);
-        const pendingActions = waveObj?.pendingbackendactions;
+        const gulinObj = this.getter(this.gulinObjectAtom);
+        const pendingActions = gulinObj?.pendingbackendactions;
         if (pendingActions?.length) {
             fireAndForget(() => this.processPendingBackendActions());
         }
     }
 
     private async processPendingBackendActions() {
-        const waveObj = this.getter(this.waveObjectAtom);
-        const actions = waveObj?.pendingbackendactions;
+        const gulinObj = this.getter(this.gulinObjectAtom);
+        const actions = gulinObj?.pendingbackendactions;
         if (!actions?.length) return;
 
         this.treeState.pendingBackendActions = undefined;
@@ -578,16 +578,16 @@ export class LayoutModel {
         }
 
         this.persistDebounceTimer = setTimeout(() => {
-            const waveObj = this.getter(this.waveObjectAtom);
-            if (!waveObj) return;
+            const gulinObj = this.getter(this.gulinObjectAtom);
+            if (!gulinObj) return;
 
-            waveObj.rootnode = this.treeState.rootNode;
-            waveObj.focusednodeid = this.treeState.focusedNodeId;
-            waveObj.magnifiednodeid = this.treeState.magnifiedNodeId;
-            waveObj.leaforder = this.treeState.leafOrder;
-            waveObj.pendingbackendactions = this.treeState.pendingBackendActions;
+            gulinObj.rootnode = this.treeState.rootNode;
+            gulinObj.focusednodeid = this.treeState.focusedNodeId;
+            gulinObj.magnifiednodeid = this.treeState.magnifiedNodeId;
+            gulinObj.leaforder = this.treeState.leafOrder;
+            gulinObj.pendingbackendactions = this.treeState.pendingBackendActions;
 
-            this.setter(this.waveObjectAtom, waveObj);
+            this.setter(this.gulinObjectAtom, gulinObj);
             this.persistDebounceTimer = null;
         }, 100);
     }
@@ -1113,7 +1113,7 @@ export class LayoutModel {
      * Switch focus to the next node in the given direction in the layout.
      * @param direction The direction in which to switch focus.
      */
-    switchNodeFocusInDirection(direction: NavigateDirection, inWaveAI: boolean): NavigationResult {
+    switchNodeFocusInDirection(direction: NavigateDirection, inGulinAI: boolean): NavigationResult {
         const curNodeId = this.focusedNodeId;
 
         // If no node is focused, set focus to the first leaf.
@@ -1133,11 +1133,11 @@ export class LayoutModel {
             }
         }
         let curNodePos: Dimensions;
-        if (inWaveAI) {
-            // For WaveAI, use a fake position to the left of all nodes
+        if (inGulinAI) {
+            // For GulinAI, use a fake position to the left of all nodes
             curNodePos = { left: -10, top: 10, width: 0, height: 0 };
 
-            // Only allow "right" navigation from WaveAI
+            // Only allow "right" navigation from GulinAI
             if (direction !== NavigateDirection.Right) {
                 const result: NavigationResult = { success: false };
                 if (direction === NavigateDirection.Up) {

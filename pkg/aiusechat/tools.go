@@ -10,20 +10,20 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/aiutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/blockcontroller"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
-func makeTerminalBlockDesc(block *waveobj.Block) string {
+func makeTerminalBlockDesc(block *gulinobj.Block) string {
 	connection, hasConnection := block.Meta["connection"].(string)
 	cwd, hasCwd := block.Meta["cmd:cwd"].(string)
 
-	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+	blockORef := gulinobj.MakeORef(gulinobj.OType_Block, block.OID)
 	rtInfo := wstore.GetRTInfo(blockORef)
 	hasCurCwd := rtInfo != nil && rtInfo.ShellHasCurCwd
 
@@ -74,7 +74,7 @@ func makeTerminalBlockDesc(block *waveobj.Block) string {
 	return desc
 }
 
-func MakeBlockShortDesc(block *waveobj.Block) string {
+func MakeBlockShortDesc(block *gulinobj.Block) string {
 	if block.Meta == nil {
 		return ""
 	}
@@ -106,7 +106,7 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 			return fmt.Sprintf("web browser widget pointing at %q", url)
 		}
 		return "web browser widget"
-	case "waveai":
+	case "gulinai":
 		return "AI chat widget"
 	case "cpuplot":
 		if connection, hasConnection := block.Meta["connection"].(string); hasConnection && connection != "" {
@@ -114,42 +114,42 @@ func MakeBlockShortDesc(block *waveobj.Block) string {
 		}
 		return "cpu graph"
 	case "tips":
-		return "Wave quick tips widget"
+		return "Gulin quick tips widget"
 	case "help":
-		return "Wave documentation widget"
+		return "Gulin documentation widget"
 	case "launcher":
 		return "placeholder widget used to launch other widgets"
 	case "tsunami":
 		return handleTsunamiBlockDesc(block)
 	case "aifilediff":
 		return "" // AI doesn't need to see these
-	case "waveconfig":
+	case "gulinconfig":
 		if file, hasFile := block.Meta["file"].(string); hasFile && file != "" {
-			return fmt.Sprintf("wave config editor for %q", file)
+			return fmt.Sprintf("gulin config editor for %q", file)
 		}
-		return "wave config editor"
+		return "gulin config editor"
 	default:
 		return fmt.Sprintf("unknown widget with type %q", viewType)
 	}
 }
 
-func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bool, chatOpts *uctypes.WaveChatOpts) (string, []uctypes.ToolDefinition, error) {
+func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bool, chatOpts *uctypes.GulinChatOpts) (string, []uctypes.ToolDefinition, error) {
 	if tabid == "" {
 		return "", nil, nil
 	}
-	var blocks []*waveobj.Block
+	var blocks []*gulinobj.Block
 	if widgetAccess {
 		if _, err := uuid.Parse(tabid); err != nil {
 			return "", nil, fmt.Errorf("tabid must be a valid UUID")
 		}
 
-		tabObj, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabid)
+		tabObj, err := wstore.DBMustGet[*gulinobj.Tab](ctx, tabid)
 		if err != nil {
 			return "", nil, fmt.Errorf("error getting tab: %v", err)
 		}
 
 		for _, blockId := range tabObj.BlockIds {
-			block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+			block, err := wstore.DBGet[*gulinobj.Block](ctx, blockId)
 			if err != nil {
 				continue
 			}
@@ -161,6 +161,7 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 	// log.Printf("TABPROMPT %s\n", tabState)
 	var tools []uctypes.ToolDefinition
 	if widgetAccess {
+		tools = append(tools, GetCallExpertToolDefinition())
 		// Only add screenshot tool for:
 		// - openai-responses API type
 		// - google-gemini API type with Gemini 3+ models
@@ -180,6 +181,7 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetCreateDashboardToolDefinition(tabid))
 		tools = append(tools, GetDBRegisterToolDefinition(tabid))
 		tools = append(tools, GetDBQueryToolDefinition(tabid))
+		tools = append(tools, GetAPICallToolDefinition())
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
 			if block.Meta == nil {
@@ -201,7 +203,7 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 				tools = append(tools, GetTermRunCommandToolDefinition(tabid))
 			}
 			tools = append(tools, GetTermSearchToolDefinition(tabid))
-			// tools = append(tools, GetTermCommandOutputToolDefinition(tabid))
+			tools = append(tools, GetTermCommandOutputToolDefinition(tabid))
 		}
 		if viewTypes["web"] {
 			tools = append(tools, GetWebNavigateToolDefinition(tabid))
@@ -209,11 +211,13 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 			tools = append(tools, GetWebClickToolDefinition(tabid))
 			tools = append(tools, GetWebTypeToolDefinition(tabid))
 		}
+
+// El filtro restrictivo de Gulin Bridge fue removido exitosamente aquí
 	}
 	return tabState, tools, nil
 }
 
-func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) string {
+func GenerateCurrentTabStatePrompt(blocks []*gulinobj.Block, widgetAccess bool) string {
 	if !widgetAccess {
 		return `<current_tab_state>The user has chosen not to share widget context with you</current_tab_state>`
 	}
@@ -230,7 +234,7 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 
 	var prompt strings.Builder
 	prompt.WriteString("<current_tab_state>\n")
-	systemInfo := wavebase.GetSystemSummary()
+	systemInfo := gulinbase.GetSystemSummary()
 	if currentUser, err := user.Current(); err == nil && currentUser.Username != "" {
 		prompt.WriteString(fmt.Sprintf("Local Machine: %s, User: %s\n", systemInfo, currentUser.Username))
 	} else {
@@ -251,7 +255,7 @@ func GenerateCurrentTabStatePrompt(blocks []*waveobj.Block, widgetAccess bool) s
 	return rtn
 }
 
-func generateToolsForTsunamiBlock(block *waveobj.Block) []uctypes.ToolDefinition {
+func generateToolsForTsunamiBlock(block *gulinobj.Block) []uctypes.ToolDefinition {
 	var tools []uctypes.ToolDefinition
 
 	status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
@@ -259,7 +263,7 @@ func generateToolsForTsunamiBlock(block *waveobj.Block) []uctypes.ToolDefinition
 		return nil
 	}
 
-	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+	blockORef := gulinobj.MakeORef(gulinobj.OType_Block, block.OID)
 	rtInfo := wstore.GetRTInfo(blockORef)
 
 	if tool := GetTsunamiGetDataToolDefinition(block, rtInfo, status); tool != nil {

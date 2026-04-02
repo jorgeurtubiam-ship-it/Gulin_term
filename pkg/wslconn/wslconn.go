@@ -15,22 +15,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wsl"
+	"github.com/gulindev/gulin/pkg/blocklogger"
+	"github.com/gulindev/gulin/pkg/genconn"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/remote/conncontroller"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/userinput"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wsl"
 )
 
 const (
@@ -124,7 +124,7 @@ func (conn *WslConn) Debugf(ctx context.Context, format string, args ...any) {
 
 func (conn *WslConn) FireConnChangeEvent() {
 	status := conn.DeriveConnStatus()
-	event := wps.WaveEvent{
+	event := wps.GulinEvent{
 		Event: wps.Event_ConnChange,
 		Scopes: []string{
 			fmt.Sprintf("connection:%s", conn.GetName()),
@@ -209,9 +209,9 @@ func (conn *WslConn) OpenDomainSocketListener(ctx context.Context) error {
 			return fmt.Errorf("unable to request connection domain socket: %v", err)
 		}
 	*/
-	conn.Infof(ctx, "setting domain socket to %s\n", wavebase.RemoteFullDomainSocketPath)
+	conn.Infof(ctx, "setting domain socket to %s\n", gulinbase.RemoteFullDomainSocketPath)
 	conn.WithLock(func() {
-		conn.DomainSockName = wavebase.RemoteFullDomainSocketPath
+		conn.DomainSockName = gulinbase.RemoteFullDomainSocketPath
 		//conn.DomainSockListener = listener
 	})
 	conn.Infof(ctx, "successfully connected domain socket\n")
@@ -235,7 +235,7 @@ func (conn *WslConn) getWshPath() string {
 	if ok && config.ConnWshPath != "" {
 		return config.ConnWshPath
 	}
-	return wavebase.RemoteFullWshBinPath
+	return gulinbase.RemoteFullWshBinPath
 }
 
 func (conn *WslConn) GetConfigShellPath() string {
@@ -268,7 +268,7 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		conn.cancelFn = cancelFn
 	})
 	devFlag := ""
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		devFlag = "--dev"
 	}
 	cmdStr := fmt.Sprintf(ConnServerCmdTemplate, wshPath, wshPath, shellutil.HardQuote(conn.GetName()), devFlag)
@@ -297,9 +297,9 @@ func (conn *WslConn) StartConnServer(ctx context.Context, afterUpdate bool) (boo
 		cancelFn()
 		return false, "", "", fmt.Errorf("error checking wsh version: %w", err)
 	}
-	if isUpToDate && !afterUpdate && os.Getenv(wavebase.WaveWshForceUpdateVarName) != "" {
+	if isUpToDate && !afterUpdate && os.Getenv(gulinbase.GulinWshForceUpdateVarName) != "" {
 		isUpToDate = false
-		conn.Infof(ctx, "%s set, forcing wsh update\n", wavebase.WaveWshForceUpdateVarName)
+		conn.Infof(ctx, "%s set, forcing wsh update\n", gulinbase.GulinWshForceUpdateVarName)
 	}
 	conn.Infof(ctx, "connserver up-to-date: %v\n", isUpToDate)
 	if !isUpToDate {
@@ -354,7 +354,7 @@ type WshInstallOpts struct {
 }
 
 var queryTextTemplate = strings.TrimSpace(`
-Wave requires Wave Shell Extensions to be
+Gulin requires Gulin Shell Extensions to be
 installed on %q
 to ensure a seamless experience.
 
@@ -381,7 +381,7 @@ func (conn *WslConn) UpdateWsh(ctx context.Context, clientDisplayName string, re
 func (conn *WslConn) getPermissionToInstallWsh(ctx context.Context, clientDisplayName string) (bool, error) {
 	conn.Infof(ctx, "running getPermissionToInstallWsh...\n")
 	queryText := fmt.Sprintf(queryTextTemplate, clientDisplayName)
-	title := "Install Wave Shell Extensions"
+	title := "Install Gulin Shell Extensions"
 	request := &userinput.UserInputRequest{
 		ResponseType: "confirm",
 		QueryText:    queryText,
@@ -410,7 +410,7 @@ func (conn *WslConn) getPermissionToInstallWsh(ctx context.Context, clientDispla
 	}
 	if response.CheckboxStat {
 		conn.Infof(ctx, "writing conn:askbeforewshinstall=false to settings.json\n")
-		meta := waveobj.MetaMapType{
+		meta := gulinobj.MetaMapType{
 			wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
 		}
 		setConfigErr := wconfig.SetBaseConfigValue(meta)

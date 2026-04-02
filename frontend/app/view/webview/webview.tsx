@@ -78,7 +78,7 @@ export class WebViewModel implements ViewModel {
         this.viewType = "web";
         this.blockId = blockId;
         this.noPadding = atom(true);
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.blockAtom = WOS.getGulinObjectAtom<Block>(`block:${blockId}`);
         this.url = atom();
         const defaultUrlAtom = getSettingsKeyAtom("web:defaulturl");
         this.homepageUrl = atom((get) => {
@@ -339,14 +339,14 @@ export class WebViewModel implements ViewModel {
     }
 
     handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-        const waveEvent = adaptFromReactOrNativeKeyEvent(event);
-        if (checkKeyPressed(waveEvent, "Enter")) {
+        const gulinEvent = adaptFromReactOrNativeKeyEvent(event);
+        if (checkKeyPressed(gulinEvent, "Enter")) {
             const url = globalStore.get(this.url);
             this.loadUrl(url, "enter");
             this.urlInputRef.current?.blur();
             return;
         }
-        if (checkKeyPressed(waveEvent, "Escape")) {
+        if (checkKeyPressed(gulinEvent, "Escape")) {
             this.webviewRef.current?.focus();
         }
     }
@@ -543,7 +543,7 @@ export class WebViewModel implements ViewModel {
         }
     }
 
-    keyDownHandler(e: WaveKeyboardEvent): boolean {
+    keyDownHandler(e: GulinKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:l")) {
             this.urlInputRef?.current?.focus();
             this.urlInputRef?.current?.select();

@@ -17,17 +17,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/daystr"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/util/daystr"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
-const WCloudEndpoint = "https://api.waveterm.dev/central"
+const WCloudEndpoint = "https://api.gulin.dev/central"
 const WCloudEndpointVarName = "WCLOUD_ENDPOINT"
-const WCloudWSEndpoint = "wss://wsapi.waveterm.dev/"
+const WCloudWSEndpoint = "wss://wsapi.gulin.dev/"
 const WCloudWSEndpointVarName = "WCLOUD_WS_ENDPOINT"
-const WCloudPingEndpoint = "https://ping.waveterm.dev/central"
+const WCloudPingEndpoint = "https://ping.gulin.dev/central"
 const WCloudPingEndpointVarName = "WCLOUD_PING_ENDPOINT"
 
 var WCloudWSEndpoint_VarCache string
@@ -71,7 +71,7 @@ func CacheAndRemoveEnvVars() error {
 }
 
 func checkEndpointVar(endpoint string, debugName string, varName string) error {
-	if !wavebase.IsDevMode() {
+	if !gulinbase.IsDevMode() {
 		return nil
 	}
 	if endpoint == "" || !strings.HasPrefix(endpoint, "https://") {
@@ -81,7 +81,7 @@ func checkEndpointVar(endpoint string, debugName string, varName string) error {
 }
 
 func checkWSEndpointVar(endpoint string, debugName string, varName string) error {
-	if !wavebase.IsDevMode() {
+	if !gulinbase.IsDevMode() {
 		return nil
 	}
 	log.Printf("checking endpoint %q\n", endpoint)
@@ -92,7 +92,7 @@ func checkWSEndpointVar(endpoint string, debugName string, varName string) error
 }
 
 func GetEndpoint() string {
-	if !wavebase.IsDevMode() {
+	if !gulinbase.IsDevMode() {
 		return WCloudEndpoint
 	}
 	endpoint := WCloudEndpoint_VarCache
@@ -100,7 +100,7 @@ func GetEndpoint() string {
 }
 
 func GetWSEndpoint() string {
-	if !wavebase.IsDevMode() {
+	if !gulinbase.IsDevMode() {
 		return WCloudWSEndpoint
 	}
 	endpoint := WCloudWSEndpoint_VarCache
@@ -108,7 +108,7 @@ func GetWSEndpoint() string {
 }
 
 func GetPingEndpoint() string {
-	if !wavebase.IsDevMode() {
+	if !gulinbase.IsDevMode() {
 		return WCloudPingEndpoint
 	}
 	endpoint := WCloudPingEndpoint_VarCache
@@ -316,8 +316,8 @@ func SendDiagnosticPing(ctx context.Context, clientId string, usageTelemetry boo
 	localDate := time.Now().Format("2006-01-02")
 	input := PingInputType{
 		ClientId:       clientId,
-		Arch:           wavebase.ClientArch(),
-		Version:        "v" + wavebase.WaveVersion,
+		Arch:           gulinbase.ClientArch(),
+		Version:        "v" + gulinbase.GulinVersion,
 		LocalDate:      localDate,
 		UsageTelemetry: usageTelemetry,
 	}

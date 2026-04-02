@@ -32,8 +32,9 @@ declare global {
         "ai:azuredeployment"?: string;
         "ai:capabilities"?: string[];
         "ai:switchcompat"?: string[];
-        "waveai:cloud"?: boolean;
-        "waveai:premium"?: boolean;
+        "gulinai:cloud"?: boolean;
+        "gulinai:premium"?: boolean;
+        "ai:bridge-provider"?: string;
     };
 
     // wconfig.AIModeConfigUpdate
@@ -54,8 +55,8 @@ declare global {
         fgminutes?: number;
         activeminutes?: number;
         openminutes?: number;
-        waveaifgminutes?: number;
-        waveaiactiveminutes?: number;
+        gulinaifgminutes?: number;
+        gulinaiactiveminutes?: number;
         numtabs?: number;
         newtab?: number;
         numblocks?: number;
@@ -107,8 +108,8 @@ declare global {
         iconcolor: string;
     };
 
-    // waveobj.Block
-    type Block = WaveObj & {
+    // gulinobj.Block
+    type Block = GulinObj & {
         parentoref?: string;
         runtimeopts?: RuntimeOpts;
         stickers?: StickerType[];
@@ -126,7 +127,7 @@ declare global {
         tsunamiport?: number;
     };
 
-    // waveobj.BlockDef
+    // gulinobj.BlockDef
     type BlockDef = {
         files?: {[key: string]: FileDef};
         meta?: MetaType;
@@ -138,7 +139,7 @@ declare global {
         tabid: string;
         workspaceid: string;
         block: Block;
-        files: WaveFileInfo[];
+        files: GulinFileInfo[];
     };
 
     // wshrpc.BlockJobStatusData
@@ -181,8 +182,8 @@ declare global {
         secretbindingscomplete: boolean;
     };
 
-    // waveobj.Client
-    type Client = WaveObj & {
+    // gulinobj.Client
+    type Client = GulinObj & {
         windowids: string[];
         tosagreed?: number;
         hasoldhistory?: boolean;
@@ -342,6 +343,11 @@ declare global {
         restoretofilename: string;
     };
 
+    // wshrpc.CommandGetGulinAIChatData
+    type CommandGetGulinAIChatData = {
+        chatid: string;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -357,9 +363,51 @@ declare global {
         filename?: string;
     };
 
-    // wshrpc.CommandGetWaveAIChatData
-    type CommandGetWaveAIChatData = {
+    // wshrpc.CommandGulinAIAddContextData
+    type CommandGulinAIAddContextData = {
+        files?: AIAttachedFile[];
+        text?: string;
+        submit?: boolean;
+        newchat?: boolean;
+    };
+
+    // wshrpc.CommandGulinAIGetToolDiffData
+    type CommandGulinAIGetToolDiffData = {
         chatid: string;
+        toolcallid: string;
+    };
+
+    // wshrpc.CommandGulinAIGetToolDiffRtnData
+    type CommandGulinAIGetToolDiffRtnData = {
+        originalcontents64: string;
+        modifiedcontents64: string;
+    };
+
+    // wshrpc.CommandGulinAIToolApproveData
+    type CommandGulinAIToolApproveData = {
+        toolcallid: string;
+        approval?: string;
+    };
+
+    // wshrpc.CommandGulinBridgeLoginData
+    type CommandGulinBridgeLoginData = {
+        url: string;
+        email: string;
+        password: string;
+    };
+
+    // wshrpc.CommandGulinBridgeRegisterData
+    type CommandGulinBridgeRegisterData = {
+        url: string;
+        email: string;
+        password: string;
+    };
+
+    // wshrpc.CommandGulinFileReadStreamData
+    type CommandGulinFileReadStreamData = {
+        zoneid: string;
+        name: string;
+        streammeta: StreamMeta;
     };
 
     // wshrpc.CommandJobCmdExitedData
@@ -652,39 +700,6 @@ declare global {
         waitms: number;
     };
 
-    // wshrpc.CommandWaveAIAddContextData
-    type CommandWaveAIAddContextData = {
-        files?: AIAttachedFile[];
-        text?: string;
-        submit?: boolean;
-        newchat?: boolean;
-    };
-
-    // wshrpc.CommandWaveAIGetToolDiffData
-    type CommandWaveAIGetToolDiffData = {
-        chatid: string;
-        toolcallid: string;
-    };
-
-    // wshrpc.CommandWaveAIGetToolDiffRtnData
-    type CommandWaveAIGetToolDiffRtnData = {
-        originalcontents64: string;
-        modifiedcontents64: string;
-    };
-
-    // wshrpc.CommandWaveAIToolApproveData
-    type CommandWaveAIToolApproveData = {
-        toolcallid: string;
-        approval?: string;
-    };
-
-    // wshrpc.CommandWaveFileReadStreamData
-    type CommandWaveFileReadStreamData = {
-        zoneid: string;
-        name: string;
-        streammeta: StreamMeta;
-    };
-
     // wshrpc.CommandWebClickData
     type CommandWebClickData = {
         workspaceid: string;
@@ -895,7 +910,7 @@ declare global {
         size?: number;
     };
 
-    // waveobj.FileDef
+    // gulinobj.FileDef
     type FileDef = {
         content?: string;
         meta?: {[key: string]: any};
@@ -966,12 +981,158 @@ declare global {
         termthemes: {[key: string]: TermThemeType};
         connections: {[key: string]: ConnKeywords};
         bookmarks: {[key: string]: WebBookmark};
-        waveai: {[key: string]: AIModeConfigType};
+        gulinai: {[key: string]: AIModeConfigType};
         configerrors: ConfigError[];
     };
 
-    // waveobj.Job
-    type Job = WaveObj & {
+    // wshrpc.GulinAIOptsType
+    type GulinAIOptsType = {
+        model: string;
+        apitype?: string;
+        apitoken: string;
+        orgid?: string;
+        apiversion?: string;
+        baseurl?: string;
+        proxyurl?: string;
+        maxtokens?: number;
+        maxchoices?: number;
+        timeoutms?: number;
+    };
+
+    // wshrpc.GulinAIPacketType
+    type GulinAIPacketType = {
+        type: string;
+        model?: string;
+        created?: number;
+        finish_reason?: string;
+        usage?: GulinAIUsageType;
+        index?: number;
+        text?: string;
+        error?: string;
+    };
+
+    // wshrpc.GulinAIPromptMessageType
+    type GulinAIPromptMessageType = {
+        role: string;
+        content: string;
+        name?: string;
+    };
+
+    // wshrpc.GulinAIStreamRequest
+    type GulinAIStreamRequest = {
+        clientid?: string;
+        opts: GulinAIOptsType;
+        prompt: GulinAIPromptMessageType[];
+    };
+
+    // wshrpc.GulinAIUsageType
+    type GulinAIUsageType = {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+    };
+
+
+    // filestore.GulinFile
+    type GulinFile = {
+        zoneid: string;
+        name: string;
+        opts: FileOpts;
+        createdts: number;
+        size: number;
+        modts: number;
+        meta: {[key: string]: any};
+    };
+
+    // wshrpc.GulinFileInfo
+    type GulinFileInfo = {
+        zoneid: string;
+        name: string;
+        opts: FileOpts;
+        createdts: number;
+        size: number;
+        modts: number;
+        meta: {[key: string]: any};
+    };
+
+    // wshrpc.GulinInfoData
+    type GulinInfoData = {
+        version: string;
+        clientid: string;
+        buildtime: string;
+        configdir: string;
+        datadir: string;
+    };
+
+    // vdom.GulinKeyboardEvent
+    type GulinKeyboardEvent = {
+        type: "keydown"|"keyup"|"keypress"|"unknown";
+        key: string;
+        code: string;
+        repeat?: boolean;
+        location?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
+    };
+
+    // wshrpc.GulinNotificationOptions
+    type GulinNotificationOptions = {
+        title?: string;
+        body?: string;
+        silent?: boolean;
+    };
+
+    // gulinobj.GulinObj
+    type GulinObj = {
+        otype: string;
+        oid: string;
+        version: number;
+        meta: MetaType;
+    };
+
+    // gulinobj.GulinObjUpdate
+    type GulinObjUpdate = {
+        updatetype: string;
+        otype: string;
+        oid: string;
+        obj?: GulinObj;
+    };
+
+    // vdom.GulinPointerData
+    type GulinPointerData = {
+        button: number;
+        buttons: number;
+        clientx?: number;
+        clienty?: number;
+        pagex?: number;
+        pagey?: number;
+        screenx?: number;
+        screeny?: number;
+        movementx?: number;
+        movementy?: number;
+        shift?: boolean;
+        control?: boolean;
+        alt?: boolean;
+        meta?: boolean;
+        cmd?: boolean;
+        option?: boolean;
+    };
+
+    // gulinobj.Window
+    type GulinWindow = GulinObj & {
+        workspaceid: string;
+        isnew?: boolean;
+        pos: Point;
+        winsize: WinSize;
+        lastfocusts: number;
+    };
+
+    // gulinobj.Job
+    type Job = GulinObj & {
         connection: string;
         jobkind: string;
         cmd: string;
@@ -979,7 +1140,7 @@ declare global {
         cmdenv?: {[key: string]: string};
         jobauthtoken: string;
         attachedblockid?: string;
-        waveversion?: string;
+        gulinversion?: string;
         terminateonreconnect?: boolean;
         jobmanagerstatus: string;
         jobmanagerdonereason?: string;
@@ -1003,7 +1164,7 @@ declare global {
         jobmanagerstatus: string;
     };
 
-    // waveobj.LayoutActionData
+    // gulinobj.LayoutActionData
     type LayoutActionData = {
         actiontype: string;
         actionid: string;
@@ -1017,8 +1178,8 @@ declare global {
         position?: string;
     };
 
-    // waveobj.LayoutState
-    type LayoutState = WaveObj & {
+    // gulinobj.LayoutState
+    type LayoutState = GulinObj & {
         rootnode?: any;
         magnifiednodeid?: string;
         focusednodeid?: string;
@@ -1026,13 +1187,13 @@ declare global {
         pendingbackendactions?: LayoutActionData[];
     };
 
-    // waveobj.LeafOrderEntry
+    // gulinobj.LeafOrderEntry
     type LeafOrderEntry = {
         nodeid: string;
         blockid: string;
     };
 
-    // waveobj.MetaTSType
+    // gulinobj.MetaTSType
     type MetaType = {
         view?: string;
         controller?: string;
@@ -1106,11 +1267,11 @@ declare global {
         "bg:blendmode"?: string;
         "bg:bordercolor"?: string;
         "bg:activebordercolor"?: string;
-        "waveai:panelopen"?: boolean;
-        "waveai:panelwidth"?: number;
-        "waveai:model"?: string;
-        "waveai:chatid"?: string;
-        "waveai:widgetcontext"?: boolean;
+        "gulinai:panelopen"?: boolean;
+        "gulinai:panelwidth"?: number;
+        "gulinai:model"?: string;
+        "gulinai:chatid"?: string;
+        "gulinai:widgetcontext"?: boolean;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1166,10 +1327,10 @@ declare global {
         color: string;
     };
 
-    // waveobj.ORef
+    // gulinobj.ORef
     type ORef = string;
 
-    // waveobj.ObjRTInfo
+    // gulinobj.ObjRTInfo
     type ObjRTInfo = {
         "tsunami:appmeta"?: AppMeta;
         "tsunami:schemas"?: any;
@@ -1187,9 +1348,9 @@ declare global {
         "builder:layout"?: {[key: string]: number};
         "builder:appid"?: string;
         "builder:env"?: {[key: string]: string};
-        "waveai:chatid"?: string;
-        "waveai:mode"?: string;
-        "waveai:maxoutputtokens"?: number;
+        "gulinai:chatid"?: string;
+        "gulinai:mode"?: string;
+        "gulinai:maxoutputtokens"?: number;
     };
 
     // wshrpc.PathCommandData
@@ -1200,7 +1361,7 @@ declare global {
         tabid: string;
     };
 
-    // waveobj.Point
+    // gulinobj.Point
     type Point = {
         x: number;
         y: number;
@@ -1264,7 +1425,7 @@ declare global {
         route?: string;
     };
 
-    // waveobj.RuntimeOpts
+    // gulinobj.RuntimeOpts
     type RuntimeOpts = {
         termsize?: TermSize;
         winsize?: WinSize;
@@ -1289,7 +1450,8 @@ declare global {
         "app:disablectrlshiftarrows"?: boolean;
         "app:disablectrlshiftdisplay"?: boolean;
         "app:focusfollowscursor"?: string;
-        "feature:waveappbuilder"?: boolean;
+        "app:language"?: string;
+        "feature:gulinappbuilder"?: boolean;
         "ai:*"?: boolean;
         "ai:preset"?: string;
         "ai:apitype"?: string;
@@ -1304,8 +1466,8 @@ declare global {
         "ai:proxyurl"?: string;
         "ai:fontsize"?: number;
         "ai:fixedfontsize"?: number;
-        "waveai:showcloudmodes"?: boolean;
-        "waveai:defaultmode"?: string;
+        "gulinai:showcloudmodes"?: boolean;
+        "gulinai:defaultmode"?: string;
         "term:*"?: boolean;
         "term:fontsize"?: number;
         "term:fontfamily"?: string;
@@ -1380,22 +1542,27 @@ declare global {
         "tsunami:sdkreplacepath"?: string;
         "tsunami:sdkversion"?: string;
         "tsunami:gopath"?: string;
+        "gulinbridge:enabled"?: boolean;
+        "gulinbridge:url"?: string;
+        "gulinbridge:email"?: string;
+        "gulinbridge:passwordsecretname"?: string;
+        "gulinbridge:tokensecretname"?: string;
     };
 
-    // waveobj.StickerClickOptsType
+    // gulinobj.StickerClickOptsType
     type StickerClickOptsType = {
         sendinput?: string;
         createblock?: BlockDef;
     };
 
-    // waveobj.StickerDisplayOptsType
+    // gulinobj.StickerDisplayOptsType
     type StickerDisplayOptsType = {
         icon: string;
         imgsrc: string;
         svgblob?: string;
     };
 
-    // waveobj.StickerType
+    // gulinobj.StickerType
     type StickerType = {
         stickertype: string;
         style: {[key: string]: any};
@@ -1470,8 +1637,8 @@ declare global {
         "activity:activeminutes"?: number;
         "activity:fgminutes"?: number;
         "activity:openminutes"?: number;
-        "activity:waveaiactiveminutes"?: number;
-        "activity:waveaifgminutes"?: number;
+        "activity:gulinaiactiveminutes"?: number;
+        "activity:gulinaifgminutes"?: number;
         "activity:termcommandsrun"?: number;
         "activity:termcommands:remote"?: number;
         "activity:termcommands:durable"?: number;
@@ -1492,7 +1659,7 @@ declare global {
         "conn:errorcode"?: string;
         "conn:suberrorcode"?: string;
         "conn:contexterror"?: boolean;
-        "onboarding:feature"?: "waveai" | "durable" | "magnify" | "wsh";
+        "onboarding:feature"?: "gulinai" | "durable" | "magnify" | "wsh";
         "onboarding:version"?: string;
         "onboarding:githubstar"?: "already" | "star" | "later";
         "display:height"?: number;
@@ -1509,33 +1676,33 @@ declare global {
         "count:jobs"?: number;
         "count:jobsconnected"?: number;
         "count:views"?: {[key: string]: number};
-        "waveai:apitype"?: string;
-        "waveai:model"?: string;
-        "waveai:chatid"?: string;
-        "waveai:stepnum"?: number;
-        "waveai:inputtokens"?: number;
-        "waveai:outputtokens"?: number;
-        "waveai:nativewebsearchcount"?: number;
-        "waveai:requestcount"?: number;
-        "waveai:toolusecount"?: number;
-        "waveai:tooluseerrorcount"?: number;
-        "waveai:tooldetail"?: {[key: string]: number};
-        "waveai:premiumreq"?: number;
-        "waveai:proxyreq"?: number;
-        "waveai:haderror"?: boolean;
-        "waveai:imagecount"?: number;
-        "waveai:pdfcount"?: number;
-        "waveai:textdoccount"?: number;
-        "waveai:textlen"?: number;
-        "waveai:firstbytems"?: number;
-        "waveai:requestdurms"?: number;
-        "waveai:widgetaccess"?: boolean;
-        "waveai:thinkinglevel"?: string;
-        "waveai:mode"?: string;
-        "waveai:provider"?: string;
-        "waveai:islocal"?: boolean;
-        "waveai:feedback"?: "good" | "bad";
-        "waveai:action"?: string;
+        "gulinai:apitype"?: string;
+        "gulinai:model"?: string;
+        "gulinai:chatid"?: string;
+        "gulinai:stepnum"?: number;
+        "gulinai:inputtokens"?: number;
+        "gulinai:outputtokens"?: number;
+        "gulinai:nativewebsearchcount"?: number;
+        "gulinai:requestcount"?: number;
+        "gulinai:toolusecount"?: number;
+        "gulinai:tooluseerrorcount"?: number;
+        "gulinai:tooldetail"?: {[key: string]: number};
+        "gulinai:premiumreq"?: number;
+        "gulinai:proxyreq"?: number;
+        "gulinai:haderror"?: boolean;
+        "gulinai:imagecount"?: number;
+        "gulinai:pdfcount"?: number;
+        "gulinai:textdoccount"?: number;
+        "gulinai:textlen"?: number;
+        "gulinai:firstbytems"?: number;
+        "gulinai:requestdurms"?: number;
+        "gulinai:widgetaccess"?: boolean;
+        "gulinai:thinkinglevel"?: string;
+        "gulinai:mode"?: string;
+        "gulinai:provider"?: string;
+        "gulinai:islocal"?: boolean;
+        "gulinai:feedback"?: "good" | "bad";
+        "gulinai:action"?: string;
         "job:donereason"?: string;
         "job:kind"?: string;
         $set?: TEventUserProps;
@@ -1566,8 +1733,8 @@ declare global {
         "settings:transparent"?: boolean;
     };
 
-    // waveobj.Tab
-    type Tab = WaveObj & {
+    // gulinobj.Tab
+    type Tab = GulinObj & {
         name: string;
         layoutstate: string;
         blockids: string[];
@@ -1588,7 +1755,7 @@ declare global {
         indicator: TabIndicator;
     };
 
-    // waveobj.TermSize
+    // gulinobj.TermSize
     type TermSize = {
         rows: number;
         cols: number;
@@ -1637,7 +1804,7 @@ declare global {
         messages: UIMessage[];
     };
 
-    // waveobj.UIContext
+    // gulinobj.UIContext
     type UIContext = {
         windowid: string;
         activetabid: string;
@@ -1740,7 +1907,7 @@ declare global {
 
     // vdom.VDomElem
     type VDomElem = {
-        waveid?: string;
+        gulinid?: string;
         tag: string;
         props?: {[key: string]: any};
         children?: VDomElem[];
@@ -1749,15 +1916,15 @@ declare global {
 
     // vdom.VDomEvent
     type VDomEvent = {
-        waveid: string;
+        gulinid: string;
         eventtype: string;
         globaleventtype?: string;
         targetvalue?: string;
         targetchecked?: boolean;
         targetname?: string;
         targetid?: string;
-        keydata?: WaveKeyboardEvent;
-        mousedata?: WavePointerData;
+        keydata?: GulinKeyboardEvent;
+        mousedata?: GulinPointerData;
     };
 
     // vdom.VDomFrontendUpdate
@@ -1839,8 +2006,8 @@ declare global {
     // vdom.VDomRenderUpdate
     type VDomRenderUpdate = {
         updatetype: "root"|"append"|"replace"|"remove"|"insert";
-        waveid?: string;
-        vdomwaveid?: string;
+        gulinid?: string;
+        vdomgulinid?: string;
         vdom?: VDomElem;
         index?: number;
     };
@@ -1866,7 +2033,7 @@ declare global {
 
     // vdom.VDomTransferElem
     type VDomTransferElem = {
-        waveid?: string;
+        gulinid?: string;
         tag: string;
         props?: {[key: string]: any};
         children?: string[];
@@ -1918,152 +2085,6 @@ declare global {
         fullconfig: FullConfigType;
     };
 
-    // wshrpc.WaveAIOptsType
-    type WaveAIOptsType = {
-        model: string;
-        apitype?: string;
-        apitoken: string;
-        orgid?: string;
-        apiversion?: string;
-        baseurl?: string;
-        proxyurl?: string;
-        maxtokens?: number;
-        maxchoices?: number;
-        timeoutms?: number;
-    };
-
-    // wshrpc.WaveAIPacketType
-    type WaveAIPacketType = {
-        type: string;
-        model?: string;
-        created?: number;
-        finish_reason?: string;
-        usage?: WaveAIUsageType;
-        index?: number;
-        text?: string;
-        error?: string;
-    };
-
-    // wshrpc.WaveAIPromptMessageType
-    type WaveAIPromptMessageType = {
-        role: string;
-        content: string;
-        name?: string;
-    };
-
-    // wshrpc.WaveAIStreamRequest
-    type WaveAIStreamRequest = {
-        clientid?: string;
-        opts: WaveAIOptsType;
-        prompt: WaveAIPromptMessageType[];
-    };
-
-    // wshrpc.WaveAIUsageType
-    type WaveAIUsageType = {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        total_tokens?: number;
-    };
-
-
-    // filestore.WaveFile
-    type WaveFile = {
-        zoneid: string;
-        name: string;
-        opts: FileOpts;
-        createdts: number;
-        size: number;
-        modts: number;
-        meta: {[key: string]: any};
-    };
-
-    // wshrpc.WaveFileInfo
-    type WaveFileInfo = {
-        zoneid: string;
-        name: string;
-        opts: FileOpts;
-        createdts: number;
-        size: number;
-        modts: number;
-        meta: {[key: string]: any};
-    };
-
-    // wshrpc.WaveInfoData
-    type WaveInfoData = {
-        version: string;
-        clientid: string;
-        buildtime: string;
-        configdir: string;
-        datadir: string;
-    };
-
-    // vdom.WaveKeyboardEvent
-    type WaveKeyboardEvent = {
-        type: "keydown"|"keyup"|"keypress"|"unknown";
-        key: string;
-        code: string;
-        repeat?: boolean;
-        location?: number;
-        shift?: boolean;
-        control?: boolean;
-        alt?: boolean;
-        meta?: boolean;
-        cmd?: boolean;
-        option?: boolean;
-    };
-
-    // wshrpc.WaveNotificationOptions
-    type WaveNotificationOptions = {
-        title?: string;
-        body?: string;
-        silent?: boolean;
-    };
-
-    // waveobj.WaveObj
-    type WaveObj = {
-        otype: string;
-        oid: string;
-        version: number;
-        meta: MetaType;
-    };
-
-    // waveobj.WaveObjUpdate
-    type WaveObjUpdate = {
-        updatetype: string;
-        otype: string;
-        oid: string;
-        obj?: WaveObj;
-    };
-
-    // vdom.WavePointerData
-    type WavePointerData = {
-        button: number;
-        buttons: number;
-        clientx?: number;
-        clienty?: number;
-        pagex?: number;
-        pagey?: number;
-        screenx?: number;
-        screeny?: number;
-        movementx?: number;
-        movementy?: number;
-        shift?: boolean;
-        control?: boolean;
-        alt?: boolean;
-        meta?: boolean;
-        cmd?: boolean;
-        option?: boolean;
-    };
-
-    // waveobj.Window
-    type WaveWindow = WaveObj & {
-        workspaceid: string;
-        isnew?: boolean;
-        pos: Point;
-        winsize: WinSize;
-        lastfocusts: number;
-    };
-
     // wconfig.WebBookmark
     type WebBookmark = {
         url: string;
@@ -2087,7 +2108,7 @@ declare global {
         success?: boolean;
         error?: string;
         data?: any;
-        updates?: WaveObjUpdate[];
+        updates?: GulinObjUpdate[];
     };
 
     // wshrpc.WebSelectorOpts
@@ -2109,14 +2130,14 @@ declare global {
         blockdef: BlockDef;
     };
 
-    // waveobj.WinSize
+    // gulinobj.WinSize
     type WinSize = {
         width: number;
         height: number;
     };
 
-    // waveobj.Workspace
-    type Workspace = WaveObj & {
+    // gulinobj.Workspace
+    type Workspace = GulinObj & {
         name?: string;
         icon?: string;
         color?: string;
@@ -2130,7 +2151,7 @@ declare global {
         workspacedata: Workspace;
     };
 
-    // waveobj.WorkspaceListEntry
+    // gulinobj.WorkspaceListEntry
     type WorkspaceListEntry = {
         workspaceid: string;
         windowid: string;

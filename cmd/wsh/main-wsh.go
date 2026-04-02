@@ -4,16 +4,16 @@
 package main
 
 import (
-	"github.com/wavetermdev/waveterm/cmd/wsh/cmd"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/cmd/wsh/cmd"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 // set by main-server.go
-var WaveVersion = "0.0.0"
+var GulinVersion = "0.0.0"
 var BuildTime = "0"
 
 func main() {
-	wavebase.WaveVersion = WaveVersion
-	wavebase.BuildTime = BuildTime
+	gulinbase.GulinVersion = GulinVersion
+	gulinbase.BuildTime = BuildTime
 	cmd.Execute()
 }

@@ -100,17 +100,17 @@
                 gap: 5px;
             }
 
-            .wave-iconbutton.edit {
+            .gulin-iconbutton.edit {
                 visibility: hidden;
             }
 
-            .wave-iconbutton.window {
+            .gulin-iconbutton.window {
                 cursor: default;
                 opacity: 1 !important;
             }
         }
 
-        &:hover .wave-iconbutton.edit {
+        &:hover .gulin-iconbutton.edit {
             visibility: visible;
         }
 

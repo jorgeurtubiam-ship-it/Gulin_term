@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/utilds"
+	"github.com/gulindev/gulin/pkg/utilds"
 )
 
 // see /aiprompts/usechat-streamingproto.md for protocol
@@ -398,9 +398,10 @@ func (h *SSEHandlerCh) AiMsgTextEnd(textId string) error {
 	return h.WriteJsonData(resp)
 }
 
-func (h *SSEHandlerCh) AiMsgFinish(finishReason string, usage interface{}) error {
+func (h *SSEHandlerCh) AiMsgFinish(messageId string) error {
 	resp := map[string]interface{}{
 		"type": AiMsgFinish,
+		"id":   messageId,
 	}
 	return h.WriteJsonData(resp)
 }

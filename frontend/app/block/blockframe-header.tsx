@@ -170,7 +170,7 @@ const BlockFrame_Header = ({
     changeConnModalAtom,
     error,
 }: BlockFrameProps & { changeConnModalAtom: jotai.PrimitiveAtom<boolean>; error?: Error }) => {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+    const [blockData] = WOS.useGulinObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
     let viewName = util.useAtomValueSafe(viewModel?.viewName) ?? blockViewToName(blockData?.meta?.view);
     let viewIconUnion = util.useAtomValueSafe(viewModel?.viewIcon) ?? blockViewToIcon(blockData?.meta?.view);
     const preIconButton = util.useAtomValueSafe(viewModel?.preIconButton);

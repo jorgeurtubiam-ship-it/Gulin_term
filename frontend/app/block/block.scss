@@ -207,12 +207,12 @@
                             }
                         }
 
-                        .wave-button {
+                        .gulin-button {
                             margin-left: 3px;
                         }
 
                         // webview specific. for refresh button
-                        .wave-iconbutton {
+                        .gulin-iconbutton {
                             height: 100%;
                             width: 27px;
                             display: flex;
@@ -222,7 +222,7 @@
                     }
 
                     .menubutton {
-                        .wave-button {
+                        .gulin-button {
                             font-size: 11px;
                         }
                     }
@@ -232,7 +232,7 @@
                     display: flex;
                     flex-shrink: 0;
 
-                    .wave-iconbutton {
+                    .gulin-iconbutton {
                         display: flex;
                         width: 24px;
                         padding: 4px 6px;
@@ -264,7 +264,7 @@
                 align-items: center;
                 justify-content: center;
 
-                .wave-iconbutton {
+                .gulin-iconbutton {
                     opacity: 0.7;
                     font-size: 45px;
                     margin: -30px 0 0 0;
@@ -390,7 +390,7 @@
                         }
                     }
 
-                    .wave-button:last-child {
+                    .gulin-button:last-child {
                         margin-top: 1.5px;
                     }
                 }

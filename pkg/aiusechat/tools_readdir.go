@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/fileutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 const ReadDirDefaultMaxEntries = 500
@@ -61,7 +61,7 @@ func verifyReadDirInput(input any, toolUseData *uctypes.UIMessageDataToolUse) er
 		return err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Path)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Path)
 	if err != nil {
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -88,7 +88,7 @@ func readDirCallback(ctx context.Context, input any, toolUseData *uctypes.UIMess
 		return nil, err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Path)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -167,7 +167,7 @@ func GetReadDirToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("reading directory %q (max_entries: %d)", parsed.Path, *parsed.MaxEntries)
 		},
 		ToolAnyCallback: readDirCallback,
-		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
 			if strings.HasSuffix(chatOpts.Config.AIMode, "@act") {
 				return uctypes.ApprovalAutoApproved
 			}

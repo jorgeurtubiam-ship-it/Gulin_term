@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var viewMagnified bool
@@ -55,7 +55,7 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 	tabId := getTabIdFromEnv()
 	if tabId == "" {
-		return fmt.Errorf("no WAVETERM_TABID env var set")
+		return fmt.Errorf("no GULIN_TABID env var set")
 	}
 	fileArg := args[0]
 	conn := RpcContext.Conn
@@ -63,10 +63,10 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	if strings.HasPrefix(fileArg, "http://") || strings.HasPrefix(fileArg, "https://") {
 		wshCmd = &wshrpc.CommandCreateBlockData{
 			TabId: tabId,
-			BlockDef: &waveobj.BlockDef{
+			BlockDef: &gulinobj.BlockDef{
 				Meta: map[string]any{
-					waveobj.MetaKey_View: "web",
-					waveobj.MetaKey_Url:  fileArg,
+					gulinobj.MetaKey_View: "web",
+					gulinobj.MetaKey_Url:  fileArg,
 				},
 			},
 			Magnified: viewMagnified,
@@ -90,20 +90,20 @@ func viewRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		}
 		wshCmd = &wshrpc.CommandCreateBlockData{
 			TabId: tabId,
-			BlockDef: &waveobj.BlockDef{
+			BlockDef: &gulinobj.BlockDef{
 				Meta: map[string]interface{}{
-					waveobj.MetaKey_View: "preview",
-					waveobj.MetaKey_File: absFile,
+					gulinobj.MetaKey_View: "preview",
+					gulinobj.MetaKey_File: absFile,
 				},
 			},
 			Magnified: viewMagnified,
 			Focused:   true,
 		}
 		if cmdName == "edit" {
-			wshCmd.BlockDef.Meta[waveobj.MetaKey_Edit] = true
+			wshCmd.BlockDef.Meta[gulinobj.MetaKey_Edit] = true
 		}
 		if conn != "" {
-			wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = conn
+			wshCmd.BlockDef.Meta[gulinobj.MetaKey_Connection] = conn
 		}
 	}
 	_, err := wshclient.CreateBlockCommand(RpcClient, *wshCmd, &wshrpc.RpcOpts{Timeout: 2000})

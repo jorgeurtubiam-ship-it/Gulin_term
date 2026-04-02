@@ -5,10 +5,10 @@ import { cn } from "@/util/util";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { formatFileSize, getFileIcon } from "./ai-utils";
-import type { WaveAIModel } from "./waveai-model";
+import type { GulinAIModel } from "./gulinai-model";
 
 interface AIDroppedFilesProps {
-    model: WaveAIModel;
+    model: GulinAIModel;
 }
 
 export const AIDroppedFiles = memo(({ model }: AIDroppedFilesProps) => {

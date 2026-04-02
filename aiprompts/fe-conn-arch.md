@@ -1,4 +1,4 @@
-# Wave Terminal Frontend Connection Architecture
+# Gulin Terminal Frontend Connection Architecture
 
 ## Overview
 
@@ -49,7 +49,7 @@ const ConnStatusMapAtom = atom(new Map<string, PrimitiveAtom<ConnStatus>>())
 
 - Global registry of connection status atoms
 - One atom per connection (keyed by connection name)
-- Backend updates status via wave events
+- Backend updates status via gulin events
 - Frontend components subscribe to individual connection atoms
 
 **getConnStatusAtom()**
@@ -396,7 +396,7 @@ sendDataToController(data: string) {
 
 ### Hierarchical Configuration System
 
-Wave uses a three-level config hierarchy for connections:
+Gulin uses a three-level config hierarchy for connections:
 
 1. **Global Settings** (`settings`)
 2. **Connection-Level Config** (`connections[connName]`)
@@ -517,7 +517,7 @@ ConnDisconnectCommand(
 SetMetaCommand(
     client: RpcClient,
     data: {
-        oref: string,           // WaveObject reference
+        oref: string,           // GulinObject reference
         meta: MetaType          // Metadata updates
     }
 ): Promise<void>
@@ -590,11 +590,11 @@ ControllerRestartCommand(
 
 ## Event-Driven Updates
 
-### Wave Event Subscriptions
+### Gulin Event Subscriptions
 
 **Connection Status Updates:**
 ```typescript
-waveEventSubscribe({
+gulinEventSubscribe({
     eventType: "connstatus",
     handler: (event) => {
         const status: ConnStatus = event.data
@@ -608,7 +608,7 @@ waveEventSubscribe({
 
 **Configuration Updates:**
 ```typescript
-waveEventSubscribe({
+gulinEventSubscribe({
     eventType: "config",
     handler: (event) => {
         const fullConfig = event.data.fullconfig
@@ -631,7 +631,7 @@ User Action: Click connection button → select new connection
                         ↓
               RpcApi.SetMetaCommand({ connection: newConn })
                         ↓
-         Backend updates block metadata → emits waveobj:update
+         Backend updates block metadata → emits gulinobj:update
                         ↓
               Frontend WOS updates blockAtom
                         ↓
@@ -995,7 +995,7 @@ The frontend connection architecture is **reactive and declarative**:
 1. **Backend owns connection state** - All connection management happens in Go
 2. **Frontend observes state** - Jotai atoms mirror backend state
 3. **User actions trigger backend** - RPC commands initiate backend operations
-4. **Events flow back to frontend** - Backend pushes updates via wave events
+4. **Events flow back to frontend** - Backend pushes updates via gulin events
 5. **View models isolate concerns** - Each view manages its own connection needs
 6. **Block controllers bridge the gap** - Backend controllers use connections for process execution
 

@@ -1,12 +1,12 @@
-# Wave AI Modes Configuration - Visual Editor Architecture
+# Gulin AI Modes Configuration - Visual Editor Architecture
 
 ## Overview
 
-Wave Terminal's AI modes configuration system allows users to define custom AI assistants with different providers, models, and capabilities. The configuration is stored in `~/.waveterm/config/waveai.json` and provides a flexible way to configure multiple AI modes that appear in the Wave AI panel.
+Gulin Terminal's AI modes configuration system allows users to define custom AI assistants with different providers, models, and capabilities. The configuration is stored in `~/.gulin/config/gulinai.json` and provides a flexible way to configure multiple AI modes that appear in the Gulin AI panel.
 
 **Key Design Decisions:**
 - Visual editor works on **valid JSON only** - if JSON is invalid, fall back to JSON editor
-- Default modes (`waveai@quick`, `waveai@balanced`, `waveai@deep`) are **read-only** in visual editor
+- Default modes (`gulinai@quick`, `gulinai@balanced`, `gulinai@deep`) are **read-only** in visual editor
 - Edits modify the **in-memory JSON directly** - changes saved via existing save button
 - Mode keys are **auto-generated** from provider + model or random ID (last 4-6 chars)
 - Secrets use **fixed naming convention** per provider (e.g., `OPENAI_KEY`, `OPENROUTER_KEY`)
@@ -28,7 +28,7 @@ type AIModeConfigType struct {
     DisplayDescription string   `json:"display:description,omitempty"`
     
     // Provider & Model
-    Provider           string   `json:"ai:provider,omitempty"`     // wave, google, openrouter, openai, azure, azure-legacy, custom
+    Provider           string   `json:"ai:provider,omitempty"`     // gulin, google, openrouter, openai, azure, azure-legacy, custom
     APIType            string   `json:"ai:apitype"`                // Required: anthropic-messages, openai-responses, openai-chat
     Model              string   `json:"ai:model"`                  // Required
     
@@ -46,24 +46,24 @@ type AIModeConfigType struct {
     AzureResourceName  string   `json:"ai:azureresourcename,omitempty"`
     AzureDeployment    string   `json:"ai:azuredeployment,omitempty"`
     
-    // Wave AI Specific
-    WaveAICloud        bool     `json:"waveai:cloud,omitempty"`
-    WaveAIPremium      bool     `json:"waveai:premium,omitempty"`
+    // Gulin AI Specific
+    GulinAICloud        bool     `json:"gulinai:cloud,omitempty"`
+    GulinAIPremium      bool     `json:"gulinai:premium,omitempty"`
 }
 ```
 
-**Storage:** `FullConfigType.WaveAIModes` - `map[string]AIModeConfigType`
+**Storage:** `FullConfigType.GulinAIModes` - `map[string]AIModeConfigType`
 
-Keys follow pattern: `provider@modename` (e.g., `waveai@quick`, `openai@gpt4`)
+Keys follow pattern: `provider@modename` (e.g., `gulinai@quick`, `openai@gpt4`)
 
 ### Provider Types & Defaults
 
 **Defined in:** `pkg/aiusechat/uctypes/uctypes.go:27-35`
 
-1. **wave** - Wave AI Cloud service
-   - Auto-sets: `waveai:cloud = true`, endpoint from env or default
-   - Default endpoint: `https://cfapi.waveterm.dev/api/waveai`
-   - Used for Wave's hosted AI modes
+1. **gulin** - Gulin AI Cloud service
+   - Auto-sets: `gulinai:cloud = true`, endpoint from env or default
+   - Default endpoint: `https://cfapi.gulin.dev/api/gulinai`
+   - Used for Gulin's hosted AI modes
 
 2. **openai** - OpenAI API
    - Auto-sets: endpoint `https://api.openai.com/v1`
@@ -93,21 +93,21 @@ Keys follow pattern: `provider@modename` (e.g., `waveai@quick`, `openai@gpt4`)
 
 ### Default Configuration
 
-**Location:** `pkg/wconfig/defaultconfig/waveai.json`
+**Location:** `pkg/wconfig/defaultconfig/gulinai.json`
 
-Ships with three Wave AI modes:
-- `waveai@quick` - Fast responses (gpt-5-mini, low thinking)
-- `waveai@balanced` - Balanced (gpt-5.1, low thinking) [premium]
-- `waveai@deep` - Maximum capability (gpt-5.1, medium thinking) [premium]
+Ships with three Gulin AI modes:
+- `gulinai@quick` - Fast responses (gpt-5-mini, low thinking)
+- `gulinai@balanced` - Balanced (gpt-5.1, low thinking) [premium]
+- `gulinai@deep` - Maximum capability (gpt-5.1, medium thinking) [premium]
 
 ### Current UI State
 
-**Location:** `frontend/app/view/waveconfig/waveaivisual.tsx`
+**Location:** `frontend/app/view/gulinconfig/gulinaivisual.tsx`
 
 Currently shows placeholder: "Visual editor coming soon..."
 
 The component receives:
-- `model: WaveConfigViewModel` - Access to config file operations
+- `model: GulinConfigViewModel` - Access to config file operations
 - Existing patterns from `SecretsContent` for list/detail views
 
 ## Visual Editor Design Plan
@@ -116,12 +116,12 @@ The component receives:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  Wave AI Modes Configuration                            │
+│  Gulin AI Modes Configuration                            │
 │  ┌───────────────┐  ┌──────────────────────────────┐   │
 │  │               │  │                              │   │
 │  │  Mode List    │  │    Mode Editor/Viewer        │   │
 │  │               │  │                              │   │
-│  │  [Quick]      │  │  Provider: [wave ▼]         │   │
+│  │  [Quick]      │  │  Provider: [gulin ▼]         │   │
 │  │  [Balanced]   │  │                              │   │
 │  │  [Deep]       │  │  Display Configuration       │   │
 │  │  [Custom]     │  │  ├─ Name: ...                │   │
@@ -139,7 +139,7 @@ The component receives:
 ### Component Structure
 
 ```typescript
-WaveAIVisualContent
+GulinAIVisualContent
 ├─ ModeList (left panel)
 │  ├─ Header with "Add New Mode" button
 │  ├─ List of existing modes (sorted by display:order)
@@ -163,11 +163,11 @@ WaveAIVisualContent
 
 ### Provider-Specific Form Fields
 
-#### 1. Wave Provider (`wave`)
+#### 1. Gulin Provider (`gulin`)
 **Read-only/Auto-managed:**
 - Endpoint (shows default or env override)
 - Cloud flag (always true)
-- Secret: Not applicable (managed by Wave)
+- Secret: Not applicable (managed by Gulin)
 
 **User-configurable:**
 - Model (required, text input with suggestions: gpt-5-mini, gpt-5.1)
@@ -364,7 +364,7 @@ Display next to API Key field for providers that need one:
 - Display modes sorted by `display:order` (ascending)
 - Show icon, name, short description
 - Badge showing provider type
-- Highlight Wave AI premium modes
+- Highlight Gulin AI premium modes
 - Click to edit
 
 #### 2. Add New Mode Flow
@@ -430,7 +430,7 @@ When provider changes or model changes:
 #### New Components
 ```typescript
 // Main container
-WaveAIVisualContent
+GulinAIVisualContent
 
 // Left panel
 ModeList
@@ -449,7 +449,7 @@ ModeEditor
 ├─ ProviderSelector (dropdown, only for new modes)
 ├─ DisplayFieldsForm
 ├─ ProviderFieldsForm (dynamic based on provider)
-│   ├─ WaveProviderForm
+│   ├─ GulinProviderForm
 │   ├─ OpenAIProviderForm
 │   ├─ OpenRouterProviderForm
 │   ├─ AzureProviderForm
@@ -504,7 +504,7 @@ function handleModeReorder(draggedKey: string, targetKey: string) {
 **No new atoms needed!** Visual editor uses existing `fileContentAtom`:
 
 ```typescript
-// Use existing atoms from WaveConfigViewModel:
+// Use existing atoms from GulinConfigViewModel:
 // - fileContentAtom (contains JSON string)
 // - hasEditedAtom (tracks if modified)
 // - errorMessageAtom (for errors)
@@ -537,7 +537,7 @@ function updateMode(key: string, mode: AIModeConfigType) {
 
 **Component State (useState):**
 ```typescript
-// In WaveAIVisualContent component:
+// In GulinAIVisualContent component:
 const [selectedModeKey, setSelectedModeKey] = useState<string | null>(null);
 const [isAddingMode, setIsAddingMode] = useState(false);
 const [showSecretModal, setShowSecretModal] = useState(false);
@@ -668,7 +668,7 @@ const [secretModalProvider, setSecretModalProvider] = useState<string>("");
 
 1. **JSON Sync:** Parse/stringify from `fileContentAtom` on every read/write
 2. **Validation:** Validate on blur or before updating JSON
-3. **Built-in Detection:** Check if key starts with `waveai@` → read-only
+3. **Built-in Detection:** Check if key starts with `gulinai@` → read-only
 4. **Type Safety:** Use `AIModeConfigType` from gotypes.d.ts
 5. **State Management:**
    - Model atoms for shared state (`fileContentAtom`, `hasEditedAtom`)

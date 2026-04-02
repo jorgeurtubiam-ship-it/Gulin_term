@@ -11,7 +11,7 @@ import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { getDefaultStore } from "jotai";
 import { applyCanvasOp, restoreVDomElems } from "./model-utils";
 
-const dlog = debug("wave:vdom");
+const dlog = debug("gulin:vdom");
 
 type RefContainer = {
     refFn: (elem: HTMLElement) => void;
@@ -24,8 +24,8 @@ function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     if (vdom == null) {
         return;
     }
-    if (vdom.waveid != null) {
-        idMap.set(vdom.waveid, vdom);
+    if (vdom.gulinid != null) {
+        idMap.set(vdom.gulinid, vdom);
     }
     if (vdom.children == null) {
         return;
@@ -97,8 +97,8 @@ function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.Syn
         }
     }
     if (propName == "onKeyDown") {
-        const waveKeyEvent = adaptFromReactOrNativeKeyEvent(reactEvent as React.KeyboardEvent);
-        event.keydata = waveKeyEvent;
+        const gulinKeyEvent = adaptFromReactOrNativeKeyEvent(reactEvent as React.KeyboardEvent);
+        event.keydata = gulinKeyEvent;
     }
 }
 
@@ -284,7 +284,7 @@ export class TsunamiModel {
         }
         this.batchedEvents.push({
             globaleventtype: "onKeyDown",
-            waveid: null,
+            gulinid: null,
             eventtype: "onKeyDown",
             keydata: e,
         });
@@ -523,9 +523,9 @@ export class TsunamiModel {
                 continue;
             }
             if (renderUpdate.updatetype == "append") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (parent.children == null) {
@@ -536,9 +536,9 @@ export class TsunamiModel {
                 continue;
             }
             if (renderUpdate.updatetype == "replace") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (renderUpdate.index < 0 || parent.children == null || parent.children.length <= renderUpdate.index) {
@@ -550,9 +550,9 @@ export class TsunamiModel {
                 continue;
             }
             if (renderUpdate.updatetype == "remove") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (renderUpdate.index < 0 || parent.children == null || parent.children.length <= renderUpdate.index) {
@@ -564,9 +564,9 @@ export class TsunamiModel {
                 continue;
             }
             if (renderUpdate.updatetype == "insert") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (parent.children == null) {
@@ -711,7 +711,7 @@ export class TsunamiModel {
 
     callVDomFunc(fnDecl: VDomFunc, e: React.SyntheticEvent, compId: string, propName: string) {
         const vdomEvent: VDomEvent = {
-            waveid: compId,
+            gulinid: compId,
             eventtype: propName,
         };
         if (fnDecl.globalevent) {

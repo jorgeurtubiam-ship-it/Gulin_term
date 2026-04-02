@@ -325,6 +325,21 @@
         },
         "tsunami:gopath": {
           "type": "string"
+        },
+        "gulinbridge:enabled": {
+          "type": "boolean"
+        },
+        "gulinbridge:url": {
+          "type": "string"
+        },
+        "gulinbridge:email": {
+          "type": "string"
+        },
+        "gulinbridge:passwordsecretname": {
+          "type": "string"
+        },
+        "gulinbridge:tokensecretname": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

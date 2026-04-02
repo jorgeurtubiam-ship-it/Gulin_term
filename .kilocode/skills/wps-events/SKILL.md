@@ -1,13 +1,13 @@
 ---
 name: wps-events
-description: Guide for working with Wave Terminal's WPS (Wave PubSub) event system. Use when implementing new event types, publishing events, subscribing to events, or adding asynchronous communication between components.
+description: Guide for working with Gulin Terminal's WPS (Gulin PubSub) event system. Use when implementing new event types, publishing events, subscribing to events, or adding asynchronous communication between components.
 ---
 
 # WPS Events Guide
 
 ## Overview
 
-WPS (Wave PubSub) is Wave Terminal's publish-subscribe event system that enables different parts of the application to communicate asynchronously. The system uses a broker pattern to route events from publishers to subscribers based on event types and scopes.
+WPS (Gulin PubSub) is Gulin Terminal's publish-subscribe event system that enables different parts of the application to communicate asynchronously. The system uses a broker pattern to route events from publishers to subscribers based on event types and scopes.
 
 ## Key Files
 
@@ -20,7 +20,7 @@ WPS (Wave PubSub) is Wave Terminal's publish-subscribe event system that enables
 Events in WPS have the following structure:
 
 ```go
-type WaveEvent struct {
+type GulinEvent struct {
     Event   string   `json:"event"`      // Event type constant
     Scopes  []string `json:"scopes,omitempty"` // Optional scopes for targeted delivery
     Sender  string   `json:"sender,omitempty"` // Optional sender identifier
@@ -62,12 +62,12 @@ var AllEvents []string = []string{
 }
 ```
 
-### Step 3: Register in WaveEventDataTypes (REQUIRED)
+### Step 3: Register in GulinEventDataTypes (REQUIRED)
 
-You **must** add an entry to `WaveEventDataTypes` in `pkg/tsgen/tsgenevent.go`. This drives TypeScript type generation for the event's `data` field:
+You **must** add an entry to `GulinEventDataTypes` in `pkg/tsgen/tsgenevent.go`. This drives TypeScript type generation for the event's `data` field:
 
 ```go
-var WaveEventDataTypes = map[string]reflect.Type{
+var GulinEventDataTypes = map[string]reflect.Type{
     // ... existing entries ...
     wps.Event_YourNewEvent: reflect.TypeOf(YourEventData{}),        // value type
     // wps.Event_YourNewEvent: reflect.TypeOf((*YourEventData)(nil)), // pointer type
@@ -97,7 +97,7 @@ If your event data type isn't already exposed via an RPC call, you need to add i
 ```go
 // add extra types to generate here
 var ExtraTypes = []any{
-    waveobj.ORef{},
+    gulinobj.ORef{},
     // ... other types ...
     uctypes.RateLimitInfo{},  // Example: already added
     YourEventData{},          // Add your new type here
@@ -119,9 +119,9 @@ This will update `frontend/types/gotypes.d.ts` with TypeScript definitions for y
 To publish an event, use the global broker:
 
 ```go
-import "github.com/wavetermdev/waveterm/pkg/wps"
+import "github.com/gulindev/gulin/pkg/wps"
 
-wps.Broker.Publish(wps.WaveEvent{
+wps.Broker.Publish(wps.GulinEvent{
     Event: wps.Event_YourNewEvent,
     Data:  yourData,
 })
@@ -132,8 +132,8 @@ wps.Broker.Publish(wps.WaveEvent{
 Scopes allow targeted event delivery. Subscribers can filter events by scope:
 
 ```go
-wps.Broker.Publish(wps.WaveEvent{
-    Event:  wps.Event_WaveObjUpdate,
+wps.Broker.Publish(wps.GulinEvent{
+    Event:  wps.Event_GulinObjUpdate,
     Scopes: []string{oref.String()},  // Target specific object
     Data:   updateData,
 })
@@ -145,7 +145,7 @@ To avoid blocking the caller, publish events asynchronously:
 
 ```go
 go func() {
-    wps.Broker.Publish(wps.WaveEvent{
+    wps.Broker.Publish(wps.GulinEvent{
         Event: wps.Event_YourNewEvent,
         Data:  data,
     })
@@ -163,7 +163,7 @@ go func() {
 Events can be persisted in memory for late subscribers:
 
 ```go
-wps.Broker.Publish(wps.WaveEvent{
+wps.Broker.Publish(wps.GulinEvent{
     Event:   wps.Event_YourNewEvent,
     Persist: 100,  // Keep last 100 events
     Data:    data,
@@ -181,7 +181,7 @@ In `pkg/wps/wpstypes.go`:
 ```go
 const (
     // ... other events ...
-    Event_WaveAIRateLimit  = "waveai:ratelimit"
+    Event_GulinAIRateLimit  = "gulinai:ratelimit"
 )
 ```
 
@@ -190,7 +190,7 @@ const (
 In `pkg/aiusechat/usechat.go`:
 
 ```go
-import "github.com/wavetermdev/waveterm/pkg/wps"
+import "github.com/gulindev/gulin/pkg/wps"
 
 func updateRateLimit(info *uctypes.RateLimitInfo) {
     if info == nil {
@@ -202,8 +202,8 @@ func updateRateLimit(info *uctypes.RateLimitInfo) {
 
     // Publish event in goroutine to avoid blocking
     go func() {
-        wps.Broker.Publish(wps.WaveEvent{
-            Event: wps.Event_WaveAIRateLimit,
+        wps.Broker.Publish(wps.GulinEvent{
+            Event: wps.Event_GulinAIRateLimit,
             Data:  info,  // RateLimitInfo struct
         })
     }()
@@ -217,7 +217,7 @@ In the frontend, subscribe to events via WebSocket:
 ```typescript
 // Subscribe to rate limit updates
 const subscription = {
-  event: "waveai:ratelimit",
+  event: "gulinai:ratelimit",
   allscopes: true, // Receive all rate limit events
 };
 ```
@@ -235,7 +235,7 @@ wps.Broker.Subscribe(routeId, wps.SubscriptionRequest{
 
 // Subscribe to specific scopes
 wps.Broker.Subscribe(routeId, wps.SubscriptionRequest{
-    Event:  wps.Event_WaveObjUpdate,
+    Event:  wps.Event_GulinObjUpdate,
     Scopes: []string{"workspace:123"},
 })
 
@@ -253,14 +253,14 @@ Scopes support wildcard matching:
 ```go
 // Subscribe to all workspace events
 wps.Broker.Subscribe(routeId, wps.SubscriptionRequest{
-    Event:  wps.Event_WaveObjUpdate,
+    Event:  wps.Event_GulinObjUpdate,
     Scopes: []string{"workspace:*"},
 })
 ```
 
 ## Best Practices
 
-1. **Use Namespaces**: Prefix event names with a namespace (e.g., `waveai:`, `workspace:`, `block:`)
+1. **Use Namespaces**: Prefix event names with a namespace (e.g., `gulinai:`, `workspace:`, `block:`)
 
 2. **Don't Block**: Use goroutines when publishing from performance-critical code or while holding locks
 
@@ -277,7 +277,7 @@ wps.Broker.Subscribe(routeId, wps.SubscriptionRequest{
 ### Status Updates
 
 ```go
-wps.Broker.Publish(wps.WaveEvent{
+wps.Broker.Publish(wps.GulinEvent{
     Event:   wps.Event_ControllerStatus,
     Scopes:  []string{blockId},
     Persist: 1,  // Keep only latest status
@@ -288,13 +288,13 @@ wps.Broker.Publish(wps.WaveEvent{
 ### Object Updates
 
 ```go
-wps.Broker.Publish(wps.WaveEvent{
-    Event:  wps.Event_WaveObjUpdate,
+wps.Broker.Publish(wps.GulinEvent{
+    Event:  wps.Event_GulinObjUpdate,
     Scopes: []string{oref.String()},
-    Data: waveobj.WaveObjUpdate{
-        UpdateType: waveobj.UpdateType_Update,
+    Data: gulinobj.GulinObjUpdate{
+        UpdateType: gulinobj.UpdateType_Update,
         OType:      obj.GetOType(),
-        OID:        waveobj.GetOID(obj),
+        OID:        gulinobj.GetOID(obj),
         Obj:        obj,
     },
 })
@@ -304,11 +304,11 @@ wps.Broker.Publish(wps.WaveEvent{
 
 ```go
 // Helper function for multiple updates
-func (b *BrokerType) SendUpdateEvents(updates waveobj.UpdatesRtnType) {
+func (b *BrokerType) SendUpdateEvents(updates gulinobj.UpdatesRtnType) {
     for _, update := range updates {
-        b.Publish(WaveEvent{
-            Event:  Event_WaveObjUpdate,
-            Scopes: []string{waveobj.MakeORef(update.OType, update.OID).String()},
+        b.Publish(GulinEvent{
+            Event:  Event_GulinObjUpdate,
+            Scopes: []string{gulinobj.MakeORef(update.OType, update.OID).String()},
             Data:   update,
         })
     }
@@ -330,7 +330,7 @@ When adding a new event:
 
 - [ ] Add event constant to [`pkg/wps/wpstypes.go`](pkg/wps/wpstypes.go) with a `// type: <TypeName>` comment (use `none` if no data)
 - [ ] Add the constant to `AllEvents` in [`pkg/wps/wpstypes.go`](pkg/wps/wpstypes.go)
-- [ ] **REQUIRED**: Add an entry to `WaveEventDataTypes` in [`pkg/tsgen/tsgenevent.go`](pkg/tsgen/tsgenevent.go) — use `nil` for events with no data
+- [ ] **REQUIRED**: Add an entry to `GulinEventDataTypes` in [`pkg/tsgen/tsgenevent.go`](pkg/tsgen/tsgenevent.go) — use `nil` for events with no data
 - [ ] Define event data structure (if needed)
 - [ ] Add data type to `pkg/tsgen/tsgen.go` for frontend use (if not already exposed via RPC)
 - [ ] Run `task generate` to update TypeScript types

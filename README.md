@@ -3,13 +3,13 @@
 	<picture>
 		<source media="(prefers-color-scheme: dark)" srcset="./assets/gulin-dark.png">
 		<source media="(prefers-color-scheme: light)" srcset="./assets/gulin-light.png">
-		<img alt="Gulin Terminal Logo" src="./assets/gulin-light.png" width="240">
+		<img alt="Gulin Term Logo" src="./assets/gulin-light.png" width="240">
 	</picture>
   </a>
   <br/>
 </p>
 
-# GuLiN Terminal
+# Gulin Term
 
 > **🚀 New Feature:** Full Internationalization (i18n) support! Now available in English and Spanish. See the [Rebranding Guide](./REBRANDING.md) and [Feature Guide](./GULIN_FEATURES.md).
 
@@ -59,15 +59,15 @@ Learn more in our [Gulin AI documentation](https://docs.gulin.dev/gulinai) and [
 
 ## Installation
 
-Gulin Terminal works on macOS, Linux, and Windows.
+Gulin Term works on macOS, Linux, and Windows.
 
 Platform-specific installation instructions can be found [here](https://docs.gulin.dev/gettingstarted).
 
-You can also install Gulin Terminal directly from: [www.gulin.dev/download](https://www.gulin.dev/download).
+You can also install Gulin Term directly from: [www.gulin.dev/download](https://www.gulin.dev/download).
 
 ### Minimum requirements
 
-Gulin Terminal runs on the following platforms:
+Gulin Term runs on the following platforms:
 
 - macOS 11 or later (arm64, x64)
 - Windows 10 1809 or later (x64)
@@ -95,7 +95,7 @@ Want to provide input to our future releases? Connect with us on [Discord](https
 
 ## Building from Source
 
-See [Building Gulin Terminal](BUILD.md).
+See [Building Gulin Term](BUILD.md).
 
 ## Contributing
 
@@ -108,4 +108,4 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 ## License
 
-Gulin Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).
+Gulin Term is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./ACKNOWLEDGEMENTS.md).

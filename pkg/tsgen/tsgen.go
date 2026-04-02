@@ -10,34 +10,34 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/service"
-	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/eventbus"
+	"github.com/gulindev/gulin/pkg/filestore"
+	"github.com/gulindev/gulin/pkg/service"
+	"github.com/gulindev/gulin/pkg/tsgen/tsgenmeta"
+	"github.com/gulindev/gulin/pkg/userinput"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/vdom"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/web/webcmd"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 // add extra types to generate here
 var ExtraTypes = []any{
-	waveobj.ORef{},
-	(*waveobj.WaveObj)(nil),
+	gulinobj.ORef{},
+	(*gulinobj.GulinObj)(nil),
 	map[string]any{},
 	service.WebCallType{},
 	service.WebReturnType{},
-	waveobj.UIContext{},
+	gulinobj.UIContext{},
 	eventbus.WSEventType{},
 	wps.WSFileEventData{},
-	waveobj.LayoutActionData{},
-	filestore.WaveFile{},
+	gulinobj.LayoutActionData{},
+	filestore.GulinFile{},
 	wconfig.FullConfigType{},
 	wconfig.WatcherUpdate{},
 	wshutil.RpcMessage{},
@@ -50,8 +50,8 @@ var ExtraTypes = []any{
 	vdom.VDomBinding{},
 	vdom.VDomFrontendUpdate{},
 	vdom.VDomBackendUpdate{},
-	waveobj.MetaTSType{},
-	waveobj.ObjRTInfo{},
+	gulinobj.MetaTSType{},
+	gulinobj.ObjRTInfo{},
 	uctypes.RateLimitInfo{},
 	wconfig.AIModeConfigUpdate{},
 	wshrpc.TabIndicatorEventData{},
@@ -66,12 +66,12 @@ var TypeUnions = []tsgenmeta.TypeUnionMeta{
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
 var anyRType = reflect.TypeOf((*interface{})(nil)).Elem()
-var metaRType = reflect.TypeOf((*waveobj.MetaMapType)(nil)).Elem()
+var metaRType = reflect.TypeOf((*gulinobj.MetaMapType)(nil)).Elem()
 var metaSettingsType = reflect.TypeOf((*wshrpc.MetaSettingsType)(nil)).Elem()
-var uiContextRType = reflect.TypeOf((*waveobj.UIContext)(nil)).Elem()
-var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
-var updatesRtnRType = reflect.TypeOf(waveobj.UpdatesRtnType{})
-var orefRType = reflect.TypeOf((*waveobj.ORef)(nil)).Elem()
+var uiContextRType = reflect.TypeOf((*gulinobj.UIContext)(nil)).Elem()
+var gulinObjRType = reflect.TypeOf((*gulinobj.GulinObj)(nil)).Elem()
+var updatesRtnRType = reflect.TypeOf(gulinobj.UpdatesRtnType{})
+var orefRType = reflect.TypeOf((*gulinobj.ORef)(nil)).Elem()
 var wshRpcInterfaceRType = reflect.TypeOf((*wshrpc.WshRpcInterface)(nil)).Elem()
 
 func generateTSMethodTypes(method reflect.Method, tsTypesMap map[reflect.Type]string, skipFirstArg bool) error {
@@ -176,7 +176,7 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 }
 
 var tsRenameMap = map[string]string{
-	"Window":           "WaveWindow",
+	"Window":           "GulinWindow",
 	"Elem":             "VDomElem",
 	"MetaTSType":       "MetaType",
 	"MetaSettingsType": "SettingsType",
@@ -188,10 +188,10 @@ func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]stri
 	if tsRename, ok := tsRenameMap[tsTypeName]; ok {
 		tsTypeName = tsRename
 	}
-	var isWaveObj bool
+	var isGulinObj bool
 	if !embedded {
-		if rtype.Implements(waveObjRType) || reflect.PointerTo(rtype).Implements(waveObjRType) {
-			isWaveObj = true
+		if rtype.Implements(gulinObjRType) || reflect.PointerTo(rtype).Implements(gulinObjRType) {
+			isGulinObj = true
 		}
 	}
 	var fieldsBuf bytes.Buffer
@@ -211,7 +211,7 @@ func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]stri
 		if fieldName == "" {
 			continue
 		}
-		if isWaveObj && (fieldName == waveobj.OTypeKeyName || fieldName == waveobj.OIDKeyName || fieldName == waveobj.VersionKeyName || fieldName == waveobj.MetaKeyName) {
+		if isGulinObj && (fieldName == gulinobj.OTypeKeyName || fieldName == gulinobj.OIDKeyName || fieldName == gulinobj.VersionKeyName || fieldName == gulinobj.MetaKeyName) {
 			continue
 		}
 		optMarker := ""
@@ -238,11 +238,11 @@ func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]stri
 	}
 	if !embedded {
 		buf.WriteString(fmt.Sprintf("// %s\n", rtype.String()))
-		if fieldsBuf.Len() == 0 && !isWaveObj {
+		if fieldsBuf.Len() == 0 && !isGulinObj {
 			// empty struct - use "object" instead of "{}" to satisfy linter
 			buf.WriteString(fmt.Sprintf("type %s = object;\n", tsTypeName))
-		} else if isWaveObj {
-			buf.WriteString(fmt.Sprintf("type %s = WaveObj & {\n", tsTypeName))
+		} else if isGulinObj {
+			buf.WriteString(fmt.Sprintf("type %s = GulinObj & {\n", tsTypeName))
 			buf.Write(fieldsBuf.Bytes())
 			buf.WriteString("};\n")
 		} else {
@@ -256,10 +256,10 @@ func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]stri
 	return buf.String(), subTypes
 }
 
-func GenerateWaveObjTSType() string {
+func GenerateGulinObjTSType() string {
 	var buf bytes.Buffer
-	buf.WriteString("// waveobj.WaveObj\n")
-	buf.WriteString("type WaveObj = {\n")
+	buf.WriteString("// gulinobj.GulinObj\n")
+	buf.WriteString("type GulinObj = {\n")
 	buf.WriteString("    otype: string;\n")
 	buf.WriteString("    oid: string;\n")
 	buf.WriteString("    version: number;\n")
@@ -317,11 +317,11 @@ func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
 		return
 	}
 	if rtype == orefRType {
-		tsTypesMap[orefRType] = "// waveobj.ORef\ntype ORef = string;\n"
+		tsTypesMap[orefRType] = "// gulinobj.ORef\ntype ORef = string;\n"
 		return
 	}
-	if rtype == waveObjRType {
-		tsTypesMap[rtype] = GenerateWaveObjTSType()
+	if rtype == gulinObjRType {
+		tsTypesMap[rtype] = GenerateGulinObjTSType()
 		return
 	}
 	if rtype == metaSettingsType {
@@ -504,15 +504,15 @@ func generateWshClientApiMethod_Call(methodDecl *wshrpc.WshRpcMethodDecl, tsType
 	return sb.String()
 }
 
-func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
+func GenerateGulinObjTypes(tsTypesMap map[reflect.Type]string) {
 	for _, typeUnion := range TypeUnions {
 		GenerateTSTypeUnion(typeUnion, tsTypesMap)
 	}
 	for _, extraType := range ExtraTypes {
 		GenerateTSType(reflect.TypeOf(extraType), tsTypesMap)
 	}
-	for _, rtype := range waveobj.AllWaveObjTypes() {
-		if rtype.String() == "*waveobj.MainServer" {
+	for _, rtype := range gulinobj.AllGulinObjTypes() {
+		if rtype.String() == "*gulinobj.MainServer" {
 			continue
 		}
 		GenerateTSType(rtype, tsTypesMap)

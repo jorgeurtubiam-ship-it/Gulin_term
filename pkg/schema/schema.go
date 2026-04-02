@@ -9,13 +9,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 var schemaHandler http.Handler
 
 func GetSchemaHandler() http.Handler {
-	schemaStaticPath := filepath.Join(wavebase.GetWaveAppPath(), "schema")
+	schemaStaticPath := filepath.Join(gulinbase.GetGulinAppPath(), "schema")
 	stat, err := os.Stat(schemaStaticPath)
 	if schemaHandler == nil {
 		log.Println("Schema is nil, initializing")

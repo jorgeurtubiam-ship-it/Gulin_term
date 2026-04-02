@@ -13,6 +13,9 @@ const config = {
     appId: pkg.build.appId,
     productName: pkg.productName,
     executableName: pkg.productName,
+    directories: {
+        output: "make",
+    },
     artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
     generateUpdatesFilesForAllChannels: true,
     npmRebuild: false,
@@ -22,7 +25,7 @@ const config = {
         {
             from: "./dist",
             to: "./dist",
-            filter: ["**/*", "!bin/**/*", "!tsunamiscaffold/**/*"],
+            filter: ["main/**/*", "preload/**/*", "frontend/**/*", "schema/**/*"],
         },
         {
             from: ".",
@@ -42,7 +45,7 @@ const config = {
         {
             from: "dist/bin",
             to: "bin",
-            filter: ["wavesrv*", "wsh*"],
+            filter: ["gulinsrv*", "wsh*"],
         },
     ],
     mac: {
@@ -55,7 +58,7 @@ const config = {
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
         mergeASARs: false,
-        singleArchFiles: "**/bin/wavesrv.*",
+        singleArchFiles: "**/bin/gulinsrv.*",
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
         extendInfo: {
@@ -116,10 +119,10 @@ const config = {
     },
     publish: {
         provider: "generic",
-        url: "https://dl.waveterm.dev/releases-w2",
+        url: "https://dl.gulin.dev/releases-w2",
     },
     afterPack: (context) => {
-        // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging.
+        // This is a workaround to restore file permissions to the gulinsrv binaries on macOS after packaging.
         if (context.electronPlatformName === "darwin") {
             const packageBinDir = path.resolve(
                 context.appOutDir,
@@ -127,12 +130,12 @@ const config = {
             );
 
             if (fs.existsSync(packageBinDir)) {
-                // Reapply file permissions to the wavesrv binaries in the final app package
+                // Reapply file permissions to the gulinsrv binaries in the final app package
                 fs.readdirSync(packageBinDir, {
                     recursive: true,
                     withFileTypes: true,
                 })
-                    .filter((f) => f.isFile() && f.name.startsWith("wavesrv"))
+                    .filter((f) => f.isFile() && f.name.startsWith("gulinsrv"))
                     .forEach((f) => {
                         const filePath = path.resolve(f.parentPath ?? f.path, f.name);
                         fs.chmodSync(filePath, 0o755); // 0o755 corresponds to -rwxr-xr-x

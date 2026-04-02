@@ -11,13 +11,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wcore"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 type TermGetScrollbackToolInput struct {
@@ -121,7 +121,7 @@ func getTermScrollbackOutput(ctx context.Context, tabId string, widgetId string,
 		nextStart = &effectiveLineEnd
 	}
 
-	blockORef := waveobj.MakeORef(waveobj.OType_Block, fullBlockId)
+	blockORef := gulinobj.MakeORef(gulinobj.OType_Block, fullBlockId)
 	rtInfo := wstore.GetRTInfo(blockORef)
 
 	var lastCommand *CommandInfo
@@ -156,7 +156,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_get_scrollback",
 		DisplayName: "Get Terminal Scrollback",
-		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines). Also returns last command and exit code if shell integration is enabled.",
+		Description: "Fetch terminal scrollback from a widget as plain text. Index 0 is the most recent line; indices increase going upward (older lines). WARNING: Do NOT use this to read the output of commands you just ran. Use term_command_output instead. If you see HasMore=true, it means there is OLDER history from the past. Do not loop reading next_start unless you specifically want to read the user's historical terminal history.",
 		ToolLogName: "term:getscrollback",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -278,7 +278,7 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 				return nil, err
 			}
 
-			blockORef := waveobj.MakeORef(waveobj.OType_Block, fullBlockId)
+			blockORef := gulinobj.MakeORef(gulinobj.OType_Block, fullBlockId)
 			rtInfo := wstore.GetRTInfo(blockORef)
 			if rtInfo == nil || !rtInfo.ShellIntegration {
 				return nil, fmt.Errorf("shell integration is not enabled for this terminal")
@@ -335,7 +335,7 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_run_command",
 		DisplayName: "Run Command in Terminal",
-		Description: "Execute a command in the specified terminal widget by sending the command string. Always use this instead of asking the user to copy-paste. Useful for creating folders, cloning repos, running server commands, testing, or general workflow.",
+		Description: "Execute a command in the specified terminal widget by sending the command string. Always use this instead of asking the user to copy-paste. IMPORTANT: After running a command, you MUST wait for it to finish and use the `term_command_output` tool to read the result. Do NOT use `term_get_scrollback` to read command output.",
 		ToolLogName: "term:runcommand",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -372,7 +372,7 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 
 			rpcClient := wshclient.GetBareRpcClient()
 
-			blockORef := waveobj.MakeORef(waveobj.OType_Block, fullBlockId)
+			blockORef := gulinobj.MakeORef(gulinobj.OType_Block, fullBlockId)
 			rtInfo := wstore.GetRTInfo(blockORef)
 
 			// We need to base64 encode the command + terminator

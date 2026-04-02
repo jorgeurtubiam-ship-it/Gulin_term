@@ -26,7 +26,7 @@ type VDomBackendUpdate = {
 
 // rpctypes.RenderedElem
 type VDomElem = {
-    waveid?: string;
+    gulinid?: string;
     tag: string;
     props?: { [key: string]: any };
     children?: VDomElem[];
@@ -35,7 +35,7 @@ type VDomElem = {
 
 // vdom.VDomEvent
 type VDomEvent = {
-    waveid: string;
+    gulinid: string;
     eventtype: string;
     globaleventtype?: string;
     targetvalue?: string;
@@ -144,15 +144,15 @@ type VDomRenderContext = {
 // rpctypes.VDomRenderUpdate
 type VDomRenderUpdate = {
     updatetype: "root" | "append" | "replace" | "remove" | "insert";
-    waveid?: string;
-    vdomwaveid?: string;
+    gulinid?: string;
+    vdomgulinid?: string;
     vdom?: VDomElem;
     index?: number;
 };
 
 // rpctypes.VDomTransferElem
 type VDomTransferElem = {
-    waveid?: string;
+    gulinid?: string;
     tag: string;
     props?: { [key: string]: any };
     children?: string[];

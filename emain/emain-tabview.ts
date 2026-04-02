@@ -5,7 +5,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { adaptFromElectronKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import { CHORD_TIMEOUT } from "@/util/sharedconst";
 import { Rectangle, shell, WebContentsView } from "electron";
-import { createNewWaveWindow, getWaveWindowById } from "emain/emain-window";
+import { createNewGulinWindow, getGulinWindowById } from "emain/emain-window";
 import path from "path";
 import { configureAuthKeyRequestInjection } from "./authkey";
 import { setWasActive } from "./emain-activity";
@@ -21,23 +21,23 @@ import {
 import { ElectronWshClient } from "./emain-wsh";
 
 function handleWindowsMenuAccelerators(
-    waveEvent: WaveKeyboardEvent,
-    tabView: WaveTabView,
+    gulinEvent: GulinKeyboardEvent,
+    tabView: GulinTabView,
     fullConfig: FullConfigType
 ): boolean {
-    const waveWindow = getWaveWindowById(tabView.waveWindowId);
+    const gulinWindow = getGulinWindowById(tabView.gulinWindowId);
 
-    if (checkKeyPressed(waveEvent, "Ctrl:Shift:n")) {
-        createNewWaveWindow();
+    if (checkKeyPressed(gulinEvent, "Ctrl:Shift:n")) {
+        createNewGulinWindow();
         return true;
     }
 
-    if (checkKeyPressed(waveEvent, "Ctrl:Shift:r")) {
+    if (checkKeyPressed(gulinEvent, "Ctrl:Shift:r")) {
         tabView.webContents.reloadIgnoringCache();
         return true;
     }
 
-    if (checkKeyPressed(waveEvent, "Ctrl:v")) {
+    if (checkKeyPressed(gulinEvent, "Ctrl:v")) {
         const ctrlVPaste = fullConfig?.settings?.["app:ctrlvpaste"];
         const shouldPaste = ctrlVPaste ?? true;
         if (!shouldPaste) {
@@ -47,37 +47,37 @@ function handleWindowsMenuAccelerators(
         return true;
     }
 
-    if (checkKeyPressed(waveEvent, "Ctrl:0")) {
+    if (checkKeyPressed(gulinEvent, "Ctrl:0")) {
         tabView.webContents.setZoomFactor(1);
         tabView.webContents.send("zoom-factor-change", 1);
         return true;
     }
 
-    if (checkKeyPressed(waveEvent, "Ctrl:=") || checkKeyPressed(waveEvent, "Ctrl:Shift:=")) {
+    if (checkKeyPressed(gulinEvent, "Ctrl:=") || checkKeyPressed(gulinEvent, "Ctrl:Shift:=")) {
         increaseZoomLevel(tabView.webContents);
         return true;
     }
 
-    if (checkKeyPressed(waveEvent, "Ctrl:-") || checkKeyPressed(waveEvent, "Ctrl:Shift:-")) {
+    if (checkKeyPressed(gulinEvent, "Ctrl:-") || checkKeyPressed(gulinEvent, "Ctrl:Shift:-")) {
         decreaseZoomLevel(tabView.webContents);
         return true;
     }
 
-    if (checkKeyPressed(waveEvent, "F11")) {
-        if (waveWindow) {
-            waveWindow.setFullScreen(!waveWindow.isFullScreen());
+    if (checkKeyPressed(gulinEvent, "F11")) {
+        if (gulinWindow) {
+            gulinWindow.setFullScreen(!gulinWindow.isFullScreen());
         }
         return true;
     }
 
     for (let i = 1; i <= 9; i++) {
-        if (checkKeyPressed(waveEvent, `Alt:Ctrl:${i}`)) {
+        if (checkKeyPressed(gulinEvent, `Alt:Ctrl:${i}`)) {
             const workspaceNum = i - 1;
             RpcApi.WorkspaceListCommand(ElectronWshClient).then((workspaceList) => {
                 if (workspaceList && workspaceNum < workspaceList.length) {
                     const workspace = workspaceList[workspaceNum];
-                    if (waveWindow) {
-                        waveWindow.switchWorkspace(workspace.workspacedata.oid);
+                    if (gulinWindow) {
+                        gulinWindow.switchWorkspace(workspace.workspacedata.oid);
                     }
                 }
             });
@@ -85,7 +85,7 @@ function handleWindowsMenuAccelerators(
         }
     }
 
-    if (checkKeyPressed(waveEvent, "Alt:Shift:i")) {
+    if (checkKeyPressed(gulinEvent, "Alt:Shift:i")) {
         tabView.webContents.toggleDevTools();
         return true;
     }
@@ -106,26 +106,26 @@ function computeBgColor(fullConfig: FullConfigType): string {
     }
 }
 
-const wcIdToWaveTabMap = new Map<number, WaveTabView>();
+const wcIdToGulinTabMap = new Map<number, GulinTabView>();
 
-export function getWaveTabViewByWebContentsId(webContentsId: number): WaveTabView {
-    return wcIdToWaveTabMap.get(webContentsId);
+export function getGulinTabViewByWebContentsId(webContentsId: number): GulinTabView {
+    return wcIdToGulinTabMap.get(webContentsId);
 }
 
-export class WaveTabView extends WebContentsView {
-    waveWindowId: string; // this will be set for any tabviews that are initialized. (unset for the hot spare)
+export class GulinTabView extends WebContentsView {
+    gulinWindowId: string; // this will be set for any tabviews that are initialized. (unset for the hot spare)
     isActiveTab: boolean;
-    isWaveAIOpen: boolean;
-    private _waveTabId: string; // always set, WaveTabViews are unique per tab
+    isGulinAIOpen: boolean;
+    private _gulinTabId: string; // always set, GulinTabViews are unique per tab
     lastUsedTs: number; // ts milliseconds
     createdTs: number; // ts milliseconds
     initPromise: Promise<void>;
     initResolve: () => void;
-    savedInitOpts: WaveInitOpts;
-    waveReadyPromise: Promise<void>;
-    waveReadyResolve: () => void;
+    savedInitOpts: GulinInitOpts;
+    gulinReadyPromise: Promise<void>;
+    gulinReadyResolve: () => void;
     isInitialized: boolean = false;
-    isWaveReady: boolean = false;
+    isGulinReady: boolean = false;
     isDestroyed: boolean = false;
     keyboardChordMode: boolean = false;
     resetChordModeTimeout: NodeJS.Timeout = null;
@@ -139,7 +139,7 @@ export class WaveTabView extends WebContentsView {
             },
         });
         this.createdTs = Date.now();
-        this.isWaveAIOpen = false;
+        this.isGulinAIOpen = false;
         this.savedInitOpts = null;
         this.initPromise = new Promise((resolve, _) => {
             this.initResolve = resolve;
@@ -148,21 +148,21 @@ export class WaveTabView extends WebContentsView {
             this.isInitialized = true;
             console.log("tabview init", Date.now() - this.createdTs + "ms");
         });
-        this.waveReadyPromise = new Promise((resolve, _) => {
-            this.waveReadyResolve = resolve;
+        this.gulinReadyPromise = new Promise((resolve, _) => {
+            this.gulinReadyResolve = resolve;
         });
-        this.waveReadyPromise.then(() => {
-            this.isWaveReady = true;
+        this.gulinReadyPromise.then(() => {
+            this.isGulinReady = true;
         });
-        wcIdToWaveTabMap.set(this.webContents.id, this);
+        wcIdToGulinTabMap.set(this.webContents.id, this);
         if (isDevVite) {
             this.webContents.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html`);
         } else {
             this.webContents.loadFile(path.join(getElectronAppBasePath(), "frontend", "index.html"));
         }
         this.webContents.on("destroyed", () => {
-            wcIdToWaveTabMap.delete(this.webContents.id);
-            removeWaveTabView(this.waveTabId);
+            wcIdToGulinTabMap.delete(this.webContents.id);
+            removeGulinTabView(this.gulinTabId);
             this.isDestroyed = true;
         });
         this.webContents.on("zoom-changed", (_event, zoomDirection) => {
@@ -171,12 +171,12 @@ export class WaveTabView extends WebContentsView {
         this.setBackgroundColor(computeBgColor(fullConfig));
     }
 
-    get waveTabId(): string {
-        return this._waveTabId;
+    get gulinTabId(): string {
+        return this._gulinTabId;
     }
 
-    set waveTabId(waveTabId: string) {
-        this._waveTabId = waveTabId;
+    set gulinTabId(gulinTabId: string) {
+        this._gulinTabId = gulinTabId;
     }
 
     setKeyboardChordMode(mode: boolean) {
@@ -224,8 +224,8 @@ export class WaveTabView extends WebContentsView {
     }
 
     destroy() {
-        console.log("destroy tab", this.waveTabId);
-        removeWaveTabView(this.waveTabId);
+        console.log("destroy tab", this.gulinTabId);
+        removeGulinTabView(this.gulinTabId);
         if (!this.isDestroyed) {
             this.webContents?.close();
         }
@@ -234,23 +234,23 @@ export class WaveTabView extends WebContentsView {
 }
 
 let MaxCacheSize = 10;
-const wcvCache = new Map<string, WaveTabView>();
+const wcvCache = new Map<string, GulinTabView>();
 
 export function setMaxTabCacheSize(size: number) {
     console.log("setMaxTabCacheSize", size);
     MaxCacheSize = size;
 }
 
-export function getWaveTabView(waveTabId: string): WaveTabView | undefined {
-    const rtn = wcvCache.get(waveTabId);
+export function getGulinTabView(gulinTabId: string): GulinTabView | undefined {
+    const rtn = wcvCache.get(gulinTabId);
     if (rtn) {
         rtn.lastUsedTs = Date.now();
     }
     return rtn;
 }
 
-function tryEvictEntry(waveTabId: string): boolean {
-    const tabView = wcvCache.get(waveTabId);
+function tryEvictEntry(gulinTabId: string): boolean {
+    const tabView = wcvCache.get(gulinTabId);
     if (!tabView) {
         return false;
     }
@@ -261,15 +261,15 @@ function tryEvictEntry(waveTabId: string): boolean {
     if (lastUsedDiff < 1000) {
         return false;
     }
-    const ww = getWaveWindowById(tabView.waveWindowId);
+    const ww = getGulinWindowById(tabView.gulinWindowId);
     if (!ww) {
         // this shouldn't happen, but if it does, just destroy the tabview
-        console.log("[error] WaveWindow not found for WaveTabView", tabView.waveTabId);
+        console.log("[error] GulinWindow not found for GulinTabView", tabView.gulinTabId);
         tabView.destroy();
         return true;
     } else {
         // will trigger a destroy on the tabview
-        ww.removeTabView(tabView.waveTabId, false);
+        ww.removeTabView(tabView.gulinTabId, false);
         return true;
     }
 }
@@ -288,7 +288,7 @@ function checkAndEvictCache(): void {
     });
     const now = Date.now();
     for (let i = 0; i < sorted.length - MaxCacheSize; i++) {
-        tryEvictEntry(sorted[i].waveTabId);
+        tryEvictEntry(sorted[i].gulinTabId);
     }
 }
 
@@ -296,22 +296,22 @@ export function clearTabCache() {
     const wcVals = Array.from(wcvCache.values());
     for (let i = 0; i < wcVals.length; i++) {
         const tabView = wcVals[i];
-        tryEvictEntry(tabView.waveTabId);
+        tryEvictEntry(tabView.gulinTabId);
     }
 }
 
 // returns [tabview, initialized]
-export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: string): Promise<[WaveTabView, boolean]> {
-    let tabView = getWaveTabView(tabId);
+export async function getOrCreateWebViewForTab(gulinWindowId: string, tabId: string): Promise<[GulinTabView, boolean]> {
+    let tabView = getGulinTabView(tabId);
     if (tabView) {
         return [tabView, true];
     }
     const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
     tabView = getSpareTab(fullConfig);
-    tabView.waveWindowId = waveWindowId;
+    tabView.gulinWindowId = gulinWindowId;
     tabView.lastUsedTs = Date.now();
-    setWaveTabView(tabId, tabView);
-    tabView.waveTabId = tabId;
+    setGulinTabView(tabId, tabView);
+    tabView.gulinTabId = tabId;
     tabView.webContents.on("will-navigate", shNavHandler);
     tabView.webContents.on("will-frame-navigate", shFrameNavHandler);
     tabView.webContents.on("did-attach-webview", (event, wc) => {
@@ -321,19 +321,19 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
         });
     });
     tabView.webContents.on("before-input-event", (e, input) => {
-        const waveEvent = adaptFromElectronKeyEvent(input);
-        // console.log("WIN bie", tabView.waveTabId.substring(0, 8), waveEvent.type, waveEvent.code);
-        handleCtrlShiftState(tabView.webContents, waveEvent);
+        const gulinEvent = adaptFromElectronKeyEvent(input);
+        // console.log("WIN bie", tabView.gulinTabId.substring(0, 8), gulinEvent.type, gulinEvent.code);
+        handleCtrlShiftState(tabView.webContents, gulinEvent);
         setWasActive(true);
         if (input.type == "keyDown" && tabView.keyboardChordMode) {
             e.preventDefault();
             tabView.setKeyboardChordMode(false);
-            tabView.webContents.send("reinject-key", waveEvent);
+            tabView.webContents.send("reinject-key", gulinEvent);
             return;
         }
 
         if (unamePlatform === "win32" && input.type == "keyDown") {
-            if (handleWindowsMenuAccelerators(waveEvent, tabView, fullConfig)) {
+            if (handleWindowsMenuAccelerators(gulinEvent, tabView, fullConfig)) {
                 e.preventDefault();
                 return;
             }
@@ -357,31 +357,31 @@ export async function getOrCreateWebViewForTab(waveWindowId: string, tabId: stri
     return [tabView, false];
 }
 
-export function setWaveTabView(waveTabId: string, wcv: WaveTabView): void {
-    if (waveTabId == null) {
+export function setGulinTabView(gulinTabId: string, wcv: GulinTabView): void {
+    if (gulinTabId == null) {
         return;
     }
-    wcvCache.set(waveTabId, wcv);
+    wcvCache.set(gulinTabId, wcv);
     checkAndEvictCache();
 }
 
-function removeWaveTabView(waveTabId: string): void {
-    if (waveTabId == null) {
+function removeGulinTabView(gulinTabId: string): void {
+    if (gulinTabId == null) {
         return;
     }
-    wcvCache.delete(waveTabId);
+    wcvCache.delete(gulinTabId);
 }
 
-let HotSpareTab: WaveTabView = null;
+let HotSpareTab: GulinTabView = null;
 
 export function ensureHotSpareTab(fullConfig: FullConfigType) {
     console.log("ensureHotSpareTab");
     if (HotSpareTab == null) {
-        HotSpareTab = new WaveTabView(fullConfig);
+        HotSpareTab = new GulinTabView(fullConfig);
     }
 }
 
-export function getSpareTab(fullConfig: FullConfigType): WaveTabView {
+export function getSpareTab(fullConfig: FullConfigType): GulinTabView {
     setTimeout(() => ensureHotSpareTab(fullConfig), 500);
     if (HotSpareTab != null) {
         const rtn = HotSpareTab;
@@ -390,6 +390,6 @@ export function getSpareTab(fullConfig: FullConfigType): WaveTabView {
         return rtn;
     } else {
         console.log("getSpareTab: creating new tab");
-        return new WaveTabView(fullConfig);
+        return new GulinTabView(fullConfig);
     }
 }

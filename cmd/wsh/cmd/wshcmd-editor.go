@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var editMagnified bool
@@ -57,30 +57,30 @@ func editorRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	tabId := getTabIdFromEnv()
 	if tabId == "" {
-		return fmt.Errorf("no WAVETERM_TABID env var set")
+		return fmt.Errorf("no GULIN_TABID env var set")
 	}
 
 	wshCmd := wshrpc.CommandCreateBlockData{
 		TabId: tabId,
-		BlockDef: &waveobj.BlockDef{
+		BlockDef: &gulinobj.BlockDef{
 			Meta: map[string]any{
-				waveobj.MetaKey_View: "preview",
-				waveobj.MetaKey_File: absFile,
-				waveobj.MetaKey_Edit: true,
+				gulinobj.MetaKey_View: "preview",
+				gulinobj.MetaKey_File: absFile,
+				gulinobj.MetaKey_Edit: true,
 			},
 		},
 		Magnified: editMagnified,
 		Focused:   true,
 	}
 	if RpcContext.Conn != "" {
-		wshCmd.BlockDef.Meta[waveobj.MetaKey_Connection] = RpcContext.Conn
+		wshCmd.BlockDef.Meta[gulinobj.MetaKey_Connection] = RpcContext.Conn
 	}
 	blockRef, err := wshclient.CreateBlockCommand(RpcClient, wshCmd, &wshrpc.RpcOpts{Timeout: 2000})
 	if err != nil {
 		return fmt.Errorf("running view command: %w", err)
 	}
 	doneCh := make(chan bool)
-	RpcClient.EventListener.On(wps.Event_BlockClose, func(event *wps.WaveEvent) {
+	RpcClient.EventListener.On(wps.Event_BlockClose, func(event *wps.GulinEvent) {
 		if event.HasScope(blockRef.String()) {
 			close(doneCh)
 		}

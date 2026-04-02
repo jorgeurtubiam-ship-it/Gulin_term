@@ -6,7 +6,7 @@ package wshrpc
 
 const (
 	// MaxFileSize is the maximum file size that can be read
-	MaxFileSize = 50 * 1024 * 1024 // 50M
+	MaxFileSize = 100 * 1024 * 1024 // 100M
 	// MaxDirSize is the maximum number of entries that can be read in a directory
 	MaxDirSize = 1024
 	// FileChunkSize is the size of the file chunk to read

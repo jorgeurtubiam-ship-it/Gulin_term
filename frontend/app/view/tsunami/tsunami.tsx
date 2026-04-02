@@ -4,7 +4,7 @@
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { getApi, globalStore, WOS } from "@/app/store/global";
 import type { TabModel } from "@/app/store/tab-model";
-import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { gulinEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WebView, WebViewModel } from "@/app/view/webview/webview";
@@ -37,7 +37,7 @@ class TsunamiViewModel extends WebViewModel {
         initialShellProcStatus.then((rts) => {
             this.updateShellProcStatus(rts);
         });
-        this.shellProcStatusUnsubFn = waveEventSubscribeSingle({
+        this.shellProcStatusUnsubFn = gulinEventSubscribeSingle({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
@@ -58,7 +58,7 @@ class TsunamiViewModel extends WebViewModel {
         });
         this.viewName = jotai.atom((get) => {
             const meta = get(this.appMeta);
-            return meta?.title || "WaveApp";
+            return meta?.title || "GulinApp";
         });
         const initialRTInfo = RpcApi.GetRTInfoCommand(TabRpcClient, {
             oref: WOS.makeORef("block", blockId),
@@ -68,7 +68,7 @@ class TsunamiViewModel extends WebViewModel {
                 globalStore.set(this.appMeta, rtInfo["tsunami:appmeta"]);
             }
         });
-        this.appMetaUnsubFn = waveEventSubscribeSingle({
+        this.appMetaUnsubFn = gulinEventSubscribeSingle({
             eventType: "tsunami:updatemeta",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
@@ -201,15 +201,15 @@ class TsunamiViewModel extends WebViewModel {
         // Add tsunami-specific menu items at the beginning
         const tsunamiItems: ContextMenuItem[] = [
             {
-                label: "Stop WaveApp",
+                label: "Stop GulinApp",
                 click: () => this.destroyController(),
             },
             {
-                label: "Restart WaveApp",
+                label: "Restart GulinApp",
                 click: () => this.restartController(),
             },
             {
-                label: "Restart WaveApp and Force Rebuild",
+                label: "Restart GulinApp and Force Rebuild",
                 click: () => this.restartAndForceRebuild(),
             },
             {
@@ -220,7 +220,7 @@ class TsunamiViewModel extends WebViewModel {
         if (showRemixOption) {
             tsunamiItems.push(
                 {
-                    label: "Remix WaveApp in Builder",
+                    label: "Remix GulinApp in Builder",
                     click: () => this.remixInBuilder(),
                 },
                 {
@@ -280,7 +280,7 @@ const TsunamiView = memo((props: ViewComponentProps<TsunamiViewModel>) => {
         shellProcFullStatus.tsunamiport !== 0;
 
     if (shouldShowWebView) {
-        const tsunamiUrl = `http://localhost:${shellProcFullStatus.tsunamiport}/?clientid=wave:${model.blockId}`;
+        const tsunamiUrl = `http://localhost:${shellProcFullStatus.tsunamiport}/?clientid=gulin:${model.blockId}`;
         return (
             <div className="w-full h-full">
                 <WebView {...props} initialSrc={tsunamiUrl} />

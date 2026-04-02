@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/aiusechat/aiutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 func init() {
@@ -174,7 +174,7 @@ func ConvertToolDefinitionToOpenAI(tool uctypes.ToolDefinition) OpenAIRequestToo
 }
 
 func debugPrintReq(req *OpenAIRequest, endpoint string) {
-	if !wavebase.IsDevMode() {
+	if !gulinbase.IsDevMode() {
 		return
 	}
 	if endpoint != uctypes.DefaultAIEndpoint {
@@ -208,7 +208,7 @@ func debugPrintReq(req *OpenAIRequest, endpoint string) {
 }
 
 // buildOpenAIHTTPRequest creates a complete HTTP request for the OpenAI API
-func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*http.Request, error) {
+func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.GulinChatOpts, cont *uctypes.GulinContinueResponse) (*http.Request, error) {
 	opts := chatOpts.Config
 
 	// If continuing from premium rate limit, downgrade to default model and medium thinking
@@ -323,17 +323,17 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	}
 	req.Header.Set("Accept", "text/event-stream")
 
-	// Only send Wave-specific headers when using Wave provider
-	if opts.Provider == uctypes.AIProvider_Wave {
+	// Only send Gulin-specific headers when using Gulin provider
+	if opts.Provider == uctypes.AIProvider_Gulin {
 		if chatOpts.ClientId != "" {
-			req.Header.Set("X-Wave-ClientId", chatOpts.ClientId)
+			req.Header.Set("X-Gulin-ClientId", chatOpts.ClientId)
 		}
 		if chatOpts.ChatId != "" {
-			req.Header.Set("X-Wave-ChatId", chatOpts.ChatId)
+			req.Header.Set("X-Gulin-ChatId", chatOpts.ChatId)
 		}
-		req.Header.Set("X-Wave-Version", wavebase.WaveVersion)
-		req.Header.Set("X-Wave-APIType", uctypes.APIType_OpenAIResponses)
-		req.Header.Set("X-Wave-RequestType", chatOpts.GetWaveRequestType())
+		req.Header.Set("X-Gulin-Version", gulinbase.GulinVersion)
+		req.Header.Set("X-Gulin-APIType", uctypes.APIType_OpenAIResponses)
+		req.Header.Set("X-Gulin-RequestType", chatOpts.GetGulinRequestType())
 	}
 
 	return req, nil

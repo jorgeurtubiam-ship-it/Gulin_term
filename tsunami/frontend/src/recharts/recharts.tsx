@@ -97,8 +97,8 @@ function RechartsTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     
     const children = convertRechartsChildren(elem, model);
     
-    // Add the waveid as key
-    props.key = "recharts-" + elem.waveid;
+    // Add the gulinid as key
+    props.key = "recharts-" + elem.gulinid;
     
     return React.createElement(RechartsComponent, props, children);
 }
@@ -146,7 +146,7 @@ function convertRechartsChildren(elem: VDomElem, model: TsunamiModel): React.Rea
             if (RechartsComponent) {
                 // Convert props using the same logic as convertRechartsProps
                 const childProps = convertRechartsProps(model, child);
-                childProps.key = "recharts-" + child.waveid;
+                childProps.key = "recharts-" + child.gulinid;
                 
                 // Recursively convert children
                 const grandChildren = convertRechartsChildren(child, model);

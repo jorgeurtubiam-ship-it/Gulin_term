@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/wavetermdev/waveterm/tsunami/util"
+	"github.com/gulindev/gulin/tsunami/util"
 )
 
 func TestH(t *testing.T) {

@@ -12,10 +12,10 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/aiusechat/aiutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/chatstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 )
 
 func init() {
@@ -88,7 +88,7 @@ func cleanSchemaForGemini(schema map[string]any) map[string]any {
 	return cleaned
 }
 
-// ConvertToolDefinitionToGemini converts a Wave ToolDefinition to Gemini format
+// ConvertToolDefinitionToGemini converts a Gulin ToolDefinition to Gemini format
 func ConvertToolDefinitionToGemini(tool uctypes.ToolDefinition) GeminiFunctionDeclaration {
 	// Clean the schema to remove fields that Gemini doesn't accept
 	cleanedSchema := cleanSchemaForGemini(tool.InputSchema)

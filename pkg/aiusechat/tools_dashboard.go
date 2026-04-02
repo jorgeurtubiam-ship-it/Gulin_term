@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 type TermCreateDashboardInput struct {
@@ -94,7 +94,7 @@ func GetCreateDashboardToolDefinition(tabId string) uctypes.ToolDefinition {
 			rpcClient := wshclient.GetBareRpcClient()
 			_, err = wshclient.CreateBlockCommand(rpcClient, wshrpc.CommandCreateBlockData{
 				TabId: tabId,
-				BlockDef: &waveobj.BlockDef{
+				BlockDef: &gulinobj.BlockDef{
 					Meta: map[string]any{
 						"view":            "dashboard",
 						"dashboard:title": parsed.Title,

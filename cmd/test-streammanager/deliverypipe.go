@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 type DeliveryConfig struct {

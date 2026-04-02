@@ -10,8 +10,8 @@ import (
 	"io"
 	"log"
 
-	"github.com/wavetermdev/waveterm/pkg/baseds"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/baseds"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 )
 
 type PacketParser struct {

@@ -4,8 +4,8 @@
 package vdom
 
 const TextTag = "#text"
-const WaveTextTag = "wave:text"
-const WaveNullTag = "wave:null"
+const GulinTextTag = "gulin:text"
+const GulinNullTag = "gulin:null"
 const FragmentTag = "#fragment"
 
 const KeyPropKey = "key"
@@ -63,7 +63,7 @@ type VDomRefPosition struct {
 }
 
 type VDomEvent struct {
-	WaveId          string             `json:"waveid"`
+	GulinId          string             `json:"gulinid"`
 	EventType       string             `json:"eventtype"` // usually the prop name (e.g. onClick, onKeyDown)
 	GlobalEventType string             `json:"globaleventtype,omitempty"`
 	TargetValue     string             `json:"targetvalue,omitempty"` // set for onChange events on input/textarea/select

@@ -9,7 +9,7 @@ import { checkKeyPressed, isCharacterKeyEvent } from "@/util/keyutil";
 import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import { addOpenMenuItems } from "@/util/previewutil";
 import { fireAndForget } from "@/util/util";
-import { formatRemoteUri } from "@/util/waveutil";
+import { formatRemoteUri } from "@/util/gulinutil";
 import { offset, useDismiss, useFloating, useInteractions } from "@floating-ui/react";
 import {
     Header,
@@ -636,33 +636,33 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
     );
 
     useEffect(() => {
-        model.directoryKeyDownHandler = (waveEvent: WaveKeyboardEvent): boolean => {
-            if (checkKeyPressed(waveEvent, "Cmd:f")) {
+        model.directoryKeyDownHandler = (gulinEvent: GulinKeyboardEvent): boolean => {
+            if (checkKeyPressed(gulinEvent, "Cmd:f")) {
                 globalStore.set(model.directorySearchActive, true);
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "Escape")) {
+            if (checkKeyPressed(gulinEvent, "Escape")) {
                 setSearchText("");
                 globalStore.set(model.directorySearchActive, false);
                 return;
             }
-            if (checkKeyPressed(waveEvent, "ArrowUp")) {
+            if (checkKeyPressed(gulinEvent, "ArrowUp")) {
                 setFocusIndex((idx) => Math.max(idx - 1, 0));
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "ArrowDown")) {
+            if (checkKeyPressed(gulinEvent, "ArrowDown")) {
                 setFocusIndex((idx) => Math.min(idx + 1, filteredData.length - 1));
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "PageUp")) {
+            if (checkKeyPressed(gulinEvent, "PageUp")) {
                 setFocusIndex((idx) => Math.max(idx - PageJumpSize, 0));
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "PageDown")) {
+            if (checkKeyPressed(gulinEvent, "PageDown")) {
                 setFocusIndex((idx) => Math.min(idx + PageJumpSize, filteredData.length - 1));
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "Enter")) {
+            if (checkKeyPressed(gulinEvent, "Enter")) {
                 if (filteredData.length == 0) {
                     return;
                 }
@@ -671,7 +671,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 globalStore.set(model.directorySearchActive, false);
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "Backspace")) {
+            if (checkKeyPressed(gulinEvent, "Backspace")) {
                 if (searchText.length == 0) {
                     return true;
                 }
@@ -679,7 +679,7 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 return true;
             }
             if (
-                checkKeyPressed(waveEvent, "Space") &&
+                checkKeyPressed(gulinEvent, "Space") &&
                 searchText == "" &&
                 PLATFORM == PlatformMacOS &&
                 !blockData?.meta?.connection
@@ -687,8 +687,8 @@ function DirectoryPreview({ model }: DirectoryPreviewProps) {
                 getApi().onQuicklook(selectedPath);
                 return true;
             }
-            if (isCharacterKeyEvent(waveEvent)) {
-                setSearchText((current) => current + waveEvent.key);
+            if (isCharacterKeyEvent(gulinEvent)) {
+                setSearchText((current) => current + gulinEvent.key);
                 return true;
             }
             return false;

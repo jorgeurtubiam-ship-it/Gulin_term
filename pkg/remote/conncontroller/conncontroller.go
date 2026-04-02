@@ -20,24 +20,24 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/skeema/knownhosts"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/blocklogger"
+	"github.com/gulindev/gulin/pkg/genconn"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/remote"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/userinput"
+	"github.com/gulindev/gulin/pkg/util/envutil"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wstore"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 )
@@ -170,7 +170,7 @@ func (conn *SSHConn) Debugf(ctx context.Context, format string, args ...any) {
 
 func (conn *SSHConn) FireConnChangeEvent() {
 	status := conn.DeriveConnStatus()
-	event := wps.WaveEvent{
+	event := wps.GulinEvent{
 		Event: wps.Event_ConnChange,
 		Scopes: []string{
 			fmt.Sprintf("connection:%s", conn.GetName()),
@@ -280,7 +280,7 @@ func (conn *SSHConn) OpenDomainSocketListener(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("error generating random string: %w", err)
 	}
-	sockName := fmt.Sprintf("/tmp/waveterm-%s.sock", randStr)
+	sockName := fmt.Sprintf("/tmp/gulin-%s.sock", randStr)
 	conn.Infof(ctx, "generated domain socket name %s\n", sockName)
 	listener, err := client.ListenUnix(sockName)
 	if err != nil {
@@ -322,7 +322,7 @@ func IsWshVersionUpToDate(logCtx context.Context, wshVersionLine string) (bool, 
 		return false, "", "", fmt.Errorf("unexpected version format: %s", wshVersionLine)
 	}
 	clientVersion := parts[1]
-	expectedVersion := fmt.Sprintf("v%s", wavebase.WaveVersion)
+	expectedVersion := fmt.Sprintf("v%s", gulinbase.GulinVersion)
 	if semver.Compare(clientVersion, expectedVersion) < 0 {
 		return false, clientVersion, "", nil
 	}
@@ -391,7 +391,7 @@ func (conn *SSHConn) getEnvironmentWithPty(ctx context.Context, client *ssh.Clie
 	}
 	defer session.Close()
 
-	termSize := waveobj.TermSize{Rows: 24, Cols: 80}
+	termSize := gulinobj.TermSize{Rows: 24, Cols: 80}
 	err = session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to request PTY: %w", err)
@@ -414,7 +414,7 @@ func (conn *SSHConn) getWshPath() string {
 	if ok && config.ConnWshPath != "" {
 		return config.ConnWshPath
 	}
-	return wavebase.RemoteFullWshBinPath
+	return gulinbase.RemoteFullWshBinPath
 }
 
 func (conn *SSHConn) GetConfigShellPath() string {
@@ -471,7 +471,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		return false, "", "", fmt.Errorf("unable to get stdin pipe: %w", err)
 	}
 	devFlag := ""
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		devFlag = "--dev"
 	}
 	routerFlag := ""
@@ -499,9 +499,9 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		sshSession.Close()
 		return false, "", "", fmt.Errorf("error checking wsh version: %w", err)
 	}
-	if isUpToDate && !afterUpdate && os.Getenv(wavebase.WaveWshForceUpdateVarName) != "" {
+	if isUpToDate && !afterUpdate && os.Getenv(gulinbase.GulinWshForceUpdateVarName) != "" {
 		isUpToDate = false
-		conn.Infof(ctx, "%s set, forcing wsh update\n", wavebase.WaveWshForceUpdateVarName)
+		conn.Infof(ctx, "%s set, forcing wsh update\n", gulinbase.GulinWshForceUpdateVarName)
 	}
 	conn.Infof(ctx, "connserver up-to-date: %v\n", isUpToDate)
 	if !isUpToDate {
@@ -514,7 +514,7 @@ func (conn *SSHConn) StartConnServer(ctx context.Context, afterUpdate bool, useR
 		return false, clientVersion, "", fmt.Errorf("error reading jwt status line: %w", err)
 	}
 	conn.Infof(ctx, "got jwt status line: %s\n", jwtLine)
-	if strings.TrimSpace(jwtLine) == wavebase.NeedJwtConst {
+	if strings.TrimSpace(jwtLine) == gulinbase.NeedJwtConst {
 		// write the jwt
 		conn.Infof(ctx, "writing jwt token to connserver\n")
 		_, err = fmt.Fprintf(stdinPipe, "%s\n", jwtToken)
@@ -593,7 +593,7 @@ type WshInstallOpts struct {
 }
 
 var queryTextTemplate = strings.TrimSpace(`
-Wave requires Wave Shell Extensions to be
+Gulin requires Gulin Shell Extensions to be
 installed on %q
 to ensure a seamless experience.
 
@@ -620,7 +620,7 @@ func (conn *SSHConn) UpdateWsh(ctx context.Context, clientDisplayName string, re
 func (conn *SSHConn) getPermissionToInstallWsh(ctx context.Context, clientDisplayName string) (bool, error) {
 	conn.Infof(ctx, "running getPermissionToInstallWsh...\n")
 	queryText := fmt.Sprintf(queryTextTemplate, clientDisplayName)
-	title := "Install Wave Shell Extensions"
+	title := "Install Gulin Shell Extensions"
 	request := &userinput.UserInputRequest{
 		ResponseType: "confirm",
 		QueryText:    queryText,
@@ -649,7 +649,7 @@ func (conn *SSHConn) getPermissionToInstallWsh(ctx context.Context, clientDispla
 	}
 	if response.CheckboxStat {
 		conn.Infof(ctx, "writing conn:askbeforewshinstall=false to settings.json\n")
-		meta := waveobj.MetaMapType{
+		meta := gulinobj.MetaMapType{
 			wconfig.ConfigKey_ConnAskBeforeWshInstall: false,
 		}
 		setConfigErr := wconfig.SetBaseConfigValue(meta)
@@ -1251,11 +1251,11 @@ func GetConnectionsFromInternalConfig() []string {
 }
 
 func GetConnectionsFromConfig() ([]string, error) {
-	home := wavebase.GetHomeDir()
+	home := gulinbase.GetHomeDir()
 	localConfig := filepath.Join(home, ".ssh", "config")
 	systemConfig := filepath.Join("/etc", "ssh", "config")
 	sshConfigFiles := []string{localConfig, systemConfig}
-	remote.WaveSshConfigUserSettings().ReloadConfigs()
+	remote.GulinSshConfigUserSettings().ReloadConfigs()
 
 	return resolveSshConfigPatterns(sshConfigFiles)
 }

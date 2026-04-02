@@ -6,7 +6,7 @@ package anthropic
 import (
 	"testing"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 )
 
 func TestConvertPartsToAnthropicBlocks_TextOnly(t *testing.T) {

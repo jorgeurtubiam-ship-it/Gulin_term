@@ -17,8 +17,9 @@ const (
 	ConfigKey_AppDisableCtrlShiftArrows      = "app:disablectrlshiftarrows"
 	ConfigKey_AppDisableCtrlShiftDisplay     = "app:disablectrlshiftdisplay"
 	ConfigKey_AppFocusFollowsCursor          = "app:focusfollowscursor"
+	ConfigKey_AppLanguage                    = "app:language"
 
-	ConfigKey_FeatureWaveAppBuilder          = "feature:waveappbuilder"
+	ConfigKey_FeatureGulinAppBuilder         = "feature:gulinappbuilder"
 
 	ConfigKey_AiClear                        = "ai:*"
 	ConfigKey_AiPreset                       = "ai:preset"
@@ -35,8 +36,8 @@ const (
 	ConfigKey_AiFontSize                     = "ai:fontsize"
 	ConfigKey_AiFixedFontSize                = "ai:fixedfontsize"
 
-	ConfigKey_WaveAiShowCloudModes           = "waveai:showcloudmodes"
-	ConfigKey_WaveAiDefaultMode              = "waveai:defaultmode"
+	ConfigKey_GulinAiShowCloudModes          = "gulinai:showcloudmodes"
+	ConfigKey_GulinAiDefaultMode             = "gulinai:defaultmode"
 
 	ConfigKey_TermClear                      = "term:*"
 	ConfigKey_TermFontSize                   = "term:fontsize"
@@ -124,5 +125,11 @@ const (
 	ConfigKey_TsunamiSdkReplacePath          = "tsunami:sdkreplacepath"
 	ConfigKey_TsunamiSdkVersion              = "tsunami:sdkversion"
 	ConfigKey_TsunamiGoPath                  = "tsunami:gopath"
+
+	ConfigKey_GulinBridgeEnabled             = "gulinbridge:enabled"
+	ConfigKey_GulinBridgeURL                 = "gulinbridge:url"
+	ConfigKey_GulinBridgeEmail               = "gulinbridge:email"
+	ConfigKey_GulinBridgePasswordSecretName  = "gulinbridge:passwordsecretname"
+	ConfigKey_GulinBridgeTokenSecretName     = "gulinbridge:tokensecretname"
 )
 

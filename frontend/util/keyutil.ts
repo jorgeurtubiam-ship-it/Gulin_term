@@ -19,11 +19,11 @@ function getKeyUtilPlatform(): NodeJS.Platform {
 }
 
 function keydownWrapper(
-    fn: (waveEvent: WaveKeyboardEvent) => boolean
+    fn: (gulinEvent: GulinKeyboardEvent) => boolean
 ): (event: KeyboardEvent | React.KeyboardEvent) => void {
     return (event: KeyboardEvent | React.KeyboardEvent) => {
-        const waveEvent = adaptFromReactOrNativeKeyEvent(event);
-        const rtnVal = fn(waveEvent);
+        const gulinEvent = adaptFromReactOrNativeKeyEvent(event);
+        const rtnVal = fn(gulinEvent);
         if (rtnVal) {
             event.preventDefault();
             event.stopPropagation();
@@ -31,31 +31,31 @@ function keydownWrapper(
     };
 }
 
-function waveEventToKeyDesc(waveEvent: WaveKeyboardEvent): string {
+function gulinEventToKeyDesc(gulinEvent: GulinKeyboardEvent): string {
     let keyDesc: string[] = [];
-    if (waveEvent.cmd) {
+    if (gulinEvent.cmd) {
         keyDesc.push("Cmd");
     }
-    if (waveEvent.option) {
+    if (gulinEvent.option) {
         keyDesc.push("Option");
     }
-    if (waveEvent.meta) {
+    if (gulinEvent.meta) {
         keyDesc.push("Meta");
     }
-    if (waveEvent.control) {
+    if (gulinEvent.control) {
         keyDesc.push("Ctrl");
     }
-    if (waveEvent.shift) {
+    if (gulinEvent.shift) {
         keyDesc.push("Shift");
     }
-    if (waveEvent.key != null && waveEvent.key != "") {
-        if (waveEvent.key == " ") {
+    if (gulinEvent.key != null && gulinEvent.key != "") {
+        if (gulinEvent.key == " ") {
             keyDesc.push("Space");
         } else {
-            keyDesc.push(waveEvent.key);
+            keyDesc.push(gulinEvent.key);
         }
     } else {
-        keyDesc.push("c{" + waveEvent.code + "}");
+        keyDesc.push("c{" + gulinEvent.code + "}");
     }
     return keyDesc.join(":");
 }
@@ -131,7 +131,7 @@ function notMod(keyPressMod: boolean, eventMod: boolean) {
     return (keyPressMod && !eventMod) || (eventMod && !keyPressMod);
 }
 
-function isCharacterKeyEvent(event: WaveKeyboardEvent): boolean {
+function isCharacterKeyEvent(event: GulinKeyboardEvent): boolean {
     if (event.alt || event.meta || event.control) {
         return false;
     }
@@ -174,7 +174,7 @@ const inputKeyMap = new Map<string, boolean>([
     ["Cmd:Shift:ArrowDown", true],
 ]);
 
-function isInputEvent(event: WaveKeyboardEvent): boolean {
+function isInputEvent(event: GulinKeyboardEvent): boolean {
     if (isCharacterKeyEvent(event)) {
         return true;
     }
@@ -185,7 +185,7 @@ function isInputEvent(event: WaveKeyboardEvent): boolean {
     }
 }
 
-function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
+function checkKeyPressed(event: GulinKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
     if (notMod(keyPress.mods.Option, event.option)) {
         return false;
@@ -228,8 +228,8 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     return true;
 }
 
-function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEvent): WaveKeyboardEvent {
-    let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
+function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEvent): GulinKeyboardEvent {
+    let rtn: GulinKeyboardEvent = {} as GulinKeyboardEvent;
     rtn.control = event.ctrlKey;
     rtn.shift = event.shiftKey;
     rtn.cmd = PLATFORM == PlatformMacOS ? event.metaKey : event.altKey;
@@ -249,8 +249,8 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     return rtn;
 }
 
-function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
-    let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
+function adaptFromElectronKeyEvent(event: any): GulinKeyboardEvent {
+    let rtn: GulinKeyboardEvent = {} as GulinKeyboardEvent;
     if (event.type == "keyUp") {
         rtn.type = "keyup";
     } else if (event.type == "keyDown") {
@@ -288,7 +288,7 @@ const keyMap = {
     PageDown: "\x1b[6~",
 };
 
-function keyboardEventToASCII(event: WaveKeyboardEvent): string {
+function keyboardEventToASCII(event: GulinKeyboardEvent): string {
     // check modifiers
     // if no modifiers are set, just send the key
     if (!event.alt && !event.control && !event.meta) {
@@ -332,5 +332,5 @@ export {
     keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,
-    waveEventToKeyDesc,
+    gulinEventToKeyDesc,
 };

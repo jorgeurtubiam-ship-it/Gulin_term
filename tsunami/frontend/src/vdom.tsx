@@ -17,19 +17,19 @@ import OptimisticInput from "./input";
 
 const TextTag = "#text";
 const FragmentTag = "#fragment";
-const WaveTextTag = "wave:text";
-const WaveNullTag = "wave:null";
+const GulinTextTag = "gulin:text";
+const GulinNullTag = "gulin:null";
 const StyleTagName = "style";
 
 const VDomObjType_Ref = "ref";
 const VDomObjType_Func = "func";
 
-const dlog = debug("wave:vdom");
+const dlog = debug("gulin:vdom");
 
 type VDomReactTagType = (props: { elem: VDomElem; model: TsunamiModel }) => React.ReactElement;
 
-const WaveTagMap: Record<string, VDomReactTagType> = {
-    "wave:markdown": WaveMarkdown,
+const GulinTagMap: Record<string, VDomReactTagType> = {
+    "gulin:markdown": GulinMarkdown,
 };
 
 const AllowedSimpleTags: { [tagName: string]: boolean } = {
@@ -172,9 +172,9 @@ function convertVDomFunc(model: TsunamiModel, fnDecl: VDomFunc, compId: string, 
     return (e: any) => {
         if ((propName == "onKeyDown" || propName == "onKeyDownCapture") && fnDecl["keys"]) {
             dlog("key event", fnDecl, e);
-            let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+            let gulinEvent = adaptFromReactOrNativeKeyEvent(e);
             for (let keyDesc of fnDecl["keys"] || []) {
-                if (checkKeyPressed(waveEvent, keyDesc)) {
+                if (checkKeyPressed(gulinEvent, keyDesc)) {
                     e.preventDefault();
                     e.stopPropagation();
                     model.callVDomFunc(fnDecl, e, compId, propName);
@@ -200,7 +200,7 @@ export function convertElemToTag(elem: VDomElem, model: TsunamiModel): React.Rea
     if (elem.tag == TextTag) {
         return elem.text;
     }
-    return React.createElement(VDomTag, { key: elem.waveid, elem, model });
+    return React.createElement(VDomTag, { key: elem.gulinid, elem, model });
 }
 
 function isObject(v: any): boolean {
@@ -240,7 +240,7 @@ function convertProps(elem: VDomElem, model: TsunamiModel): GenericPropsType {
         }
         if (isObject(val) && val.type == VDomObjType_Func) {
             const valFunc = val as VDomFunc;
-            props[key] = convertVDomFunc(model, valFunc, elem.waveid, key);
+            props[key] = convertVDomFunc(model, valFunc, elem.gulinid, key);
             continue;
         }
         props[key] = val;
@@ -271,7 +271,7 @@ function useVDom(model: TsunamiModel, elem: VDomElem): GenericPropsType {
     return props;
 }
 
-function WaveMarkdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
+function GulinMarkdown({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     const props = useVDom(model, elem);
     return (
         <Markdown text={props?.text} style={props?.style} className={props?.className} scrollable={props?.scrollable} />
@@ -288,10 +288,10 @@ function StyleTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
 
 function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
     const props = useVDom(model, elem);
-    if (elem.tag == WaveNullTag) {
+    if (elem.tag == GulinNullTag) {
         return null;
     }
-    if (elem.tag == WaveTextTag) {
+    if (elem.tag == GulinTextTag) {
         return props.text;
     }
 
@@ -300,9 +300,9 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
         return <RechartsTag elem={elem} model={model} />;
     }
 
-    const waveTag = WaveTagMap[elem.tag];
-    if (waveTag) {
-        return waveTag({ elem, model });
+    const gulinTag = GulinTagMap[elem.tag];
+    if (gulinTag) {
+        return gulinTag({ elem, model });
     }
     if (elem.tag == StyleTagName) {
         return <StyleTag elem={elem} model={model} />;
@@ -317,7 +317,7 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
 
     // Use OptimisticInput for input and textarea elements
     if (elem.tag === "input" || elem.tag === "textarea") {
-        props.key = "e-" + elem.waveid;
+        props.key = "e-" + elem.gulinid;
         const optimisticProps = {
             ...props,
             _tagName: elem.tag as "input" | "textarea",
@@ -325,7 +325,7 @@ function VDomTag({ elem, model }: { elem: VDomElem; model: TsunamiModel }) {
         return React.createElement(OptimisticInput, optimisticProps, childrenComps);
     }
 
-    props.key = "e-" + elem.waveid;
+    props.key = "e-" + elem.gulinid;
     return React.createElement(elem.tag, props, childrenComps);
 }
 

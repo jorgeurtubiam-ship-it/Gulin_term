@@ -9,7 +9,7 @@ import (
 
 func TestDialIdentityAgentWindowsTimeout(t *testing.T) {
 	start := time.Now()
-	_, err := dialIdentityAgent(`\\.\\pipe\\waveterm-nonexistent-agent`)
+	_, err := dialIdentityAgent(`\\.\\pipe\\gulin-nonexistent-agent`)
 	if err == nil {
 		t.Skip("unexpectedly connected to a test pipe; skipping")
 	}

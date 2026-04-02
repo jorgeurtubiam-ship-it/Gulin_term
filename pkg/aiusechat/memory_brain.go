@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 const GulinMemoryDirName = "gulin"
@@ -25,7 +25,7 @@ const DefaultEmbeddingModel = "nomic-embed-text"
 type GulinEmbeddings map[string][]float32
 
 func GetGulinMemoryDir() string {
-	return filepath.Join(wavebase.GetWaveConfigDir(), GulinMemoryDirName)
+	return filepath.Join(gulinbase.GetGulinConfigDir(), GulinMemoryDirName)
 }
 
 func EnsureGulinMemoryDir() error {

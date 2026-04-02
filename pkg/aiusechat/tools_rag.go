@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 )
 
 type workspaceSearchInput struct {
@@ -94,7 +94,7 @@ Requires the user to have previously indexed the workspace via 'wsh gulin index'
 			return fmt.Sprintf("searching workspace for %q", parsed.Query)
 		},
 		ToolAnyCallback: workspaceSearchCallback,
-		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
 			// Read-only tool, auto-approve in ACT mode
 			if strings.HasSuffix(chatOpts.Config.AIMode, "@act") {
 				return uctypes.ApprovalAutoApproved

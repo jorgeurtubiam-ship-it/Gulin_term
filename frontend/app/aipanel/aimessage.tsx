@@ -222,6 +222,8 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
 
     const thinkingData = getThinkingMessage(parts, isStreaming, message.role, t);
     const groupedParts = groupMessageParts(displayParts);
+    // Track which terminal blockids have already been rendered across tool groups in this message
+    const seenBlockIds = new Set<string>();
 
     return (
         <div className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
@@ -239,7 +241,7 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                     <>
                         {groupedParts.map((group, index: number) =>
                             group.type === "toolgroup" ? (
-                                <AIToolUseGroup key={index} parts={group.parts} isStreaming={isStreaming} />
+                                <AIToolUseGroup key={index} parts={group.parts} isStreaming={isStreaming} seenBlockIds={seenBlockIds} />
                             ) : (
                                 <div key={index} className="mt-2">
                                     <AIMessagePart part={group.part} role={message.role} isStreaming={isStreaming} />

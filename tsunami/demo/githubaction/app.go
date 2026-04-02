@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wavetermdev/waveterm/tsunami/app"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/gulindev/gulin/tsunami/app"
+	"github.com/gulindev/gulin/tsunami/vdom"
 )
 
 var AppMeta = app.AppMeta{
@@ -28,7 +28,7 @@ var (
 		Min:   app.Ptr(1.0),
 		Max:   app.Ptr(300.0),
 	})
-	repositoryAtom = app.ConfigAtom("repository", "wavetermdev/waveterm", &app.AtomMeta{
+	repositoryAtom = app.ConfigAtom("repository", "gulindev/gulin", &app.AtomMeta{
 		Desc:    "GitHub repository in owner/repo format",
 		Pattern: `^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`,
 	})
@@ -86,7 +86,7 @@ func fetchWorkflowRuns(repository, workflow string, maxRuns int) ([]WorkflowRun,
 
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	req.Header.Set("User-Agent", "WaveTerminal-GitHubMonitor")
+	req.Header.Set("User-Agent", "GuLiNinal-GitHubMonitor")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

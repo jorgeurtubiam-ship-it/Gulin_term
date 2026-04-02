@@ -7,7 +7,7 @@ import { sprintf } from "sprintf-js";
 
 const AuthKeyHeader = "X-AuthKey";
 
-const dlog = debug("wave:ws");
+const dlog = debug("gulin:ws");
 
 const WarnWebSocketSendSize = 1024 * 1024; // 1MB
 const MaxWebSocketSendSize = 5 * 1024 * 1024; // 5MB

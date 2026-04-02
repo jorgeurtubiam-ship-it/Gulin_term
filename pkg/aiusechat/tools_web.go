@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wcore"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 type WebNavigateToolInput struct {
@@ -91,7 +91,7 @@ func GetWebNavigateToolDefinition(tabId string) uctypes.ToolDefinition {
 				return nil, err
 			}
 
-			blockORef := waveobj.MakeORef(waveobj.OType_Block, fullBlockId)
+			blockORef := gulinobj.MakeORef(gulinobj.OType_Block, fullBlockId)
 			meta := map[string]any{
 				"url": parsed.Url,
 			}
@@ -101,7 +101,7 @@ func GetWebNavigateToolDefinition(tabId string) uctypes.ToolDefinition {
 				return nil, fmt.Errorf("failed to update web block URL: %w", err)
 			}
 
-			wcore.SendWaveObjUpdate(blockORef)
+			wcore.SendGulinObjUpdate(blockORef)
 			return true, nil
 		},
 	}

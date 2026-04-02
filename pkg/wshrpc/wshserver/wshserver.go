@@ -21,43 +21,43 @@ import (
 	"time"
 
 	"github.com/skratchdot/open-golang/open"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/buildercontroller"
-	"github.com/wavetermdev/waveterm/pkg/filebackup"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
-	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
-	"github.com/wavetermdev/waveterm/pkg/secretstore"
-	"github.com/wavetermdev/waveterm/pkg/suggestion"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveai"
-	"github.com/wavetermdev/waveterm/pkg/waveappstore"
-	"github.com/wavetermdev/waveterm/pkg/waveapputil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcloud"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wsl"
-	"github.com/wavetermdev/waveterm/pkg/wslconn"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
-	"github.com/wavetermdev/waveterm/tsunami/build"
+	"github.com/gulindev/gulin/pkg/aiusechat"
+	"github.com/gulindev/gulin/pkg/aiusechat/chatstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/blockcontroller"
+	"github.com/gulindev/gulin/pkg/blocklogger"
+	"github.com/gulindev/gulin/pkg/buildercontroller"
+	"github.com/gulindev/gulin/pkg/filebackup"
+	"github.com/gulindev/gulin/pkg/filestore"
+	"github.com/gulindev/gulin/pkg/genconn"
+	"github.com/gulindev/gulin/pkg/jobcontroller"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/remote"
+	"github.com/gulindev/gulin/pkg/remote/conncontroller"
+	"github.com/gulindev/gulin/pkg/remote/fileshare/wshfs"
+	"github.com/gulindev/gulin/pkg/secretstore"
+	"github.com/gulindev/gulin/pkg/suggestion"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/util/envutil"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinai"
+	"github.com/gulindev/gulin/pkg/gulinappstore"
+	"github.com/gulindev/gulin/pkg/gulinapputil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinjwt"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wcloud"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wcore"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wsl"
+	"github.com/gulindev/gulin/pkg/wslconn"
+	"github.com/gulindev/gulin/pkg/wstore"
+	"github.com/gulindev/gulin/tsunami/build"
 )
 
 var InvalidWslDistroNames = []string{"docker-desktop", "docker-desktop-data"}
@@ -69,7 +69,7 @@ func (*WshServer) WshServerImpl() {}
 var WshServerImpl = WshServer{}
 
 func (ws *WshServer) GetJwtPublicKeyCommand(ctx context.Context) (string, error) {
-	return wavejwt.GetPublicKeyBase64(), nil
+	return gulinjwt.GetPublicKeyBase64(), nil
 }
 
 func (ws *WshServer) TestCommand(ctx context.Context, data string) error {
@@ -103,16 +103,16 @@ func (ws *WshServer) StreamTestCommand(ctx context.Context) chan wshrpc.RespOrEr
 	return rtn
 }
 
-func (ws *WshServer) StreamWaveAiCommand(ctx context.Context, request wshrpc.WaveAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
-	return waveai.RunAICommand(ctx, request)
+func (ws *WshServer) StreamGulinAiCommand(ctx context.Context, request wshrpc.GulinAIStreamRequest) chan wshrpc.RespOrErrorUnion[wshrpc.GulinAIPacketType] {
+	return gulinai.RunAICommand(ctx, request)
 }
 
 func MakePlotData(ctx context.Context, blockId string) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	block, err := wstore.DBMustGet[*gulinobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
-	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
+	viewName := block.Meta.GetString(gulinobj.MetaKey_View, "")
 	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
@@ -120,11 +120,11 @@ func MakePlotData(ctx context.Context, blockId string) error {
 }
 
 func SavePlotData(ctx context.Context, blockId string, history string) error {
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	block, err := wstore.DBMustGet[*gulinobj.Block](ctx, blockId)
 	if err != nil {
 		return err
 	}
-	viewName := block.Meta.GetString(waveobj.MetaKey_View, "")
+	viewName := block.Meta.GetString(gulinobj.MetaKey_View, "")
 	if viewName != "cpuplot" && viewName != "sysinfo" {
 		return fmt.Errorf("invalid view type: %s", viewName)
 	}
@@ -138,7 +138,7 @@ func SavePlotData(ctx context.Context, blockId string, history string) error {
 	return filestore.WFS.WriteFile(ctx, blockId, "cpuplotdata", historyBytes)
 }
 
-func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (waveobj.MetaMapType, error) {
+func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (gulinobj.MetaMapType, error) {
 	obj, err := wstore.DBGetORef(ctx, data.ORef)
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
@@ -146,7 +146,7 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 	if obj == nil {
 		return nil, fmt.Errorf("object not found: %s", data.ORef)
 	}
-	return waveobj.GetMeta(obj), nil
+	return gulinobj.GetMeta(obj), nil
 }
 
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
@@ -156,11 +156,11 @@ func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetM
 	if err != nil {
 		return fmt.Errorf("error updating object meta: %w", err)
 	}
-	wcore.SendWaveObjUpdate(oref)
+	wcore.SendGulinObjUpdate(oref)
 	return nil
 }
 
-func (ws *WshServer) GetRTInfoCommand(ctx context.Context, data wshrpc.CommandGetRTInfoData) (*waveobj.ObjRTInfo, error) {
+func (ws *WshServer) GetRTInfoCommand(ctx context.Context, data wshrpc.CommandGetRTInfoData) (*gulinobj.ObjRTInfo, error) {
 	return wstore.GetRTInfo(data.ORef), nil
 }
 
@@ -175,7 +175,7 @@ func (ws *WshServer) SetRTInfoCommand(ctx context.Context, data wshrpc.CommandSe
 
 func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandResolveIdsData) (wshrpc.CommandResolveIdsRtnData, error) {
 	rtn := wshrpc.CommandResolveIdsRtnData{}
-	rtn.ResolvedIds = make(map[string]waveobj.ORef)
+	rtn.ResolvedIds = make(map[string]gulinobj.ORef)
 	var firstErr error
 	for _, simpleId := range data.Ids {
 		oref, err := resolveSimpleId(ctx, data, simpleId)
@@ -196,18 +196,18 @@ func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandR
 	return rtn, nil
 }
 
-func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
-	ctx = waveobj.ContextWithUpdates(ctx)
+func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*gulinobj.ORef, error) {
+	ctx = gulinobj.ContextWithUpdates(ctx)
 	tabId := data.TabId
 	blockData, err := wcore.CreateBlock(ctx, tabId, data.BlockDef, data.RtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	var layoutAction *waveobj.LayoutActionData
+	var layoutAction *gulinobj.LayoutActionData
 	if data.TargetBlockId != "" {
 		switch data.TargetAction {
 		case "replace":
-			layoutAction = &waveobj.LayoutActionData{
+			layoutAction = &gulinobj.LayoutActionData{
 				ActionType:    wcore.LayoutActionDataType_Replace,
 				TargetBlockId: data.TargetBlockId,
 				BlockId:       blockData.OID,
@@ -218,7 +218,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				return nil, fmt.Errorf("error deleting block (trying to do block replace): %w", err)
 			}
 		case "splitright":
-			layoutAction = &waveobj.LayoutActionData{
+			layoutAction = &gulinobj.LayoutActionData{
 				ActionType:    wcore.LayoutActionDataType_SplitHorizontal,
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
@@ -226,7 +226,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				Focused:       data.Focused,
 			}
 		case "splitleft":
-			layoutAction = &waveobj.LayoutActionData{
+			layoutAction = &gulinobj.LayoutActionData{
 				ActionType:    wcore.LayoutActionDataType_SplitHorizontal,
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
@@ -234,7 +234,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				Focused:       data.Focused,
 			}
 		case "splitup":
-			layoutAction = &waveobj.LayoutActionData{
+			layoutAction = &gulinobj.LayoutActionData{
 				ActionType:    wcore.LayoutActionDataType_SplitVertical,
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
@@ -242,7 +242,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 				Focused:       data.Focused,
 			}
 		case "splitdown":
-			layoutAction = &waveobj.LayoutActionData{
+			layoutAction = &gulinobj.LayoutActionData{
 				ActionType:    wcore.LayoutActionDataType_SplitVertical,
 				BlockId:       blockData.OID,
 				TargetBlockId: data.TargetBlockId,
@@ -253,7 +253,7 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 			return nil, fmt.Errorf("invalid target action: %s", data.TargetAction)
 		}
 	} else {
-		layoutAction = &waveobj.LayoutActionData{
+		layoutAction = &gulinobj.LayoutActionData{
 			ActionType: wcore.LayoutActionDataType_Insert,
 			BlockId:    blockData.OID,
 			Magnified:  data.Magnified,
@@ -265,18 +265,18 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return nil, fmt.Errorf("error queuing layout action: %w", err)
 	}
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	updates := gulinobj.ContextGetUpdatesRtn(ctx)
 	wps.Broker.SendUpdateEvents(updates)
-	return &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}, nil
+	return &gulinobj.ORef{OType: gulinobj.OType_Block, OID: blockData.OID}, nil
 }
 
-func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.CommandCreateSubBlockData) (*waveobj.ORef, error) {
+func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.CommandCreateSubBlockData) (*gulinobj.ORef, error) {
 	parentBlockId := data.ParentBlockId
 	blockData, err := wcore.CreateSubBlock(ctx, parentBlockId, data.BlockDef)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	blockRef := &waveobj.ORef{OType: waveobj.OType_Block, OID: blockData.OID}
+	blockRef := &gulinobj.ORef{OType: gulinobj.OType_Block, OID: blockData.OID}
 	return blockRef, nil
 }
 
@@ -313,7 +313,7 @@ func (ws *WshServer) ControllerAppendOutputCommand(ctx context.Context, data wsh
 	if err != nil {
 		return fmt.Errorf("error decoding output data: %w", err)
 	}
-	err = blockcontroller.HandleAppendBlockFile(data.BlockId, wavebase.BlockFile_Term, outputBuf[:nw])
+	err = blockcontroller.HandleAppendBlockFile(data.BlockId, gulinbase.BlockFile_Term, outputBuf[:nw])
 	if err != nil {
 		return fmt.Errorf("error appending to block file: %w", err)
 	}
@@ -384,11 +384,11 @@ func (ws *WshServer) FileJoinCommand(ctx context.Context, paths []string) (*wshr
 }
 
 func (ws *WshServer) FileRestoreBackupCommand(ctx context.Context, data wshrpc.CommandFileRestoreBackupData) error {
-	expandedBackupPath, err := wavebase.ExpandHomeDir(data.BackupFilePath)
+	expandedBackupPath, err := gulinbase.ExpandHomeDir(data.BackupFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to expand backup file path: %w", err)
 	}
-	expandedRestorePath, err := wavebase.ExpandHomeDir(data.RestoreToFileName)
+	expandedRestorePath, err := gulinbase.ExpandHomeDir(data.RestoreToFileName)
 	if err != nil {
 		return fmt.Errorf("failed to expand restore file path: %w", err)
 	}
@@ -418,7 +418,7 @@ func (ws *WshServer) WriteTempFileCommand(ctx context.Context, data wshrpc.Comma
 	if name == "" || name == "." || name == ".." {
 		return "", fmt.Errorf("invalid filename")
 	}
-	tempDir, err := os.MkdirTemp("", "waveterm-")
+	tempDir, err := os.MkdirTemp("", "gulin-")
 	if err != nil {
 		return "", fmt.Errorf("error creating temp directory: %w", err)
 	}
@@ -449,7 +449,7 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if data.BlockId == "" {
 		return fmt.Errorf("blockid is required")
 	}
-	ctx = waveobj.ContextWithUpdates(ctx)
+	ctx = gulinobj.ContextWithUpdates(ctx)
 	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
 	if err != nil {
 		return fmt.Errorf("error finding tab for block: %w", err)
@@ -461,11 +461,11 @@ func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.Command
 	if err != nil {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
-	wcore.QueueLayoutActionForTab(ctx, tabId, waveobj.LayoutActionData{
+	wcore.QueueLayoutActionForTab(ctx, tabId, gulinobj.LayoutActionData{
 		ActionType: wcore.LayoutActionDataType_Remove,
 		BlockId:    data.BlockId,
 	})
-	updates := waveobj.ContextGetUpdatesRtn(ctx)
+	updates := gulinobj.ContextGetUpdatesRtn(ctx)
 	wps.Broker.SendUpdateEvents(updates)
 	return nil
 }
@@ -477,11 +477,11 @@ func (ws *WshServer) WaitForRouteCommand(ctx context.Context, data wshrpc.Comman
 	return err == nil, nil
 }
 
-func (ws *WshServer) EventRecvCommand(ctx context.Context, data wps.WaveEvent) error {
+func (ws *WshServer) EventRecvCommand(ctx context.Context, data wps.GulinEvent) error {
 	return nil
 }
 
-func (ws *WshServer) EventPublishCommand(ctx context.Context, data wps.WaveEvent) error {
+func (ws *WshServer) EventPublishCommand(ctx context.Context, data wps.GulinEvent) error {
 	rpcSource := wshutil.GetRpcSourceFromContext(ctx)
 	if rpcSource == "" {
 		return fmt.Errorf("no rpc source set")
@@ -520,7 +520,7 @@ func (ws *WshServer) EventUnsubAllCommand(ctx context.Context) error {
 	return nil
 }
 
-func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.CommandEventReadHistoryData) ([]*wps.WaveEvent, error) {
+func (ws *WshServer) EventReadHistoryCommand(ctx context.Context, data wshrpc.CommandEventReadHistoryData) ([]*wps.GulinEvent, error) {
 	events := wps.Broker.ReadEventHistory(data.Event, data.Scope, data.MaxItems)
 	return events, nil
 }
@@ -538,10 +538,170 @@ func (ws *WshServer) GetFullConfigCommand(ctx context.Context) (wconfig.FullConf
 	return watcher.GetFullConfig(), nil
 }
 
-func (ws *WshServer) GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error) {
+func (ws *WshServer) GetGulinAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error) {
 	fullConfig := wconfig.GetWatcher().GetFullConfig()
 	resolvedConfigs := aiusechat.ComputeResolvedAIModeConfigs(fullConfig)
 	return wconfig.AIModeConfigUpdate{Configs: resolvedConfigs}, nil
+}
+
+func (ws *WshServer) GulinBridgeSyncModelsCommand(ctx context.Context) error {
+	return aiusechat.SyncGulinBridgeModels()
+}
+
+func (ws *WshServer) GulinBridgeLoginCommand(ctx context.Context, data wshrpc.CommandGulinBridgeLoginData) error {
+	if data.URL == "" || data.Email == "" || data.Password == "" {
+		return fmt.Errorf("URL, email y contraseña son obligatorios")
+	}
+
+	// 1. Validar las credenciales intentando hacer login
+	client := aiusechat.NewGulinBridgeClient(data.URL)
+	token, err := client.Login(data.Email, data.Password)
+	if err != nil {
+		return fmt.Errorf("error al validar credenciales en Gulin Bridge: %w", err)
+	}
+
+	// 2. Gestionar Gulin Token (gl-vi-al-...)
+	var gulinToken string
+	dashboard, err := client.GetDashboardData(token)
+	if err == nil {
+		// Intentar reutilizar una llave existente llamada "Gulin Term"
+		for _, k := range dashboard.ApiKeys {
+			if k.Name == "Gulin Term" {
+				gulinToken = k.Key
+				break
+			}
+		}
+	}
+
+	// Si no existe, crear una nueva
+	if gulinToken == "" {
+		newKey, err := client.CreateAPIKey(token, "Gulin Term")
+		if err == nil {
+			gulinToken = newKey.Key
+		}
+	}
+
+	// 3. Guardar la contraseña en el almacén de secretos
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	secretName := fullConfig.Settings.GulinBridgePasswordSecretName
+	if secretName == "" {
+		secretName = "gulinbridge:password"
+	}
+	err = secretstore.SetSecret(secretName, data.Password)
+	if err != nil {
+		return fmt.Errorf("error al guardar la contraseña en el almacén de secretos: %w", err)
+	}
+
+	// 4. Guardar el Gulin Token en el almacén de secretos
+	tokenSecretName := fullConfig.Settings.GulinBridgeTokenSecretName
+	if tokenSecretName == "" {
+		tokenSecretName = "gulinbridge:token"
+	}
+	if gulinToken != "" {
+		err = secretstore.SetSecret(tokenSecretName, gulinToken)
+		if err != nil {
+			log.Printf("Aviso: No se pudo guardar el Gulin Token en el almacén de secretos: %v", err)
+		}
+	}
+
+	// 5. Actualizar la configuración
+	updates := make(gulinobj.MetaMapType)
+	updates["gulinbridge:enabled"] = true
+	updates["gulinbridge:url"] = data.URL
+	updates["gulinbridge:email"] = data.Email
+	updates["gulinbridge:passwordsecretname"] = secretName
+	updates["gulinbridge:tokensecretname"] = tokenSecretName
+
+	err = wconfig.SetBaseConfigValue(updates)
+	if err != nil {
+		return fmt.Errorf("error al actualizar la configuración: %w", err)
+	}
+
+	// 6. Sincronizar modelos inmediatamente
+	go func() {
+		time.Sleep(1 * time.Second)
+		aiusechat.SyncGulinBridgeModels()
+	}()
+
+	return nil
+}
+
+func (ws *WshServer) GulinBridgeRegisterCommand(ctx context.Context, data wshrpc.CommandGulinBridgeRegisterData) error {
+	if data.URL == "" || data.Email == "" || data.Password == "" {
+		return fmt.Errorf("URL, email y contraseña son obligatorios")
+	}
+
+	client := aiusechat.NewGulinBridgeClient(data.URL)
+
+	// 1. Registrar el usuario
+	err := client.Register(data.Email, data.Password)
+	if err != nil {
+		return fmt.Errorf("error al registrar usuario en Gulin Bridge: %w", err)
+	}
+
+	// 2. Hacer login automático e inicializar sesión (reutilizando lógica de login)
+	loginData := wshrpc.CommandGulinBridgeLoginData{
+		URL:      data.URL,
+		Email:    data.Email,
+		Password: data.Password,
+	}
+	return ws.GulinBridgeLoginCommand(ctx, loginData)
+}
+
+func (ws *WshServer) GulinBridgeLogoutCommand(ctx context.Context) error {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	
+	// 1. Limpiar secretos
+	secretstore.DeleteSecret(fullConfig.Settings.GulinBridgePasswordSecretName)
+	secretstore.DeleteSecret(fullConfig.Settings.GulinBridgeTokenSecretName)
+	
+	// 2. Desactivar y limpiar configuración
+	updates := make(gulinobj.MetaMapType)
+	updates["gulinbridge:enabled"] = false
+	updates["gulinbridge:email"] = ""
+	
+	err := wconfig.SetBaseConfigValue(updates)
+	if err != nil {
+		return fmt.Errorf("error al cerrar sesión de Gulin Bridge: %w", err)
+	}
+	
+	// 3. Limpiar modelos sincronizados
+	aiusechat.ClearGulinBridgeModels()
+	
+	return nil
+}
+
+func (ws *WshServer) GulinBridgeCreateTokenCommand(ctx context.Context, name string) (string, error) {
+	fullConfig := wconfig.GetWatcher().GetFullConfig()
+	settings := fullConfig.Settings
+	
+	if settings.GulinBridgeURL == "" || settings.GulinBridgeEmail == "" {
+		return "", fmt.Errorf("no hay una sesión activa de Gulin Bridge")
+	}
+	
+	password, exists, err := secretstore.GetSecret(settings.GulinBridgePasswordSecretName)
+	if err != nil || !exists || password == "" {
+		return "", fmt.Errorf("contraseña no encontrada, por favor inicia sesión de nuevo")
+	}
+	
+	client := aiusechat.NewGulinBridgeClient(settings.GulinBridgeURL)
+	token, err := client.Login(settings.GulinBridgeEmail, password)
+	if err != nil {
+		return "", fmt.Errorf("error de autenticación: %w", err)
+	}
+	
+	newKey, err := client.CreateAPIKey(token, name)
+	if err != nil {
+		return "", fmt.Errorf("error al crear el token: %w", err)
+	}
+	
+	// Guardarlo como el token activo si no hay uno
+	activeToken, exists, _ := secretstore.GetSecret(settings.GulinBridgeTokenSecretName)
+	if !exists || activeToken == "" {
+		secretstore.SetSecret(settings.GulinBridgeTokenSecretName, newKey.Key)
+	}
+	
+	return newKey.Key, nil
 }
 
 func (ws *WshServer) ConnStatusCommand(ctx context.Context) ([]wshrpc.ConnStatus, error) {
@@ -558,11 +718,11 @@ func termCtxWithLogBlockId(ctx context.Context, logBlockId string) context.Conte
 	if logBlockId == "" {
 		return ctx
 	}
-	block, err := wstore.DBMustGet[*waveobj.Block](ctx, logBlockId)
+	block, err := wstore.DBMustGet[*gulinobj.Block](ctx, logBlockId)
 	if err != nil {
 		return ctx
 	}
-	connDebug := block.Meta.GetString(waveobj.MetaKey_TermConnDebug, "")
+	connDebug := block.Meta.GetString(gulinobj.MetaKey_TermConnDebug, "")
 	if connDebug == "" {
 		return ctx
 	}
@@ -765,8 +925,8 @@ func (ws *WshServer) FindGitBashCommand(ctx context.Context, rescan bool) (strin
 	return shellutil.FindGitBash(&fullConfig, rescan), nil
 }
 
-func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
-	return &wshrpc.WaveFileInfo{
+func gulinFileToGulinFileInfo(wf *filestore.GulinFile) *wshrpc.GulinFileInfo {
+	return &wshrpc.GulinFileInfo{
 		ZoneId:    wf.ZoneId,
 		Name:      wf.Name,
 		Opts:      wf.Opts,
@@ -778,7 +938,7 @@ func waveFileToWaveFileInfo(wf *filestore.WaveFile) *wshrpc.WaveFileInfo {
 }
 
 func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wshrpc.BlockInfoData, error) {
-	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
+	blockData, err := wstore.DBMustGet[*gulinobj.Block](ctx, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting block: %w", err)
 	}
@@ -794,9 +954,9 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	if err != nil {
 		return nil, fmt.Errorf("error listing blockfiles: %w", err)
 	}
-	var fileInfoList []*wshrpc.WaveFileInfo
+	var fileInfoList []*wshrpc.GulinFileInfo
 	for _, wf := range fileList {
-		fileInfoList = append(fileInfoList, waveFileToWaveFileInfo(wf))
+		fileInfoList = append(fileInfoList, gulinFileToGulinFileInfo(wf))
 	}
 	return &wshrpc.BlockInfoData{
 		BlockId:     blockId,
@@ -807,13 +967,13 @@ func (ws *WshServer) BlockInfoCommand(ctx context.Context, blockId string) (*wsh
 	}, nil
 }
 
-func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
-	return &wshrpc.WaveInfoData{
-		Version:   wavebase.WaveVersion,
+func (ws *WshServer) GulinInfoCommand(ctx context.Context) (*wshrpc.GulinInfoData, error) {
+	return &wshrpc.GulinInfoData{
+		Version:   gulinbase.GulinVersion,
 		ClientId:  wstore.GetClientId(),
-		BuildTime: wavebase.BuildTime,
-		ConfigDir: wavebase.GetWaveConfigDir(),
-		DataDir:   wavebase.GetWaveDataDir(),
+		BuildTime: gulinbase.BuildTime,
+		ConfigDir: gulinbase.GetGulinConfigDir(),
+		DataDir:   gulinbase.GetGulinDataDir(),
 	}, nil
 }
 
@@ -836,7 +996,7 @@ func (ws *WshServer) BlocksListCommand(
 		workspaceIDs = []string{win.WorkspaceId}
 	} else {
 		// "current" == first workspace in client focus list
-		client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+		client, err := wstore.DBGetSingleton[*gulinobj.Client](ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -862,12 +1022,12 @@ func (ws *WshServer) BlocksListCommand(
 		}
 
 		for _, tabID := range wsData.TabIds {
-			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabID)
+			tab, err := wstore.DBMustGet[*gulinobj.Tab](ctx, tabID)
 			if err != nil {
 				return nil, err
 			}
 			for _, blkID := range tab.BlockIds {
-				blk, err := wstore.DBMustGet[*waveobj.Block](ctx, blkID)
+				blk, err := wstore.DBMustGet[*gulinobj.Block](ctx, blkID)
 				if err != nil {
 					return nil, err
 				}
@@ -904,18 +1064,18 @@ func (ws *WshServer) WorkspaceListCommand(ctx context.Context) ([]wshrpc.Workspa
 }
 
 func (ws *WshServer) ListAllAppsCommand(ctx context.Context) ([]wshrpc.AppInfo, error) {
-	return waveappstore.ListAllApps()
+	return gulinappstore.ListAllApps()
 }
 
 func (ws *WshServer) ListAllEditableAppsCommand(ctx context.Context) ([]wshrpc.AppInfo, error) {
-	return waveappstore.ListAllEditableApps()
+	return gulinappstore.ListAllEditableApps()
 }
 
 func (ws *WshServer) ListAllAppFilesCommand(ctx context.Context, data wshrpc.CommandListAllAppFilesData) (*wshrpc.CommandListAllAppFilesRtnData, error) {
 	if data.AppId == "" {
 		return nil, fmt.Errorf("must provide an appId to ListAllAppFilesCommand")
 	}
-	result, err := waveappstore.ListAllAppFiles(data.AppId)
+	result, err := gulinappstore.ListAllAppFiles(data.AppId)
 	if err != nil {
 		return nil, err
 	}
@@ -946,7 +1106,7 @@ func (ws *WshServer) ReadAppFileCommand(ctx context.Context, data wshrpc.Command
 	if data.AppId == "" {
 		return nil, fmt.Errorf("must provide an appId to ReadAppFileCommand")
 	}
-	fileData, err := waveappstore.ReadAppFile(data.AppId, data.FileName)
+	fileData, err := gulinappstore.ReadAppFile(data.AppId, data.FileName)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &wshrpc.CommandReadAppFileRtnData{
@@ -969,18 +1129,18 @@ func (ws *WshServer) WriteAppFileCommand(ctx context.Context, data wshrpc.Comman
 	if err != nil {
 		return fmt.Errorf("failed to decode data64: %w", err)
 	}
-	return waveappstore.WriteAppFile(data.AppId, data.FileName, contents)
+	return gulinappstore.WriteAppFile(data.AppId, data.FileName, contents)
 }
 
-func (ws *WshServer) WaveFileReadStreamCommand(ctx context.Context, data wshrpc.CommandWaveFileReadStreamData) (*wshrpc.WaveFileInfo, error) {
+func (ws *WshServer) GulinFileReadStreamCommand(ctx context.Context, data wshrpc.CommandGulinFileReadStreamData) (*wshrpc.GulinFileInfo, error) {
 	const maxStreamFileSize = 5 * 1024 * 1024
 
-	waveFile, err := filestore.WFS.Stat(ctx, data.ZoneId, data.Name)
+	gulinFile, err := filestore.WFS.Stat(ctx, data.ZoneId, data.Name)
 	if err != nil {
-		return nil, fmt.Errorf("error statting wavefile: %w", err)
+		return nil, fmt.Errorf("error statting gulinfile: %w", err)
 	}
 
-	dataLength := waveFile.DataLength()
+	dataLength := gulinFile.DataLength()
 	if dataLength > maxStreamFileSize {
 		return nil, fmt.Errorf("file size %d exceeds maximum streaming size of %d bytes", dataLength, maxStreamFileSize)
 	}
@@ -998,29 +1158,29 @@ func (ws *WshServer) WaveFileReadStreamCommand(ctx context.Context, data wshrpc.
 	_, fileData, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.Name)
 	if err != nil {
 		writer.Close()
-		return nil, fmt.Errorf("error reading wavefile: %w", err)
+		return nil, fmt.Errorf("error reading gulinfile: %w", err)
 	}
 
 	go func() {
 		defer func() {
-			panichandler.PanicHandler("WaveFileReadStreamCommand", recover())
+			panichandler.PanicHandler("GulinFileReadStreamCommand", recover())
 		}()
 		defer writer.Close()
 
 		_, err := writer.Write(fileData)
 		if err != nil {
-			log.Printf("error writing to stream for wavefile %s:%s: %v\n", data.ZoneId, data.Name, err)
+			log.Printf("error writing to stream for gulinfile %s:%s: %v\n", data.ZoneId, data.Name, err)
 		}
 	}()
 
-	rtnInfo := &wshrpc.WaveFileInfo{
-		ZoneId:    waveFile.ZoneId,
-		Name:      waveFile.Name,
-		Opts:      waveFile.Opts,
-		CreatedTs: waveFile.CreatedTs,
-		Size:      waveFile.Size,
-		ModTs:     waveFile.ModTs,
-		Meta:      waveFile.Meta,
+	rtnInfo := &wshrpc.GulinFileInfo{
+		ZoneId:    gulinFile.ZoneId,
+		Name:      gulinFile.Name,
+		Opts:      gulinFile.Opts,
+		CreatedTs: gulinFile.CreatedTs,
+		Size:      gulinFile.Size,
+		ModTs:     gulinFile.ModTs,
+		Meta:      gulinFile.Meta,
 	}
 	return rtnInfo, nil
 }
@@ -1034,9 +1194,9 @@ func (ws *WshServer) WriteAppGoFileCommand(ctx context.Context, data wshrpc.Comm
 		return nil, fmt.Errorf("failed to decode data64: %w", err)
 	}
 
-	formattedOutput := waveapputil.FormatGoCode(contents)
+	formattedOutput := gulinapputil.FormatGoCode(contents)
 
-	err = waveappstore.WriteAppFile(data.AppId, "app.go", formattedOutput)
+	err = gulinappstore.WriteAppFile(data.AppId, "app.go", formattedOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -1049,21 +1209,21 @@ func (ws *WshServer) DeleteAppFileCommand(ctx context.Context, data wshrpc.Comma
 	if data.AppId == "" {
 		return fmt.Errorf("must provide an appId to DeleteAppFileCommand")
 	}
-	return waveappstore.DeleteAppFile(data.AppId, data.FileName)
+	return gulinappstore.DeleteAppFile(data.AppId, data.FileName)
 }
 
 func (ws *WshServer) RenameAppFileCommand(ctx context.Context, data wshrpc.CommandRenameAppFileData) error {
 	if data.AppId == "" {
 		return fmt.Errorf("must provide an appId to RenameAppFileCommand")
 	}
-	return waveappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
+	return gulinappstore.RenameAppFile(data.AppId, data.FromFileName, data.ToFileName)
 }
 
 func (ws *WshServer) WriteAppSecretBindingsCommand(ctx context.Context, data wshrpc.CommandWriteAppSecretBindingsData) error {
 	if data.AppId == "" {
 		return fmt.Errorf("must provide an appId to WriteAppSecretBindingsCommand")
 	}
-	return waveappstore.WriteAppSecretBindings(data.AppId, data.Bindings)
+	return gulinappstore.WriteAppSecretBindings(data.AppId, data.Bindings)
 }
 
 func (ws *WshServer) DeleteBuilderCommand(ctx context.Context, builderId string) error {
@@ -1079,7 +1239,7 @@ func (ws *WshServer) StartBuilderCommand(ctx context.Context, data wshrpc.Comman
 		return fmt.Errorf("must provide a builderId to StartBuilderCommand")
 	}
 	bc := buildercontroller.GetOrCreateController(data.BuilderId)
-	rtInfo := wstore.GetRTInfo(waveobj.MakeORef("builder", data.BuilderId))
+	rtInfo := wstore.GetRTInfo(gulinobj.MakeORef("builder", data.BuilderId))
 	if rtInfo == nil {
 		return fmt.Errorf("builder rtinfo not found for builderid: %s", data.BuilderId)
 	}
@@ -1107,7 +1267,7 @@ func (ws *WshServer) RestartBuilderAndWaitCommand(ctx context.Context, data wshr
 	}
 
 	bc := buildercontroller.GetOrCreateController(data.BuilderId)
-	rtInfo := wstore.GetRTInfo(waveobj.MakeORef("builder", data.BuilderId))
+	rtInfo := wstore.GetRTInfo(gulinobj.MakeORef("builder", data.BuilderId))
 	if rtInfo == nil {
 		return nil, fmt.Errorf("builder rtinfo not found for builderid: %s", data.BuilderId)
 	}
@@ -1162,7 +1322,7 @@ func (ws *WshServer) CheckGoVersionCommand(ctx context.Context) (*wshrpc.Command
 }
 
 func (ws *WshServer) PublishAppCommand(ctx context.Context, data wshrpc.CommandPublishAppData) (*wshrpc.CommandPublishAppRtnData, error) {
-	publishedAppId, err := waveappstore.PublishDraft(data.AppId)
+	publishedAppId, err := gulinappstore.PublishDraft(data.AppId)
 	if err != nil {
 		return nil, fmt.Errorf("error publishing app: %w", err)
 	}
@@ -1172,7 +1332,7 @@ func (ws *WshServer) PublishAppCommand(ctx context.Context, data wshrpc.CommandP
 }
 
 func (ws *WshServer) MakeDraftFromLocalCommand(ctx context.Context, data wshrpc.CommandMakeDraftFromLocalData) (*wshrpc.CommandMakeDraftFromLocalRtnData, error) {
-	draftAppId, err := waveappstore.MakeDraftFromLocal(data.LocalAppId)
+	draftAppId, err := gulinappstore.MakeDraftFromLocal(data.LocalAppId)
 	if err != nil {
 		return nil, fmt.Errorf("error making draft from local: %w", err)
 	}
@@ -1193,9 +1353,9 @@ func (ws WshServer) SendTelemetryCommand(ctx context.Context) error {
 	return wcloud.SendAllTelemetry(wstore.GetClientId())
 }
 
-func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
+func (ws *WshServer) GulinAIEnableTelemetryCommand(ctx context.Context) error {
 	// Enable telemetry in config
-	meta := waveobj.MetaMapType{
+	meta := gulinobj.MetaMapType{
 		wconfig.ConfigKey_TelemetryEnabled: true,
 	}
 	err := wconfig.SetBaseConfigValue(meta)
@@ -1204,10 +1364,10 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 	}
 
 	// Record the telemetry event
-	event := telemetrydata.MakeTEvent("waveai:enabletelemetry", telemetrydata.TEventProps{})
+	event := telemetrydata.MakeTEvent("gulinai:enabletelemetry", telemetrydata.TEventProps{})
 	err = telemetry.RecordTEvent(ctx, event)
 	if err != nil {
-		log.Printf("error recording waveai:enabletelemetry event: %v", err)
+		log.Printf("error recording gulinai:enabletelemetry event: %v", err)
 	}
 
 	// Immediately send telemetry to cloud
@@ -1219,7 +1379,7 @@ func (ws *WshServer) WaveAIEnableTelemetryCommand(ctx context.Context) error {
 	return nil
 }
 
-func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.CommandGetWaveAIChatData) (*uctypes.UIChat, error) {
+func (ws *WshServer) GetGulinAIChatCommand(ctx context.Context, data wshrpc.CommandGetGulinAIChatData) (*uctypes.UIChat, error) {
 	aiChat := chatstore.DefaultChatStore.Get(data.ChatId)
 	if aiChat == nil {
 		return nil, nil
@@ -1231,21 +1391,21 @@ func (ws *WshServer) GetWaveAIChatCommand(ctx context.Context, data wshrpc.Comma
 	return uiChat, nil
 }
 
-func (ws *WshServer) GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error) {
+func (ws *WshServer) GetGulinAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error) {
 	return aiusechat.GetGlobalRateLimit(), nil
 }
 
-func (ws *WshServer) WaveAIToolApproveCommand(ctx context.Context, data wshrpc.CommandWaveAIToolApproveData) error {
+func (ws *WshServer) GulinAIToolApproveCommand(ctx context.Context, data wshrpc.CommandGulinAIToolApproveData) error {
 	return aiusechat.UpdateToolApproval(data.ToolCallId, data.Approval)
 }
 
-func (ws *WshServer) WaveAIGetToolDiffCommand(ctx context.Context, data wshrpc.CommandWaveAIGetToolDiffData) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
+func (ws *WshServer) GulinAIGetToolDiffCommand(ctx context.Context, data wshrpc.CommandGulinAIGetToolDiffData) (*wshrpc.CommandGulinAIGetToolDiffRtnData, error) {
 	originalContent, modifiedContent, err := aiusechat.CreateWriteTextFileDiff(ctx, data.ChatId, data.ToolCallId)
 	if err != nil {
 		return nil, err
 	}
 
-	return &wshrpc.CommandWaveAIGetToolDiffRtnData{
+	return &wshrpc.CommandGulinAIGetToolDiffRtnData{
 		OriginalContents64: base64.StdEncoding.EncodeToString(originalContent),
 		ModifiedContents64: base64.StdEncoding.EncodeToString(modifiedContent),
 	}, nil
@@ -1356,11 +1516,11 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 	var path string
 	switch pathType {
 	case "config":
-		path = wavebase.GetWaveConfigDir()
+		path = gulinbase.GetGulinConfigDir()
 	case "data":
-		path = wavebase.GetWaveDataDir()
+		path = gulinbase.GetGulinDataDir()
 	case "log":
-		path = filepath.Join(wavebase.GetWaveDataDir(), "waveapp.log")
+		path = filepath.Join(gulinbase.GetGulinDataDir(), "gulinapp.log")
 	}
 
 	if openInternal && openExternal {
@@ -1370,9 +1530,9 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 	if openInternal {
 		_, err := ws.CreateBlockCommand(ctx, wshrpc.CommandCreateBlockData{
 			TabId: data.TabId,
-			BlockDef: &waveobj.BlockDef{Meta: map[string]any{
-				waveobj.MetaKey_View: "preview",
-				waveobj.MetaKey_File: path,
+			BlockDef: &gulinobj.BlockDef{Meta: map[string]any{
+				gulinobj.MetaKey_View: "preview",
+				gulinobj.MetaKey_File: path,
 			}},
 			Ephemeral: true,
 			Focused:   true,
@@ -1399,8 +1559,8 @@ func (ws *WshServer) DisposeSuggestionsCommand(ctx context.Context, widgetId str
 	return nil
 }
 
-func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error) {
-	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+func (ws *WshServer) GetTabCommand(ctx context.Context, tabId string) (*gulinobj.Tab, error) {
+	tab, err := wstore.DBGet[*gulinobj.Tab](ctx, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
@@ -1462,8 +1622,8 @@ func (ws *WshServer) JobCmdExitedCommand(ctx context.Context, data wshrpc.Comman
 	return jobcontroller.HandleCmdJobExited(ctx, data.JobId, data)
 }
 
-func (ws *WshServer) JobControllerListCommand(ctx context.Context) ([]*waveobj.Job, error) {
-	return wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+func (ws *WshServer) JobControllerListCommand(ctx context.Context) ([]*gulinobj.Job, error) {
+	return wstore.DBGetAllObjsByType[*gulinobj.Job](ctx, gulinobj.OType_Job)
 }
 
 func (ws *WshServer) JobControllerDeleteJobCommand(ctx context.Context, jobId string) error {

@@ -1,11 +1,11 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { handleWaveEvent } from "@/app/store/wps";
+import { handleGulinEvent } from "@/app/store/wps";
 import * as util from "@/util/util";
 import debug from "debug";
 
-const dlog = debug("wave:router");
+const dlog = debug("gulin:router");
 
 const SysRouteName = "sys";
 const ControlRouteName = "$control";
@@ -89,7 +89,7 @@ class WshRouter {
         }
         // handle events
         if (msg.command == "eventrecv") {
-            handleWaveEvent(msg.data);
+            handleGulinEvent(msg.data);
             return;
         }
         if (!util.isBlank(msg.command)) {

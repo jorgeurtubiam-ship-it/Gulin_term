@@ -8,7 +8,7 @@ import {
 import { useAtomValue } from "jotai";
 import { DashboardViewModel } from "./dashboard-model";
 import { ErrorBoundary } from "@/element/errorboundary";
-import { getWaveObjectAtom, makeORef } from "@/store/wos";
+import { getGulinObjectAtom, makeORef } from "@/store/wos";
 
 /**
  * DashboardView: Widget interactivo con bloqueo de renderizado único.
@@ -18,7 +18,7 @@ import { getWaveObjectAtom, makeORef } from "@/store/wos";
 export const DashboardView = memo(({ model, blockId }: { model: DashboardViewModel, blockId: string }) => {
     // Suscripción al átomo del bloque (necesario para recibir la primera data)
     // Memoizamos el átomo para que tenga una referencia de memoria ESTABLE y no cause loops en Jotai
-    const blockDataAtom = useMemo(() => getWaveObjectAtom<Block>(makeORef("block", blockId)), [blockId]);
+    const blockDataAtom = useMemo(() => getGulinObjectAtom<Block>(makeORef("block", blockId)), [blockId]);
     const blockData = useAtomValue(blockDataAtom);
 
     // Memoria persistente fuera del ciclo de estado de React (Ref Lock)

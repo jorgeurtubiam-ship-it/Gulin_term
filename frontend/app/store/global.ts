@@ -39,7 +39,7 @@ import { globalStore } from "./jotaiStore";
 import { modalsModel } from "./modalmodel";
 import { ClientService, ObjectService } from "./services";
 import * as WOS from "./wos";
-import { getFileSubject, waveEventSubscribeSingle } from "./wps";
+import { getFileSubject, gulinEventSubscribeSingle } from "./wps";
 
 let globalEnvironment: "electron" | "renderer";
 let globalPrimaryTabStartup: boolean = false;
@@ -58,28 +58,28 @@ function initGlobal(initOpts: GlobalInitOptions) {
     }
 }
 
-function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
-    waveEventSubscribeSingle({
-        eventType: "waveobj:update",
+function initGlobalGulinEventSubs(initOpts: GulinInitOpts) {
+    gulinEventSubscribeSingle({
+        eventType: "gulinobj:update",
         handler: (event) => {
-            // console.log("waveobj:update wave event handler", event);
-            WOS.updateWaveObject(event.data);
+            // console.log("gulinobj:update gulin event handler", event);
+            WOS.updateGulinObject(event.data);
         },
     });
-    waveEventSubscribeSingle({
+    gulinEventSubscribeSingle({
         eventType: "config",
         handler: (event) => {
-            // console.log("config wave event handler", event);
+            // console.log("config gulin event handler", event);
             globalStore.set(atoms.fullConfigAtom, event.data.fullconfig);
         },
     });
-    waveEventSubscribeSingle({
-        eventType: "waveai:modeconfig",
+    gulinEventSubscribeSingle({
+        eventType: "gulinai:modeconfig",
         handler: (event) => {
-            globalStore.set(atoms.waveaiModeConfigAtom, event.data.configs);
+            globalStore.set(atoms.gulinaiModeConfigAtom, event.data.configs);
         },
     });
-    waveEventSubscribeSingle({
+    gulinEventSubscribeSingle({
         eventType: "userinput",
         handler: (event) => {
             // console.log("userinput event handler", event);
@@ -87,7 +87,7 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
         },
         scope: initOpts.windowId,
     });
-    waveEventSubscribeSingle({
+    gulinEventSubscribeSingle({
         eventType: "blockfile",
         handler: (event) => {
             // console.log("blockfile event update", event);
@@ -97,13 +97,13 @@ function initGlobalWaveEventSubs(initOpts: WaveInitOpts) {
             }
         },
     });
-    waveEventSubscribeSingle({
-        eventType: "waveai:ratelimit",
+    gulinEventSubscribeSingle({
+        eventType: "gulinai:ratelimit",
         handler: (event) => {
-            globalStore.set(atoms.waveAIRateLimitInfoAtom, event.data);
+            globalStore.set(atoms.gulinAIRateLimitInfoAtom, event.data);
         },
     });
-    waveEventSubscribeSingle({
+    gulinEventSubscribeSingle({
         eventType: "tab:indicator",
         handler: (event) => {
             setTabIndicatorInternal(event.data.tabid, event.data.indicator);
@@ -135,7 +135,7 @@ function getBlockMetaKeyAtom<T extends keyof MetaType>(blockId: string, key: T):
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let blockAtom = WOS.getWaveObjectAtom(WOS.makeORef("block", blockId));
+        let blockAtom = WOS.getGulinObjectAtom(WOS.makeORef("block", blockId));
         let blockData = get(blockAtom);
         return blockData?.meta?.[key];
     });
@@ -155,7 +155,7 @@ function getOrefMetaKeyAtom<T extends keyof MetaType>(oref: string, key: T): Ato
         return metaAtom;
     }
     metaAtom = atom((get) => {
-        let objAtom = WOS.getWaveObjectAtom(oref);
+        let objAtom = WOS.getGulinObjectAtom(oref);
         let objData = get(objAtom);
         return objData?.meta?.[key];
     });
@@ -287,7 +287,7 @@ function getBlockTermDurableAtom(blockId: string): Atom<null | boolean> {
         return durableAtom;
     }
     durableAtom = atom((get) => {
-        const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+        const blockAtom = WOS.getGulinObjectAtom<Block>(WOS.makeORef("block", blockId));
         const block = get(blockAtom);
 
         if (block == null) {
@@ -337,7 +337,7 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => Atom<T>): 
 
 function useBlockDataLoaded(blockId: string): boolean {
     const loadedAtom = useBlockAtom<boolean>(blockId, "block-loaded", () => {
-        return WOS.getWaveObjectLoadingAtom(WOS.makeORef("block", blockId));
+        return WOS.getGulinObjectLoadingAtom(WOS.makeORef("block", blockId));
     });
     return useAtomValue(loadedAtom);
 }
@@ -445,23 +445,23 @@ async function replaceBlock(blockId: string, blockDef: BlockDef, focus: boolean)
 }
 
 // when file is not found, returns {data: null, fileInfo: null}
-async function fetchWaveFile(
+async function fetchGulinFile(
     zoneId: string,
     fileName: string,
     offset?: number
-): Promise<{ data: Uint8Array; fileInfo: WaveFile }> {
+): Promise<{ data: Uint8Array; fileInfo: GulinFile }> {
     const usp = new URLSearchParams();
     usp.set("zoneid", zoneId);
     usp.set("name", fileName);
     if (offset != null) {
         usp.set("offset", offset.toString());
     }
-    const resp = await fetch(getWebServerEndpoint() + "/wave/file?" + usp.toString());
+    const resp = await fetch(getWebServerEndpoint() + "/gulin/file?" + usp.toString());
     if (!resp.ok) {
         if (resp.status === 404) {
             return { data: null, fileInfo: null };
         }
-        throw new Error("error getting wave file: " + resp.statusText);
+        throw new Error("error getting gulin file: " + resp.statusText);
     }
     if (resp.status == 204) {
         return { data: null, fileInfo: null };
@@ -614,7 +614,7 @@ async function loadTabIndicators() {
 }
 
 function subscribeToConnEvents() {
-    waveEventSubscribeSingle({
+    gulinEventSubscribeSingle({
         eventType: "connchange",
         handler: (event) => {
             try {
@@ -698,7 +698,7 @@ function setTabIndicatorInternal(tabId: string, indicator: TabIndicator) {
 function setTabIndicator(tabId: string, indicator: TabIndicator) {
     setTabIndicatorInternal(tabId, indicator);
 
-    const eventData: WaveEvent = {
+    const eventData: GulinEvent = {
         event: "tab:indicator",
         scopes: [WOS.makeORef("tab", tabId)],
         data: {
@@ -716,7 +716,7 @@ function clearTabIndicatorFromFocus(tabId: string) {
         return;
     }
     const persistentIndicator = currentIndicator.persistentindicator;
-    const eventData: WaveEvent = {
+    const eventData: GulinEvent = {
         event: "tab:indicator",
         scopes: [WOS.makeORef("tab", tabId)],
         data: {
@@ -761,7 +761,7 @@ export {
     createBlockSplitHorizontally,
     createBlockSplitVertically,
     createTab,
-    fetchWaveFile,
+    fetchGulinFile,
     getAllBlockComponentModels,
     getApi,
     getBlockComponentModel,
@@ -781,7 +781,7 @@ export {
     globalPrimaryTabStartup,
     globalStore,
     initGlobal,
-    initGlobalWaveEventSubs,
+    initGlobalGulinEventSubs,
     isDev,
     loadConnStatus,
     loadTabIndicators,

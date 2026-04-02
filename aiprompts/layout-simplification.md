@@ -1,8 +1,8 @@
-# Wave Terminal Layout System - Simplification via Write Cache Pattern
+# Gulin Terminal Layout System - Simplification via Write Cache Pattern
 
 ## Executive Summary
 
-The current layout system uses a complex bidirectional atom architecture that forces every layout change to round-trip through the backend WaveObject, even though **the backend never reads this data** - it only queues actions via `PendingBackendActions`. By switching to a "write cache" pattern where local atoms are the source of truth and backend writes are fire-and-forget, we can eliminate ~70% of the complexity while maintaining full persistence.
+The current layout system uses a complex bidirectional atom architecture that forces every layout change to round-trip through the backend GulinObject, even though **the backend never reads this data** - it only queues actions via `PendingBackendActions`. By switching to a "write cache" pattern where local atoms are the source of truth and backend writes are fire-and-forget, we can eliminate ~70% of the complexity while maintaining full persistence.
 
 ## Current Architecture Problems
 
@@ -19,9 +19,9 @@ layoutState.generation++  ← Only purpose: trigger the write
   ↓
 Bidirectional atom setter (checks generation)
   ↓
-Write to WaveObject {rootnode, focusednodeid, magnifiednodeid}
+Write to GulinObject {rootnode, focusednodeid, magnifiednodeid}
   ↓
-WaveObject update notification
+GulinObject update notification
   ↓
 Bidirectional atom getter runs
   ↓
@@ -30,7 +30,7 @@ ALL dependent atoms recalculate (every isFocused, etc.)
 React re-renders with updated state
 ```
 
-**The critical insight**: The backend reads ONLY `leaforder` from the WaveObject (for block number resolution in commands like `wsh block:1`). The `rootnode`, `focusednodeid`, and `magnifiednodeid` fields exist **only for persistence** (tab restore, uncaching).
+**The critical insight**: The backend reads ONLY `leaforder` from the GulinObject (for block number resolution in commands like `wsh block:1`). The `rootnode`, `focusednodeid`, and `magnifiednodeid` fields exist **only for persistence** (tab restore, uncaching).
 
 ### What the Backend Actually Does
 
@@ -51,7 +51,7 @@ React re-renders with updated state
 
 1. **Generation tracking**: [`layoutState.generation++`](../frontend/layout/lib/layoutTree.ts:294) appears in 10+ places, only to trigger atom writes
 2. **Bidirectional atoms**: [`withLayoutTreeStateAtomFromTab()`](../frontend/layout/lib/layoutAtom.ts:18-60) has complex read/write logic
-3. **Timing coordination**: The entire Section 8 of the WaveAI focus proposal exists only because of race conditions between focus updates and atom commits
+3. **Timing coordination**: The entire Section 8 of the GulinAI focus proposal exists only because of race conditions between focus updates and atom commits
 4. **False reactivity**: Changes to `focusedNodeId` trigger full tree state propagation even though they're unrelated to tree structure
 
 ## Proposed "Write Cache" Architecture
@@ -65,13 +65,13 @@ Update LOCAL atom (immediate, synchronous)
   ↓
 React re-renders (single tick, all atoms see new state)
   ↓
-[async, fire-and-forget] Persist to WaveObject
+[async, fire-and-forget] Persist to GulinObject
 ```
 
 ### Key Principles
 
 1. **Local atoms are source of truth** during runtime
-2. **WaveObject is persistence layer** only (read on init, write async)
+2. **GulinObject is persistence layer** only (read on init, write async)
 3. **Backend actions still work** via `PendingBackendActions`
 4. **No generation tracking needed** (no need to trigger writes)
 
@@ -89,11 +89,11 @@ class LayoutModel {
   // AFTER: Simple local atom (source of truth)
   private localTreeStateAtom: PrimitiveAtom<LayoutTreeState>;
   
-  // Keep reference to WaveObject atom for persistence
-  private waveObjectAtom: WritableWaveObjectAtom<LayoutState>;
+  // Keep reference to GulinObject atom for persistence
+  private gulinObjectAtom: WritableGulinObjectAtom<LayoutState>;
   
   constructor(tabAtom: Atom<Tab>, ...) {
-    this.waveObjectAtom = getLayoutStateAtomFromTab(tabAtom);
+    this.gulinObjectAtom = getLayoutStateAtomFromTab(tabAtom);
     
     // Initialize local atom (starts empty)
     this.localTreeStateAtom = atom<LayoutTreeState>({
@@ -105,20 +105,20 @@ class LayoutModel {
       generation: 0  // Can be removed entirely or kept for debugging
     });
     
-    // Read from WaveObject ONCE during initialization
-    this.initializeFromWaveObject();
+    // Read from GulinObject ONCE during initialization
+    this.initializeFromGulinObject();
   }
   
-  private async initializeFromWaveObject() {
-    const waveObjState = this.getter(this.waveObjectAtom);
+  private async initializeFromGulinObject() {
+    const gulinObjState = this.getter(this.gulinObjectAtom);
     
     // Load persisted state into local atom
     const initialState: LayoutTreeState = {
-      rootNode: waveObjState?.rootnode,
-      focusedNodeId: waveObjState?.focusednodeid,
-      magnifiedNodeId: waveObjState?.magnifiednodeid,
+      rootNode: gulinObjState?.rootnode,
+      focusedNodeId: gulinObjState?.focusednodeid,
+      magnifiedNodeId: gulinObjState?.magnifiednodeid,
       leafOrder: undefined,  // Computed by updateTree()
-      pendingBackendActions: waveObjState?.pendingbackendactions,
+      pendingBackendActions: gulinObjState?.pendingbackendactions,
       generation: 0
     };
     
@@ -198,17 +198,17 @@ class LayoutModel {
   
   // Fire-and-forget persistence
   private async persistToBackend() {
-    const waveObj = this.getter(this.waveObjectAtom);
-    if (!waveObj) return;
+    const gulinObj = this.getter(this.gulinObjectAtom);
+    if (!gulinObj) return;
     
-    // Update WaveObject fields
-    waveObj.rootnode = this.treeState.rootNode;           // Persistence only
-    waveObj.focusednodeid = this.treeState.focusedNodeId; // Persistence only
-    waveObj.magnifiednodeid = this.treeState.magnifiedNodeId; // Persistence only
-    waveObj.leaforder = this.treeState.leafOrder;         // Backend reads this for command resolution!
+    // Update GulinObject fields
+    gulinObj.rootnode = this.treeState.rootNode;           // Persistence only
+    gulinObj.focusednodeid = this.treeState.focusedNodeId; // Persistence only
+    gulinObj.magnifiednodeid = this.treeState.magnifiedNodeId; // Persistence only
+    gulinObj.leaforder = this.treeState.leafOrder;         // Backend reads this for command resolution!
     
     // Write to backend (don't await - fire and forget)
-    this.setter(this.waveObjectAtom, waveObj);
+    this.setter(this.gulinObjectAtom, gulinObj);
     
     // Optional: Debounce if rapid changes are a concern
   }
@@ -271,16 +271,16 @@ And remove all `generation++` calls from [`layoutTree.ts`](../frontend/layout/li
 // frontend/layout/lib/layoutAtom.ts
 
 // BEFORE: Complex bidirectional atom (60 lines)
-// AFTER: Can be deleted entirely or simplified to just helper for WaveObject access
+// AFTER: Can be deleted entirely or simplified to just helper for GulinObject access
 
 export function getLayoutStateAtomFromTab(
   tabAtom: Atom<Tab>,
   get: Getter
-): WritableWaveObjectAtom<LayoutState> {
+): WritableGulinObjectAtom<LayoutState> {
   const tabData = get(tabAtom);
   if (!tabData) return;
   const layoutStateOref = WOS.makeORef("layout", tabData.layoutstate);
-  return WOS.getWaveObjectAtom<LayoutState>(layoutStateOref);
+  return WOS.getGulinObjectAtom<LayoutState>(layoutStateOref);
 }
 
 // No more withLayoutTreeStateAtomFromTab() - not needed!
@@ -293,10 +293,10 @@ export function getLayoutStateAtomFromTab(
 1. **10x simpler reactivity**: Local atoms update synchronously, React sees complete state in one tick
 2. **No generation tracking**: Eliminate 10+ `generation++` calls and all related logic
 3. **No timing issues**: Everything happens synchronously, no coordination needed
-4. **Faster updates**: No round-trip through WaveObject for every change
-5. **Easier debugging**: Clear separation between runtime state (local atoms) and persistence (WaveObject)
+4. **Faster updates**: No round-trip through GulinObject for every change
+5. **Easier debugging**: Clear separation between runtime state (local atoms) and persistence (GulinObject)
 
-### Impact on WaveAI Focus Proposal
+### Impact on GulinAI Focus Proposal
 
 The entire Section 8 ("Layout Model Focus Integration - CRITICAL TIMING") **becomes unnecessary**:
 
@@ -360,15 +360,15 @@ private persistToBackend() {
   }
   
   this.persistDebounceTimer = setTimeout(() => {
-    const waveObj = this.getter(this.waveObjectAtom);
-    if (!waveObj) return;
+    const gulinObj = this.getter(this.gulinObjectAtom);
+    if (!gulinObj) return;
     
-    waveObj.rootnode = this.treeState.rootNode;
-    waveObj.focusednodeid = this.treeState.focusedNodeId;
-    waveObj.magnifiednodeid = this.treeState.magnifiedNodeId;
-    waveObj.leaforder = this.treeState.leafOrder;
+    gulinObj.rootnode = this.treeState.rootNode;
+    gulinObj.focusednodeid = this.treeState.focusedNodeId;
+    gulinObj.magnifiednodeid = this.treeState.magnifiedNodeId;
+    gulinObj.leaforder = this.treeState.leafOrder;
     
-    this.setter(this.waveObjectAtom, waveObj);
+    this.setter(this.gulinObjectAtom, gulinObj);
     this.persistDebounceTimer = null;
   }, 100);
 }
@@ -382,9 +382,9 @@ private persistToBackend() {
 
 ### 3. Tab Uncaching (Electron Limit)
 
-**Current**: Tab gets uncached, needs to reload layout from WaveObject.
+**Current**: Tab gets uncached, needs to reload layout from GulinObject.
 
-**After**: Same - `initializeFromWaveObject()` reads persisted state. No change in behavior.
+**After**: Same - `initializeFromGulinObject()` reads persisted state. No change in behavior.
 
 ### 4. Backend Actions (New Blocks)
 ### 5. LeafOrder and CLI Commands
@@ -463,8 +463,8 @@ The NodeModel creates derived atoms that depend on `treeStateAtom`:
 isFocused: atom((get) => {
     const treeState = get(this.treeStateAtom);  // Subscribe to treeStateAtom
     const isFocused = treeState.focusedNodeId === nodeid;
-    const waveAIFocused = get(atoms.waveAIFocusedAtom);
-    return isFocused && !waveAIFocused;
+    const gulinAIFocused = get(atoms.gulinAIFocusedAtom);
+    return isFocused && !gulinAIFocused;
 }),
 
 isMagnified: atom((get) => {
@@ -480,8 +480,8 @@ isMagnified: atom((get) => {
 isFocused: atom((get) => {
     const treeState = get(this.localTreeStateAtom);  // Subscribe to localTreeStateAtom
     const isFocused = treeState.focusedNodeId === nodeid;
-    const waveAIFocused = get(atoms.waveAIFocusedAtom);
-    return isFocused && !waveAIFocused;
+    const gulinAIFocused = get(atoms.gulinAIFocusedAtom);
+    return isFocused && !gulinAIFocused;
 }),
 ```
 
@@ -503,7 +503,7 @@ isFocused: atom((get) => {
 // OLD way (current): 
 // 1. Mutate this.treeState.focusedNodeId = newId
 // 2. Bump this.treeState.generation++
-// 3. Set bidirectional atom (checks generation, writes to WaveObject, reads back, updates)
+// 3. Set bidirectional atom (checks generation, writes to GulinObject, reads back, updates)
 // 4. Derived atoms see new state from the round-trip
 
 // NEW way (proposed):
@@ -561,12 +561,12 @@ This is fine! We're not relying on immutability for change detection. We're rely
 
 ### Backend Round-Trip
 
-When reading from WaveObject on initialization:
+When reading from GulinObject on initialization:
 ```typescript
-const waveObjState = this.getter(this.waveObjectAtom);
+const gulinObjState = this.getter(this.gulinObjectAtom);
 const initialState: LayoutTreeState = {
-  rootNode: waveObjState?.rootnode,  // New reference from backend
-  focusedNodeId: waveObjState?.focusednodeid,
+  rootNode: gulinObjState?.rootnode,  // New reference from backend
+  focusedNodeId: gulinObjState?.focusednodeid,
   // ...
 };
 ```
@@ -586,11 +586,11 @@ This creates a **completely new object** with new references, which is even more
 
 **Current**: Backend queues actions via [`QueueLayoutAction()`](../pkg/wcore/layout.go:101), frontend processes via `pendingBackendActions`.
 
-**After**: Same - `initializeFromWaveObject()` processes pending actions. No change needed.
+**After**: Same - `initializeFromGulinObject()` processes pending actions. No change needed.
 
 ### 5. Write Failures
 
-**Concern**: What if the async write to WaveObject fails?
+**Concern**: What if the async write to GulinObject fails?
 
 **Solution**: 
 1. The app continues working (local state is fine)
@@ -658,7 +658,7 @@ This creates a **completely new object** with new references, which is even more
 
 ### Improved
 
-1. **Faster reactivity**: No round-trip through WaveObject (save ~1-2ms per operation)
+1. **Faster reactivity**: No round-trip through GulinObject (save ~1-2ms per operation)
 2. **Fewer atom updates**: Only local atom updates, not bidirectional propagation
 3. **Batched writes**: Debouncing reduces backend write frequency
 
@@ -676,12 +676,12 @@ The "write cache" pattern can simplify the layout system by ~70% while maintaini
 - **Keep**: All tree logic, backend integration, persistence
 - **Gain**: Simpler code, faster updates, easier debugging
 
-This also makes the WaveAI focus integration trivial, eliminating the need for complex timing coordination.
+This also makes the GulinAI focus integration trivial, eliminating the need for complex timing coordination.
 
 ## Recommendation
 
-Implement this simplification **before** adding WaveAI focus features. The cleaner foundation will make the focus work much easier and the codebase more maintainable long-term.
-# Wave Terminal Layout System - Simplification via Write Cache Pattern
+Implement this simplification **before** adding GulinAI focus features. The cleaner foundation will make the focus work much easier and the codebase more maintainable long-term.
+# Gulin Terminal Layout System - Simplification via Write Cache Pattern
 
 ## Risk Assessment: LOW RISK, Well-Contained Change
 
@@ -690,7 +690,7 @@ Implement this simplification **before** adding WaveAI focus features. The clean
 1. **`frontend/layout/lib/layoutModel.ts`** (~150 lines changed)
    - Add `localTreeStateAtom` field
    - Modify `treeReducer()` to update local atom + persist async
-   - Add `initializeFromWaveObject()` method
+   - Add `initializeFromGulinObject()` method
    - Add `persistToBackend()` method
    - Update `getNodeModel()` atoms to use local atom
 
@@ -738,7 +738,7 @@ The **interface** to the layout system stays the same:
 
 #### 3. **No Data Corruption Risk** ✓
 This change affects **reactive state propagation**, not data storage:
-- WaveObject still stores the same data
+- GulinObject still stores the same data
 - Backend still queues actions the same way
 - Blocks still have the same IDs
 - Tab structure unchanged

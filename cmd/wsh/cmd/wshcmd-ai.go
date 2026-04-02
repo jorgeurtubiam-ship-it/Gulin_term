@@ -14,17 +14,17 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/util/fileutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 var aiCmd = &cobra.Command{
 	Use:   "ai [options] [files...]",
-	Short: "Append content to Wave AI sidebar prompt",
-	Long: `Append content to Wave AI sidebar prompt (does not auto-submit by default)
+	Short: "Append content to Gulin AI sidebar prompt",
+	Long: `Append content to Gulin AI sidebar prompt (does not auto-submit by default)
 
 Arguments:
   files...               Files to attach (use '-' for stdin)
@@ -160,18 +160,18 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		})
 	}
 
-	tabId := os.Getenv("WAVETERM_TABID")
+	tabId := os.Getenv("GULIN_TABID")
 	if tabId == "" {
-		return fmt.Errorf("WAVETERM_TABID environment variable not set")
+		return fmt.Errorf("GULIN_TABID environment variable not set")
 	}
 
 	route := wshutil.MakeTabRouteId(tabId)
 
 	if aiNewBlockFlag {
-		newChatData := wshrpc.CommandWaveAIAddContextData{
+		newChatData := wshrpc.CommandGulinAIAddContextData{
 			NewChat: true,
 		}
-		err := wshclient.WaveAIAddContextCommand(RpcClient, newChatData, &wshrpc.RpcOpts{
+		err := wshclient.GulinAIAddContextCommand(RpcClient, newChatData, &wshrpc.RpcOpts{
 			Route:   route,
 			Timeout: rpcTimeout,
 		})
@@ -181,10 +181,10 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	for _, file := range allFiles {
-		contextData := wshrpc.CommandWaveAIAddContextData{
+		contextData := wshrpc.CommandGulinAIAddContextData{
 			Files: []wshrpc.AIAttachedFile{file},
 		}
-		err := wshclient.WaveAIAddContextCommand(RpcClient, contextData, &wshrpc.RpcOpts{
+		err := wshclient.GulinAIAddContextCommand(RpcClient, contextData, &wshrpc.RpcOpts{
 			Route:   route,
 			Timeout: rpcTimeout,
 		})
@@ -194,11 +194,11 @@ func aiRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	if aiMessageFlag != "" || aiSubmitFlag {
-		finalContextData := wshrpc.CommandWaveAIAddContextData{
+		finalContextData := wshrpc.CommandGulinAIAddContextData{
 			Text:   aiMessageFlag,
 			Submit: aiSubmitFlag,
 		}
-		err := wshclient.WaveAIAddContextCommand(RpcClient, finalContextData, &wshrpc.RpcOpts{
+		err := wshclient.GulinAIAddContextCommand(RpcClient, finalContextData, &wshrpc.RpcOpts{
 			Route:   route,
 			Timeout: rpcTimeout,
 		})

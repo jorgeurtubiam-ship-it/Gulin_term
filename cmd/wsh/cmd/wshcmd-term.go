@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var termMagnified bool
@@ -38,7 +38,7 @@ func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	var cwd string
 	if len(args) > 0 {
 		cwd = args[0]
-		cwdExpanded, err := wavebase.ExpandHomeDir(cwd)
+		cwdExpanded, err := gulinbase.ExpandHomeDir(cwd)
 		if err != nil {
 			return err
 		}
@@ -58,20 +58,20 @@ func termRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	tabId := getTabIdFromEnv()
 	if tabId == "" {
-		return fmt.Errorf("no WAVETERM_TABID env var set")
+		return fmt.Errorf("no GULIN_TABID env var set")
 	}
 
 	createMeta := map[string]any{
-		waveobj.MetaKey_View:       "term",
-		waveobj.MetaKey_CmdCwd:     cwd,
-		waveobj.MetaKey_Controller: "shell",
+		gulinobj.MetaKey_View:       "term",
+		gulinobj.MetaKey_CmdCwd:     cwd,
+		gulinobj.MetaKey_Controller: "shell",
 	}
 	if RpcContext.Conn != "" {
-		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
+		createMeta[gulinobj.MetaKey_Connection] = RpcContext.Conn
 	}
 	createBlockData := wshrpc.CommandCreateBlockData{
 		TabId: tabId,
-		BlockDef: &waveobj.BlockDef{
+		BlockDef: &gulinobj.BlockDef{
 			Meta: createMeta,
 		},
 		Magnified: termMagnified,

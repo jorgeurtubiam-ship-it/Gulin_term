@@ -16,24 +16,24 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/baseds"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
-	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/packetparser"
-	"github.com/wavetermdev/waveterm/pkg/util/sigutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshremote"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/baseds"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/remote/fileshare/wshfs"
+	"github.com/gulindev/gulin/pkg/util/envutil"
+	"github.com/gulindev/gulin/pkg/util/packetparser"
+	"github.com/gulindev/gulin/pkg/util/sigutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinjwt"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshremote"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 var serverCmd = &cobra.Command{
 	Use:    "connserver",
 	Hidden: true,
-	Short:  "remote server to power wave blocks",
+	Short:  "remote server to power gulin blocks",
 	Args:   cobra.NoArgs,
 	RunE:   serverRun,
 }
@@ -60,7 +60,7 @@ func init() {
 }
 
 func cleanupOldJobLogs() {
-	jobDir := wavebase.GetRemoteJobLogDir()
+	jobDir := gulinbase.GetRemoteJobLogDir()
 	entries, err := os.ReadDir(jobDir)
 	if err != nil {
 		return
@@ -115,8 +115,8 @@ func startJobLogCleanup() {
 }
 
 func getRemoteDomainSocketName() string {
-	homeDir := wavebase.GetHomeDir()
-	return filepath.Join(homeDir, wavebase.RemoteWaveHomeDirName, wavebase.RemoteDomainSocketBaseName)
+	homeDir := gulinbase.GetHomeDir()
+	return filepath.Join(homeDir, gulinbase.RemoteGulinHomeDirName, gulinbase.RemoteDomainSocketBaseName)
 }
 
 func MakeRemoteUnixListener() (net.Listener, error) {
@@ -253,7 +253,7 @@ func serverRunRouter() error {
 	if err != nil {
 		return fmt.Errorf("error decoding jwt public key: %v", err)
 	}
-	err = wavejwt.SetPublicKey(jwtPublicKeyBytes)
+	err = gulinjwt.SetPublicKey(jwtPublicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("error setting jwt public key: %v", err)
 	}
@@ -294,7 +294,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 	}
 
 	// connect to the forwarded domain socket
-	sockName = wavebase.ExpandHomeDirSafe(sockName)
+	sockName = gulinbase.ExpandHomeDirSafe(sockName)
 	conn, err := net.Dial("unix", sockName)
 	if err != nil {
 		return fmt.Errorf("error connecting to domain socket %s: %v", sockName, err)
@@ -353,7 +353,7 @@ func serverRunRouterDomainSocket(jwtToken string) error {
 	if err != nil {
 		return fmt.Errorf("error decoding jwt public key: %v", err)
 	}
-	err = wavejwt.SetPublicKey(jwtPublicKeyBytes)
+	err = gulinjwt.SetPublicKey(jwtPublicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("error setting jwt public key: %v", err)
 	}
@@ -415,14 +415,14 @@ func serverRunNormal(jwtToken string) error {
 
 func askForJwtToken() (string, error) {
 	// if it already exists in the environment, great, use it
-	jwtToken := os.Getenv(wavebase.WaveJwtTokenVarName)
+	jwtToken := os.Getenv(gulinbase.GulinJwtTokenVarName)
 	if jwtToken != "" {
 		fmt.Printf("HAVE-JWT\n")
 		return jwtToken, nil
 	}
 
 	// otherwise, ask for it
-	fmt.Printf("%s\n", wavebase.NeedJwtConst)
+	fmt.Printf("%s\n", gulinbase.NeedJwtConst)
 
 	// read a single line from stdin
 	var line string
@@ -439,7 +439,7 @@ func serverRun(cmd *cobra.Command, args []string) error {
 	var logFile *os.File
 	if connServerDev {
 		var err error
-		logFilePath := fmt.Sprintf("/tmp/waveterm-connserver-%d.log", os.Getuid())
+		logFilePath := fmt.Sprintf("/tmp/gulin-connserver-%d.log", os.Getuid())
 		logFile, err = os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to open log file: %v\n", err)

@@ -10,12 +10,12 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/vdom"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wps"
 )
 
 type RespOrErrorUnion[T any] struct {
@@ -43,39 +43,39 @@ type WshRpcInterface interface {
 	GetJwtPublicKeyCommand(ctx context.Context) (string, error) // (special) gets the public JWT signing key
 
 	MessageCommand(ctx context.Context, data CommandMessageData) error
-	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (waveobj.MetaMapType, error)
+	GetMetaCommand(ctx context.Context, data CommandGetMetaData) (gulinobj.MetaMapType, error)
 	SetMetaCommand(ctx context.Context, data CommandSetMetaData) error
 	ControllerInputCommand(ctx context.Context, data CommandBlockInputData) error
 	ControllerDestroyCommand(ctx context.Context, blockId string) error
 	ControllerResyncCommand(ctx context.Context, data CommandControllerResyncData) error
 	ControllerAppendOutputCommand(ctx context.Context, data CommandControllerAppendOutputData) error
 	ResolveIdsCommand(ctx context.Context, data CommandResolveIdsData) (CommandResolveIdsRtnData, error)
-	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (waveobj.ORef, error)
-	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (waveobj.ORef, error)
+	CreateBlockCommand(ctx context.Context, data CommandCreateBlockData) (gulinobj.ORef, error)
+	CreateSubBlockCommand(ctx context.Context, data CommandCreateSubBlockData) (gulinobj.ORef, error)
 	DeleteBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	DeleteSubBlockCommand(ctx context.Context, data CommandDeleteBlockData) error
 	WaitForRouteCommand(ctx context.Context, data CommandWaitForRouteData) (bool, error)
 
-	EventPublishCommand(ctx context.Context, data wps.WaveEvent) error
+	EventPublishCommand(ctx context.Context, data wps.GulinEvent) error
 	EventSubCommand(ctx context.Context, data wps.SubscriptionRequest) error
 	EventUnsubCommand(ctx context.Context, data string) error
 	EventUnsubAllCommand(ctx context.Context) error
-	EventReadHistoryCommand(ctx context.Context, data CommandEventReadHistoryData) ([]*wps.WaveEvent, error)
+	EventReadHistoryCommand(ctx context.Context, data CommandEventReadHistoryData) ([]*wps.GulinEvent, error)
 
 	FileRestoreBackupCommand(ctx context.Context, data CommandFileRestoreBackupData) error
 	GetTempDirCommand(ctx context.Context, data CommandGetTempDirData) (string, error)
 	WriteTempFileCommand(ctx context.Context, data CommandWriteTempFileData) (string, error)
 	StreamTestCommand(ctx context.Context) chan RespOrErrorUnion[int]
-	StreamWaveAiCommand(ctx context.Context, request WaveAIStreamRequest) chan RespOrErrorUnion[WaveAIPacketType]
+	StreamGulinAiCommand(ctx context.Context, request GulinAIStreamRequest) chan RespOrErrorUnion[GulinAIPacketType]
 	StreamCpuDataCommand(ctx context.Context, request CpuDataRequest) chan RespOrErrorUnion[TimeSeriesData]
 	TestCommand(ctx context.Context, data string) error
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
-	GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
+	GetGulinAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	BlocksListCommand(ctx context.Context, data BlocksListRequest) ([]BlocksListEntry, error)
-	WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
+	GulinInfoCommand(ctx context.Context) (*GulinInfoData, error)
 	WshActivityCommand(ct context.Context, data map[string]int) error
 	ActivityCommand(ctx context.Context, data ActivityUpdate) error
 	RecordTEventCommand(ctx context.Context, data telemetrydata.TEvent) error
@@ -86,7 +86,7 @@ type WshRpcInterface interface {
 	SendTelemetryCommand(ctx context.Context) error
 	FetchSuggestionsCommand(ctx context.Context, data FetchSuggestionsData) (*FetchSuggestionsResponse, error)
 	DisposeSuggestionsCommand(ctx context.Context, widgetId string) error
-	GetTabCommand(ctx context.Context, tabId string) (*waveobj.Tab, error)
+	GetTabCommand(ctx context.Context, tabId string) (*gulinobj.Tab, error)
 	GetAllTabIndicatorsCommand(ctx context.Context) (map[string]*TabIndicator, error)
 
 	// connection functions
@@ -106,7 +106,7 @@ type WshRpcInterface interface {
 	NotifySystemResumeCommand(ctx context.Context) error
 
 	// eventrecv is special, it's handled internally by WshRpc with EventListener
-	EventRecvCommand(ctx context.Context, data wps.WaveEvent) error
+	EventRecvCommand(ctx context.Context, data wps.GulinEvent) error
 
 	// remotes
 	WshRpcRemoteFileInterface
@@ -123,7 +123,7 @@ type WshRpcInterface interface {
 	WebGetTextCommand(ctx context.Context, data CommandWebGetTextData) (string, error)
 	WebClickCommand(ctx context.Context, data CommandWebClickData) error
 	WebTypeCommand(ctx context.Context, data CommandWebTypeData) error
-	NotifyCommand(ctx context.Context, notificationOptions WaveNotificationOptions) error
+	NotifyCommand(ctx context.Context, notificationOptions GulinNotificationOptions) error
 	FocusWindowCommand(ctx context.Context, windowId string) error
 	ElectronEncryptCommand(ctx context.Context, data CommandElectronEncryptData) (*CommandElectronEncryptRtnData, error)
 	ElectronDecryptCommand(ctx context.Context, data CommandElectronDecryptData) (*CommandElectronDecryptRtnData, error)
@@ -140,17 +140,22 @@ type WshRpcInterface interface {
 	GetUpdateChannelCommand(ctx context.Context) (string, error)
 
 	// terminal
-	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*waveobj.ORef, error)
+	VDomCreateContextCommand(ctx context.Context, data vdom.VDomCreateContext) (*gulinobj.ORef, error)
 	VDomAsyncInitiationCommand(ctx context.Context, data vdom.VDomAsyncInitiationRequest) error
 
 	// ai
 	AiSendMessageCommand(ctx context.Context, data AiMessageData) error
-	WaveAIEnableTelemetryCommand(ctx context.Context) error
-	GetWaveAIChatCommand(ctx context.Context, data CommandGetWaveAIChatData) (*uctypes.UIChat, error)
-	GetWaveAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
-	WaveAIToolApproveCommand(ctx context.Context, data CommandWaveAIToolApproveData) error
-	WaveAIAddContextCommand(ctx context.Context, data CommandWaveAIAddContextData) error
-	WaveAIGetToolDiffCommand(ctx context.Context, data CommandWaveAIGetToolDiffData) (*CommandWaveAIGetToolDiffRtnData, error)
+	GulinAIEnableTelemetryCommand(ctx context.Context) error
+	GetGulinAIChatCommand(ctx context.Context, data CommandGetGulinAIChatData) (*uctypes.UIChat, error)
+	GetGulinAIRateLimitCommand(ctx context.Context) (*uctypes.RateLimitInfo, error)
+	GulinAIToolApproveCommand(ctx context.Context, data CommandGulinAIToolApproveData) error
+	GulinAIAddContextCommand(ctx context.Context, data CommandGulinAIAddContextData) error
+	GulinAIGetToolDiffCommand(ctx context.Context, data CommandGulinAIGetToolDiffData) (*CommandGulinAIGetToolDiffRtnData, error)
+	GulinBridgeSyncModelsCommand(ctx context.Context) error
+	GulinBridgeLoginCommand(ctx context.Context, data CommandGulinBridgeLoginData) error
+	GulinBridgeLogoutCommand(ctx context.Context) error
+	GulinBridgeCreateTokenCommand(ctx context.Context, name string) (string, error)
+	GulinBridgeRegisterCommand(ctx context.Context, data CommandGulinBridgeRegisterData) error
 
 	// screenshot
 	CaptureBlockScreenshotCommand(ctx context.Context, data CommandCaptureBlockScreenshotData) (string, error)
@@ -160,7 +165,7 @@ type WshRpcInterface interface {
 	GetFocusedBlockDataCommand(ctx context.Context) (*FocusedBlockData, error)
 
 	// rtinfo
-	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*waveobj.ObjRTInfo, error)
+	GetRTInfoCommand(ctx context.Context, data CommandGetRTInfoData) (*gulinobj.ObjRTInfo, error)
 	SetRTInfoCommand(ctx context.Context, data CommandSetRTInfoData) error
 
 	// terminal
@@ -168,7 +173,7 @@ type WshRpcInterface interface {
 
 	// file
 	WshRpcFileInterface
-	WaveFileReadStreamCommand(ctx context.Context, data CommandWaveFileReadStreamData) (*WaveFileInfo, error)
+	GulinFileReadStreamCommand(ctx context.Context, data CommandGulinFileReadStreamData) (*GulinFileInfo, error)
 
 	// builder
 	WshRpcBuilderInterface
@@ -191,7 +196,7 @@ type WshRpcInterface interface {
 
 	// job controller
 	JobControllerDeleteJobCommand(ctx context.Context, jobId string) error
-	JobControllerListCommand(ctx context.Context) ([]*waveobj.Job, error)
+	JobControllerListCommand(ctx context.Context) ([]*gulinobj.Job, error)
 	JobControllerStartJobCommand(ctx context.Context, data CommandJobControllerStartJobData) (string, error)
 	JobControllerExitJobCommand(ctx context.Context, jobId string) error
 	JobControllerDisconnectJobCommand(ctx context.Context, jobId string) error
@@ -256,12 +261,12 @@ type CommandMessageData struct {
 }
 
 type CommandGetMetaData struct {
-	ORef waveobj.ORef `json:"oref"`
+	ORef gulinobj.ORef `json:"oref"`
 }
 
 type CommandSetMetaData struct {
-	ORef waveobj.ORef        `json:"oref"`
-	Meta waveobj.MetaMapType `json:"meta"`
+	ORef gulinobj.ORef        `json:"oref"`
+	Meta gulinobj.MetaMapType `json:"meta"`
 }
 
 type CommandResolveIdsData struct {
@@ -270,13 +275,13 @@ type CommandResolveIdsData struct {
 }
 
 type CommandResolveIdsRtnData struct {
-	ResolvedIds map[string]waveobj.ORef `json:"resolvedids"`
+	ResolvedIds map[string]gulinobj.ORef `json:"resolvedids"`
 }
 
 type CommandCreateBlockData struct {
 	TabId         string               `json:"tabid"`
-	BlockDef      *waveobj.BlockDef    `json:"blockdef"`
-	RtOpts        *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
+	BlockDef      *gulinobj.BlockDef    `json:"blockdef"`
+	RtOpts        *gulinobj.RuntimeOpts `json:"rtopts,omitempty"`
 	Magnified     bool                 `json:"magnified,omitempty"`
 	Ephemeral     bool                 `json:"ephemeral,omitempty"`
 	Focused       bool                 `json:"focused,omitempty"`
@@ -286,14 +291,14 @@ type CommandCreateBlockData struct {
 
 type CommandCreateSubBlockData struct {
 	ParentBlockId string            `json:"parentblockid"`
-	BlockDef      *waveobj.BlockDef `json:"blockdef"`
+	BlockDef      *gulinobj.BlockDef `json:"blockdef"`
 }
 
 type CommandControllerResyncData struct {
 	ForceRestart bool                 `json:"forcerestart,omitempty"`
 	TabId        string               `json:"tabid"`
 	BlockId      string               `json:"blockid"`
-	RtOpts       *waveobj.RuntimeOpts `json:"rtopts,omitempty"`
+	RtOpts       *gulinobj.RuntimeOpts `json:"rtopts,omitempty"`
 }
 
 type CommandControllerAppendOutputData struct {
@@ -305,7 +310,7 @@ type CommandBlockInputData struct {
 	BlockId     string            `json:"blockid"`
 	InputData64 string            `json:"inputdata64,omitempty"`
 	SigName     string            `json:"signame,omitempty"`
-	TermSize    *waveobj.TermSize `json:"termsize,omitempty"`
+	TermSize    *gulinobj.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandJobInputData struct {
@@ -314,7 +319,7 @@ type CommandJobInputData struct {
 	SeqNum         int               `json:"seqnum,omitempty"`
 	InputData64    string            `json:"inputdata64,omitempty"`
 	SigName        string            `json:"signame,omitempty"`
-	TermSize       *waveobj.TermSize `json:"termsize,omitempty"`
+	TermSize       *gulinobj.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandWaitForRouteData struct {
@@ -332,19 +337,19 @@ type CommandEventReadHistoryData struct {
 	MaxItems int    `json:"maxitems"`
 }
 
-type WaveAIStreamRequest struct {
+type GulinAIStreamRequest struct {
 	ClientId string                    `json:"clientid,omitempty"`
-	Opts     *WaveAIOptsType           `json:"opts"`
-	Prompt   []WaveAIPromptMessageType `json:"prompt"`
+	Opts     *GulinAIOptsType           `json:"opts"`
+	Prompt   []GulinAIPromptMessageType `json:"prompt"`
 }
 
-type WaveAIPromptMessageType struct {
+type GulinAIPromptMessageType struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 	Name    string `json:"name,omitempty"`
 }
 
-type WaveAIOptsType struct {
+type GulinAIOptsType struct {
 	Model      string `json:"model"`
 	APIType    string `json:"apitype,omitempty"`
 	APIToken   string `json:"apitoken"`
@@ -357,18 +362,18 @@ type WaveAIOptsType struct {
 	TimeoutMs  int    `json:"timeoutms,omitempty"`
 }
 
-type WaveAIPacketType struct {
+type GulinAIPacketType struct {
 	Type         string           `json:"type"`
 	Model        string           `json:"model,omitempty"`
 	Created      int64            `json:"created,omitempty"`
 	FinishReason string           `json:"finish_reason,omitempty"`
-	Usage        *WaveAIUsageType `json:"usage,omitempty"`
+	Usage        *GulinAIUsageType `json:"usage,omitempty"`
 	Index        int              `json:"index,omitempty"`
 	Text         string           `json:"text,omitempty"`
 	Error        string           `json:"error,omitempty"`
 }
 
-type WaveAIUsageType struct {
+type GulinAIUsageType struct {
 	PromptTokens     int `json:"prompt_tokens,omitempty"`
 	CompletionTokens int `json:"completion_tokens,omitempty"`
 	TotalTokens      int `json:"total_tokens,omitempty"`
@@ -422,11 +427,11 @@ type TimeSeriesData struct {
 }
 
 type MetaSettingsType struct {
-	waveobj.MetaMapType
+	gulinobj.MetaMapType
 }
 
 func (m *MetaSettingsType) UnmarshalJSON(data []byte) error {
-	var metaMap waveobj.MetaMapType
+	var metaMap gulinobj.MetaMapType
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 	if err := decoder.Decode(&metaMap); err != nil {
@@ -442,7 +447,7 @@ func (m MetaSettingsType) MarshalJSON() ([]byte, error) {
 
 type ConnConfigRequest struct {
 	Host        string              `json:"host"`
-	MetaMapType waveobj.MetaMapType `json:"metamaptype"`
+	MetaMapType gulinobj.MetaMapType `json:"metamaptype"`
 }
 
 type ConnStatus struct {
@@ -478,11 +483,11 @@ type BlockInfoData struct {
 	BlockId     string          `json:"blockid"`
 	TabId       string          `json:"tabid"`
 	WorkspaceId string          `json:"workspaceid"`
-	Block       *waveobj.Block  `json:"block"`
-	Files       []*WaveFileInfo `json:"files"`
+	Block       *gulinobj.Block  `json:"block"`
+	Files       []*GulinFileInfo `json:"files"`
 }
 
-type WaveNotificationOptions struct {
+type GulinNotificationOptions struct {
 	Title  string `json:"title,omitempty"`
 	Body   string `json:"body,omitempty"`
 	Silent bool   `json:"silent,omitempty"`
@@ -501,7 +506,7 @@ type VDomUrlRequestResponse struct {
 	Body       []byte            `json:"body,omitempty"`
 }
 
-type WaveInfoData struct {
+type GulinInfoData struct {
 	Version   string `json:"version"`
 	ClientId  string `json:"clientid"`
 	BuildTime string `json:"buildtime"`
@@ -511,7 +516,7 @@ type WaveInfoData struct {
 
 type WorkspaceInfoData struct {
 	WindowId      string             `json:"windowid"`
-	WorkspaceData *waveobj.Workspace `json:"workspacedata"`
+	WorkspaceData *gulinobj.Workspace `json:"workspacedata"`
 }
 
 type BlocksListRequest struct {
@@ -524,18 +529,18 @@ type BlocksListEntry struct {
 	WorkspaceId string              `json:"workspaceid"`
 	TabId       string              `json:"tabid"`
 	BlockId     string              `json:"blockid"`
-	Meta        waveobj.MetaMapType `json:"meta"`
+	Meta        gulinobj.MetaMapType `json:"meta"`
 }
 
 type AiMessageData struct {
 	Message string `json:"message,omitempty"`
 }
 
-type CommandGetWaveAIChatData struct {
+type CommandGetGulinAIChatData struct {
 	ChatId string `json:"chatid"`
 }
 
-type CommandWaveAIToolApproveData struct {
+type CommandGulinAIToolApproveData struct {
 	ToolCallId string `json:"toolcallid"`
 	Approval   string `json:"approval,omitempty"`
 }
@@ -547,19 +552,19 @@ type AIAttachedFile struct {
 	Data64 string `json:"data64"`
 }
 
-type CommandWaveAIAddContextData struct {
+type CommandGulinAIAddContextData struct {
 	Files   []AIAttachedFile `json:"files,omitempty"`
 	Text    string           `json:"text,omitempty"`
 	Submit  bool             `json:"submit,omitempty"`
 	NewChat bool             `json:"newchat,omitempty"`
 }
 
-type CommandWaveAIGetToolDiffData struct {
+type CommandGulinAIGetToolDiffData struct {
 	ChatId     string `json:"chatid"`
 	ToolCallId string `json:"toolcallid"`
 }
 
-type CommandWaveAIGetToolDiffRtnData struct {
+type CommandGulinAIGetToolDiffRtnData struct {
 	OriginalContents64 string `json:"originalcontents64"`
 	ModifiedContents64 string `json:"modifiedcontents64"`
 }
@@ -600,8 +605,8 @@ type ActivityUpdate struct {
 	FgMinutes           int                   `json:"fgminutes,omitempty"`
 	ActiveMinutes       int                   `json:"activeminutes,omitempty"`
 	OpenMinutes         int                   `json:"openminutes,omitempty"`
-	WaveAIFgMinutes     int                   `json:"waveaifgminutes,omitempty"`
-	WaveAIActiveMinutes int                   `json:"waveaiactiveminutes,omitempty"`
+	GulinAIFgMinutes     int                   `json:"gulinaifgminutes,omitempty"`
+	GulinAIActiveMinutes int                   `json:"gulinaiactiveminutes,omitempty"`
 	NumTabs             int                   `json:"numtabs,omitempty"`
 	NewTab              int                   `json:"newtab,omitempty"`
 	NumBlocks           int                   `json:"numblocks,omitempty"`
@@ -667,11 +672,11 @@ type SuggestionType struct {
 }
 
 type CommandGetRTInfoData struct {
-	ORef waveobj.ORef `json:"oref"`
+	ORef gulinobj.ORef `json:"oref"`
 }
 
 type CommandSetRTInfoData struct {
-	ORef   waveobj.ORef   `json:"oref"`
+	ORef   gulinobj.ORef   `json:"oref"`
 	Data   map[string]any `json:"data" tstype:"ObjRTInfo"`
 	Delete bool           `json:"delete,omitempty"`
 }
@@ -750,7 +755,7 @@ type CommandStartJobData struct {
 	Cmd        string            `json:"cmd"`
 	Args       []string          `json:"args"`
 	Env        map[string]string `json:"env"`
-	TermSize   waveobj.TermSize  `json:"termsize"`
+	TermSize   gulinobj.TermSize  `json:"termsize"`
 	StreamMeta *StreamMeta       `json:"streammeta,omitempty"`
 }
 
@@ -758,7 +763,7 @@ type CommandRemoteStartJobData struct {
 	Cmd                string            `json:"cmd"`
 	Args               []string          `json:"args"`
 	Env                map[string]string `json:"env"`
-	TermSize           waveobj.TermSize  `json:"termsize"`
+	TermSize           gulinobj.TermSize  `json:"termsize"`
 	StreamMeta         *StreamMeta       `json:"streammeta,omitempty"`
 	JobAuthToken       string            `json:"jobauthtoken"`
 	JobId              string            `json:"jobid"`
@@ -801,7 +806,7 @@ type CommandStartJobRtnData struct {
 type CommandJobPrepareConnectData struct {
 	StreamMeta StreamMeta       `json:"streammeta"`
 	Seq        int64            `json:"seq"`
-	TermSize   waveobj.TermSize `json:"termsize"`
+	TermSize   gulinobj.TermSize `json:"termsize"`
 }
 
 type CommandJobStartStreamData struct {
@@ -831,7 +836,7 @@ type CommandJobControllerStartJobData struct {
 	Cmd      string            `json:"cmd"`
 	Args     []string          `json:"args"`
 	Env      map[string]string `json:"env"`
-	TermSize *waveobj.TermSize `json:"termsize,omitempty"`
+	TermSize *gulinobj.TermSize `json:"termsize,omitempty"`
 }
 
 type CommandJobControllerAttachJobData struct {
@@ -844,14 +849,14 @@ type JobManagerStatusUpdate struct {
 	JobManagerStatus string `json:"jobmanagerstatus"`
 }
 
-type CommandWaveFileReadStreamData struct {
+type CommandGulinFileReadStreamData struct {
 	ZoneId     string     `json:"zoneid"`
 	Name       string     `json:"name"`
 	StreamMeta StreamMeta `json:"streammeta"`
 }
 
-// see blockstore.go (WaveFile)
-type WaveFileInfo struct {
+// see blockstore.go (GulinFile)
+type GulinFileInfo struct {
 	ZoneId    string   `json:"zoneid"`
 	Name      string   `json:"name"`
 	Opts      FileOpts `json:"opts"`
@@ -891,7 +896,7 @@ type FocusedBlockData struct {
 	ViewType                   string              `json:"viewtype"`
 	Controller                 string              `json:"controller"`
 	ConnName                   string              `json:"connname"`
-	BlockMeta                  waveobj.MetaMapType `json:"blockmeta"`
+	BlockMeta                  gulinobj.MetaMapType `json:"blockmeta"`
 	TermJobStatus              *BlockJobStatusData `json:"termjobstatus,omitempty"`
 	ConnStatus                 *ConnStatus         `json:"connstatus,omitempty"`
 	TermShellIntegrationStatus string              `json:"termshellintegrationstatus,omitempty"`
@@ -917,4 +922,16 @@ type CommandWebTypeData struct {
 	TabId       string `json:"tabid"`
 	Selector    string `json:"selector"`
 	Text        string `json:"text"`
+}
+
+type CommandGulinBridgeLoginData struct {
+	URL      string `json:"url"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type CommandGulinBridgeRegisterData struct {
+	URL      string `json:"url"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }

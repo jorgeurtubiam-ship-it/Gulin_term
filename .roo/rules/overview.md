@@ -1,13 +1,13 @@
-# Wave Terminal - High Level Architecture Overview
+# Gulin Terminal - High Level Architecture Overview
 
 ## Project Description
 
-Wave Terminal is an open-source AI-native terminal built for seamless workflows. It's an Electron application that serves as a command line terminal host (it hosts CLI applications rather than running inside a CLI). The application combines a React frontend with a Go backend server to provide a modern terminal experience with advanced features.
+Gulin Terminal is an open-source AI-native terminal built for seamless workflows. It's an Electron application that serves as a command line terminal host (it hosts CLI applications rather than running inside a CLI). The application combines a React frontend with a Go backend server to provide a modern terminal experience with advanced features.
 
 ## Top-Level Directory Structure
 
 ```
-waveterm/
+gulin/
 ├── emain/              # Electron main process code
 ├── frontend/           # React application (renderer process)
 ├── cmd/                # Go command-line applications
@@ -31,10 +31,10 @@ The Electron main process handles the native desktop application layer:
 **Key Files:**
 
 - [`emain.ts`](emain/emain.ts) - Main entry point, application lifecycle management
-- [`emain-window.ts`](emain/emain-window.ts) - Window management (`WaveBrowserWindow` class)
-- [`emain-tabview.ts`](emain/emain-tabview.ts) - Tab view management (`WaveTabView` class)
-- [`emain-wavesrv.ts`](emain/emain-wavesrv.ts) - Go backend server integration
-- [`emain-wsh.ts`](emain/emain-wsh.ts) - WSH (Wave Shell) client integration
+- [`emain-window.ts`](emain/emain-window.ts) - Window management (`GulinBrowserWindow` class)
+- [`emain-tabview.ts`](emain/emain-tabview.ts) - Tab view management (`GulinTabView` class)
+- [`emain-gulinsrv.ts`](emain/emain-gulinsrv.ts) - Go backend server integration
+- [`emain-wsh.ts`](emain/emain-wsh.ts) - WSH (Gulin Shell) client integration
 - [`emain-ipc.ts`](emain/emain-ipc.ts) - IPC handlers for frontend ↔ main process communication
 - [`emain-menu.ts`](emain/emain-menu.ts) - Application menu system
 - [`updater.ts`](emain/updater.ts) - Auto-update functionality
@@ -65,8 +65,8 @@ frontend/
 │   │   ├── term/       # Terminal view
 │   │   ├── tsunami/    # Tsunami builder view
 │   │   ├── vdom/       # Virtual DOM view
-│   │   ├── waveai/     # AI chat integration
-│   │   ├── waveconfig/ # Config editor view
+│   │   ├── gulinai/     # AI chat integration
+│   │   ├── gulinconfig/ # Config editor view
 │   │   └── webview/    # Web view
 │   └── workspace/      # Workspace management
 ├── builder/            # Builder app entry
@@ -104,16 +104,16 @@ The Go codebase is organized into modular packages:
 - `wconfig/` - Configuration management
 - `wcore/` - Core business logic
 - `wshrpc/` - RPC communication system
-- `wshutil/` - WSH (Wave Shell) utilities
+- `wshutil/` - WSH (Gulin Shell) utilities
 - `blockcontroller/` - Block execution management
 - `remote/` - Remote connection handling
 - `filestore/` - File storage system
 - `web/` - Web server and WebSocket handling
 - `telemetry/` - Usage analytics and telemetry
-- `waveobj/` - Core data objects
+- `gulinobj/` - Core data objects
 - `service/` - Service layer
-- `wps/` - Wave PubSub event system
-- `waveai/` - AI functionality
+- `wps/` - Gulin PubSub event system
+- `gulinai/` - AI functionality
 - `shellexec/` - Shell execution
 - `util/` - Common utilities
 
@@ -121,7 +121,7 @@ The Go codebase is organized into modular packages:
 
 Key Go command-line utilities:
 
-- `wsh/` - Wave Shell command-line tool
+- `wsh/` - Gulin Shell command-line tool
 - `server/` - Main backend server
 - `generatego/` - Code generation
 - `generateschema/` - Schema generation
@@ -129,11 +129,11 @@ Key Go command-line utilities:
 
 ## Communication Architecture
 
-The core communication system is built around the **WSH RPC (Wave Shell RPC)** system, which provides a unified interface for all inter-process communication: frontend ↔ Go backend, Electron main process ↔ backend, and backend ↔ remote systems (SSH, WSL).
+The core communication system is built around the **WSH RPC (Gulin Shell RPC)** system, which provides a unified interface for all inter-process communication: frontend ↔ Go backend, Electron main process ↔ backend, and backend ↔ remote systems (SSH, WSL).
 
 ### WSH RPC System (`pkg/wshrpc/`)
 
-The WSH RPC system is the backbone of Wave Terminal's communication architecture:
+The WSH RPC system is the backbone of Gulin Terminal's communication architecture:
 
 **Key Components:**
 
@@ -143,12 +143,12 @@ The WSH RPC system is the backbone of Wave Terminal's communication architecture
 - [`wshclient.go`](pkg/wshrpc/wshclient.go) - Go client for making RPC calls
 - [`frontend/app/store/wshclientapi.ts`](frontend/app/store/wshclientapi.ts) - Generated TypeScript RPC client
 
-**Routing:** Callers address RPC calls using _routes_ (e.g. a block ID, connection name, or `"waveapp"`) rather than caring about the underlying transport. The RPC layer resolves the route to the correct transport (WebSocket, Unix socket, SSH tunnel, stdio) automatically. This means the same RPC interface works whether the target is local or a remote SSH connection.
+**Routing:** Callers address RPC calls using _routes_ (e.g. a block ID, connection name, or `"gulinapp"`) rather than caring about the underlying transport. The RPC layer resolves the route to the correct transport (WebSocket, Unix socket, SSH tunnel, stdio) automatically. This means the same RPC interface works whether the target is local or a remote SSH connection.
 
 ## Development Notes
 
 - **Build commands** - Use `task` (Taskfile.yml) for all build, generate, and packaging commands
-- **Code generation** - Run `task generate` after modifying Go types in `pkg/wshrpc/wshrpctypes.go`, `pkg/wconfig/settingsconfig.go`, or `pkg/waveobj/wtypemeta.go`
+- **Code generation** - Run `task generate` after modifying Go types in `pkg/wshrpc/wshrpctypes.go`, `pkg/wconfig/settingsconfig.go`, or `pkg/gulinobj/wtypemeta.go`
 - **Testing** - Vitest for frontend unit tests; standard `go test` for Go packages
 - **Database migrations** - SQL migration files in `db/migrations-wstore/` and `db/migrations-filestore/`
 - **Documentation** - Docusaurus site in `docs/`

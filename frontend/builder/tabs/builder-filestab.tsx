@@ -12,7 +12,7 @@ import { atoms } from "@/store/global";
 import { useAtomValue } from "jotai";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
-const MaxFileSize = 5 * 1024 * 1024; // 5MB
+const MaxFileSize = 100 * 1024 * 1024; // 100MB
 const ReadOnlyFileNames = ["static/tw.css"];
 
 type FileEntry = {

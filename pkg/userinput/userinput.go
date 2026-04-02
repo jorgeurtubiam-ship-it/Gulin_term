@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/genconn"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/blocklogger"
+	"github.com/gulindev/gulin/pkg/genconn"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 var MainUserInputHandler = UserInputHandler{Channels: make(map[string](chan *UserInputResponse), 1)}
@@ -75,7 +75,7 @@ func (ui *UserInputHandler) unregisterChannel(id string) {
 }
 
 func (ui *UserInputHandler) sendRequestToFrontend(request *UserInputRequest, scopes []string) {
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event:  wps.Event_UserInput,
 		Data:   request,
 		Scopes: scopes,

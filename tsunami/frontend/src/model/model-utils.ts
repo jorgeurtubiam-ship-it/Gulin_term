@@ -30,14 +30,14 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
         });
     }
 
-    // Step 2: Map of waveid to VDomElem, skipping any without a waveid
+    // Step 2: Map of gulinid to VDomElem, skipping any without a gulinid
     const elemMap = new Map<string, VDomElem>();
     backendUpdate.transferelems.forEach((transferElem) => {
-        if (!transferElem.waveid) {
+        if (!transferElem.gulinid) {
             return;
         }
-        elemMap.set(transferElem.waveid, {
-            waveid: transferElem.waveid,
+        elemMap.set(transferElem.gulinid, {
+            gulinid: transferElem.gulinid,
             tag: transferElem.tag,
             props: transferElem.props,
             children: [], // Will populate children later
@@ -47,7 +47,7 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
 
     // Step 3: Build VDomElem trees by linking children
     backendUpdate.transferelems.forEach((transferElem) => {
-        const parent = elemMap.get(transferElem.waveid);
+        const parent = elemMap.get(transferElem.gulinid);
         if (!parent || !transferElem.children || transferElem.children.length === 0) {
             return;
         }
@@ -73,8 +73,8 @@ export function restoreVDomElems(backendUpdate: VDomBackendUpdate) {
 
     // Step 4: Update renderupdates with rebuilt VDomElem trees
     backendUpdate.renderupdates.forEach((update) => {
-        if (update.vdomwaveid) {
-            update.vdom = elemMap.get(update.vdomwaveid);
+        if (update.vdomgulinid) {
+            update.vdom = elemMap.get(update.vdomgulinid);
         }
     });
 }

@@ -6,12 +6,12 @@ package vdom
 import (
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/gulindev/gulin/pkg/gulinobj"
 )
 
 const TextTag = "#text"
-const WaveTextTag = "wave:text"
-const WaveNullTag = "wave:null"
+const GulinTextTag = "gulin:text"
+const GulinNullTag = "gulin:null"
 const FragmentTag = "#fragment"
 const BindTag = "#bind"
 
@@ -24,7 +24,7 @@ const ObjectType_Func = "func"
 
 // vdom element
 type VDomElem struct {
-	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
+	GulinId   string         `json:"gulinid,omitempty"` // required, except for #text nodes
 	Tag      string         `json:"tag"`
 	Props    map[string]any `json:"props,omitempty"`
 	Children []VDomElem     `json:"children,omitempty"`
@@ -33,7 +33,7 @@ type VDomElem struct {
 
 // the over the wire format for a vdom element
 type VDomTransferElem struct {
-	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
+	GulinId   string         `json:"gulinid,omitempty"` // required, except for #text nodes
 	Tag      string         `json:"tag"`
 	Props    map[string]any `json:"props,omitempty"`
 	Children []string       `json:"children,omitempty"`
@@ -45,7 +45,7 @@ type VDomTransferElem struct {
 type VDomCreateContext struct {
 	Type    string              `json:"type" tstype:"\"createcontext\""`
 	Ts      int64               `json:"ts"`
-	Meta    waveobj.MetaMapType `json:"meta,omitempty"`
+	Meta    gulinobj.MetaMapType `json:"meta,omitempty"`
 	Target  *VDomTarget         `json:"target,omitempty"`
 	Persist bool                `json:"persist,omitempty"`
 }
@@ -143,15 +143,15 @@ type VDomRefPosition struct {
 ///// subbordinate protocol types
 
 type VDomEvent struct {
-	WaveId          string             `json:"waveid"`
+	GulinId          string             `json:"gulinid"`
 	EventType       string             `json:"eventtype"` // usually the prop name (e.g. onClick, onKeyDown)
 	GlobalEventType string             `json:"globaleventtype,omitempty"`
 	TargetValue     string             `json:"targetvalue,omitempty"`
 	TargetChecked   bool               `json:"targetchecked,omitempty"`
 	TargetName      string             `json:"targetname,omitempty"`
 	TargetId        string             `json:"targetid,omitempty"`
-	KeyData         *WaveKeyboardEvent `json:"keydata,omitempty"`
-	MouseData       *WavePointerData   `json:"mousedata,omitempty"`
+	KeyData         *GulinKeyboardEvent `json:"keydata,omitempty"`
+	MouseData       *GulinPointerData   `json:"mousedata,omitempty"`
 }
 
 type VDomRenderContext struct {
@@ -182,8 +182,8 @@ type VDomBackendOpts struct {
 
 type VDomRenderUpdate struct {
 	UpdateType string    `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
-	WaveId     string    `json:"waveid,omitempty"`
-	VDomWaveId string    `json:"vdomwaveid,omitempty"`
+	GulinId     string    `json:"gulinid,omitempty"`
+	VDomGulinId string    `json:"vdomgulinid,omitempty"`
 	VDom       *VDomElem `json:"vdom,omitempty"` // these get removed for transfer (encoded to transferelems)
 	Index      *int      `json:"index,omitempty"`
 }
@@ -215,7 +215,7 @@ type VDomTargetToolbar struct {
 	Height  string `json:"height,omitempty"`
 }
 
-// matches WaveKeyboardEvent
+// matches GulinKeyboardEvent
 type VDomKeyboardEvent struct {
 	Type     string `json:"type"`
 	Key      string `json:"key"`
@@ -230,7 +230,7 @@ type VDomKeyboardEvent struct {
 	Location int    `json:"location,omitempty"`
 }
 
-type WaveKeyboardEvent struct {
+type GulinKeyboardEvent struct {
 	Type     string `json:"type" tstype:"\"keydown\"|\"keyup\"|\"keypress\"|\"unknown\""`
 	Key      string `json:"key"`  // KeyboardEvent.key
 	Code     string `json:"code"` // KeyboardEvent.code
@@ -246,7 +246,7 @@ type WaveKeyboardEvent struct {
 	Option  bool `json:"option,omitempty"` // special (on mac it is alt, on windows/linux it is meta)
 }
 
-type WavePointerData struct {
+type GulinPointerData struct {
 	Button  int `json:"button"`
 	Buttons int `json:"buttons"`
 

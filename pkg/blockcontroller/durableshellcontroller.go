@@ -12,19 +12,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/jobcontroller"
-	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
-	"github.com/wavetermdev/waveterm/pkg/shellexec"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/utilds"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/jobcontroller"
+	"github.com/gulindev/gulin/pkg/remote"
+	"github.com/gulindev/gulin/pkg/remote/conncontroller"
+	"github.com/gulindev/gulin/pkg/shellexec"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/utilds"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 type DurableShellController struct {
@@ -34,7 +34,7 @@ type DurableShellController struct {
 	TabId          string
 	BlockId        string
 	ConnName       string
-	BlockDef       *waveobj.BlockDef
+	BlockDef       *gulinobj.BlockDef
 	VersionTs      utilds.VersionTs
 
 	InputSessionId string // random uuid
@@ -115,11 +115,11 @@ func (dsc *DurableShellController) GetConnName() string {
 func (dsc *DurableShellController) sendUpdate_withlock() {
 	rtStatus := dsc.getRuntimeStatus_withlock()
 	log.Printf("sending blockcontroller update %#v\n", rtStatus)
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event: wps.Event_ControllerStatus,
 		Scopes: []string{
-			waveobj.MakeORef(waveobj.OType_Tab, dsc.TabId).String(),
-			waveobj.MakeORef(waveobj.OType_Block, dsc.BlockId).String(),
+			gulinobj.MakeORef(gulinobj.OType_Tab, dsc.TabId).String(),
+			gulinobj.MakeORef(gulinobj.OType_Block, dsc.BlockId).String(),
 		},
 		Data: rtStatus,
 	})
@@ -134,8 +134,8 @@ func (dsc *DurableShellController) sendUpdate_withlock() {
 //   - force=false: returns without starting (leaves block unstarted)
 //
 // After establishing jobId, ensures job connection is active (reconnects if needed)
-func (dsc *DurableShellController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
-	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, dsc.BlockId)
+func (dsc *DurableShellController) Start(ctx context.Context, blockMeta gulinobj.MetaMapType, rtOpts *gulinobj.RuntimeOpts, force bool) error {
+	blockData, err := wstore.DBMustGet[*gulinobj.Block](ctx, dsc.BlockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
@@ -218,13 +218,13 @@ func (dsc *DurableShellController) SendInput(inputUnion *BlockInputUnion) error 
 	return jobcontroller.SendInput(context.Background(), data)
 }
 
-func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta waveobj.MetaMapType, connName string) (string, error) {
-	termSize := waveobj.TermSize{
+func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta gulinobj.MetaMapType, connName string) (string, error) {
+	termSize := gulinobj.TermSize{
 		Rows: shellutil.DefaultTermRows,
 		Cols: shellutil.DefaultTermCols,
 	}
-	cmdStr := blockMeta.GetString(waveobj.MetaKey_Cmd, "")
-	cwd := blockMeta.GetString(waveobj.MetaKey_CmdCwd, "")
+	cmdStr := blockMeta.GetString(gulinobj.MetaKey_Cmd, "")
+	cwd := blockMeta.GetString(gulinobj.MetaKey_CmdCwd, "")
 	opts, err := remote.ParseOpts(connName)
 	if err != nil {
 		return "", fmt.Errorf("invalid ssh remote name (%s): %w", connName, err)
@@ -240,7 +240,7 @@ func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta wa
 	}
 	shellType := shellutil.GetShellTypeFromShellPath(remoteInfo.Shell)
 	swapToken := makeSwapToken(ctx, ctx, dsc.BlockId, blockMeta, connName, shellType)
-	sockName := wavebase.GetPersistentRemoteSockName(wstore.GetClientId())
+	sockName := gulinbase.GetPersistentRemoteSockName(wstore.GetClientId())
 	rpcContext := wshrpc.RpcContext{
 		ProcRoute: true,
 		SockName:  sockName,
@@ -252,13 +252,13 @@ func (dsc *DurableShellController) startNewJob(ctx context.Context, blockMeta wa
 		return "", fmt.Errorf("error making jwt token: %w", err)
 	}
 	swapToken.RpcContext = &rpcContext
-	swapToken.Env[wshutil.WaveJwtTokenVarName] = jwtStr
+	swapToken.Env[wshutil.GulinJwtTokenVarName] = jwtStr
 	cmdOpts := shellexec.CommandOptsType{
 		Interactive: true,
 		Login:       true,
 		Cwd:         cwd,
 		SwapToken:   swapToken,
-		ForceJwt:    blockMeta.GetBool(waveobj.MetaKey_CmdJwt, false),
+		ForceJwt:    blockMeta.GetBool(gulinobj.MetaKey_CmdJwt, false),
 	}
 	jobId, err := shellexec.StartRemoteShellJob(ctx, ctx, termSize, cmdStr, cmdOpts, conn, dsc.BlockId)
 	if err != nil {

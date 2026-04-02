@@ -4,10 +4,10 @@
 import { WOS } from "@/app/store/global";
 import { Atom, Getter } from "jotai";
 
-export function getLayoutStateAtomFromTab(tabAtom: Atom<Tab>, get: Getter): WritableWaveObjectAtom<LayoutState> {
+export function getLayoutStateAtomFromTab(tabAtom: Atom<Tab>, get: Getter): WritableGulinObjectAtom<LayoutState> {
     const tabData = get(tabAtom);
     if (!tabData) return;
     const layoutStateOref = WOS.makeORef("layout", tabData.layoutstate);
-    const layoutStateAtom = WOS.getWaveObjectAtom<LayoutState>(layoutStateOref);
+    const layoutStateAtom = WOS.getGulinObjectAtom<LayoutState>(layoutStateOref);
     return layoutStateAtom;
 }

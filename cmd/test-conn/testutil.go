@@ -13,46 +13,46 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
-	"github.com/wavetermdev/waveterm/pkg/shellexec"
-	"github.com/wavetermdev/waveterm/pkg/userinput"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/remote"
+	"github.com/gulindev/gulin/pkg/remote/conncontroller"
+	"github.com/gulindev/gulin/pkg/shellexec"
+	"github.com/gulindev/gulin/pkg/userinput"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinjwt"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshserver"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
-func setupWaveEnvVars() error {
+func setupGulinEnvVars() error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	isDev := os.Getenv("WAVETERM_DEV") != ""
+	isDev := os.Getenv("GULIN_DEV") != ""
 	devSuffix := ""
 	if isDev {
 		devSuffix = "-dev"
 	}
 
-	configHome := os.Getenv("WAVETERM_CONFIG_HOME")
+	configHome := os.Getenv("GULIN_CONFIG_HOME")
 	if configHome == "" {
-		configHome = filepath.Join(homeDir, ".config", "waveterm"+devSuffix)
-		os.Setenv("WAVETERM_CONFIG_HOME", configHome)
+		configHome = filepath.Join(homeDir, ".config", "gulin"+devSuffix)
+		os.Setenv("GULIN_CONFIG_HOME", configHome)
 	}
 	log.Printf("Using config directory: %s", configHome)
 
-	dataHome := os.Getenv("WAVETERM_DATA_HOME")
+	dataHome := os.Getenv("GULIN_DATA_HOME")
 	if dataHome == "" {
 		if runtime.GOOS == "darwin" {
-			dataHome = filepath.Join(homeDir, "Library", "Application Support", "waveterm"+devSuffix)
-			os.Setenv("WAVETERM_DATA_HOME", dataHome)
+			dataHome = filepath.Join(homeDir, "Library", "Application Support", "gulin"+devSuffix)
+			os.Setenv("GULIN_DATA_HOME", dataHome)
 		} else {
-			return fmt.Errorf("WAVETERM_DATA_HOME must be set on non-macOS systems")
+			return fmt.Errorf("GULIN_DATA_HOME must be set on non-macOS systems")
 		}
 	}
 	log.Printf("Using data directory: %s", dataHome)
@@ -63,12 +63,12 @@ func setupWaveEnvVars() error {
 func initTestHarness(autoAccept bool) error {
 	log.Printf("Initializing test harness...")
 
-	err := setupWaveEnvVars()
+	err := setupGulinEnvVars()
 	if err != nil {
-		return fmt.Errorf("failed to setup wave env vars: %w", err)
+		return fmt.Errorf("failed to setup gulin env vars: %w", err)
 	}
 
-	err = wavebase.CacheAndRemoveEnvVars()
+	err = gulinbase.CacheAndRemoveEnvVars()
 	if err != nil {
 		return fmt.Errorf("failed to cache env vars: %w", err)
 	}
@@ -80,17 +80,17 @@ func initTestHarness(autoAccept bool) error {
 
 	userinput.SetUserInputProvider(&CLIProvider{AutoAccept: autoAccept})
 
-	keyPair, err := wavejwt.GenerateKeyPair()
+	keyPair, err := gulinjwt.GenerateKeyPair()
 	if err != nil {
 		return fmt.Errorf("failed to generate JWT key pair: %w", err)
 	}
 
-	err = wavejwt.SetPrivateKey(keyPair.PrivateKey)
+	err = gulinjwt.SetPrivateKey(keyPair.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("failed to set JWT private key: %w", err)
 	}
 
-	err = wavejwt.SetPublicKey(keyPair.PublicKey)
+	err = gulinjwt.SetPublicKey(keyPair.PublicKey)
 	if err != nil {
 		return fmt.Errorf("failed to set JWT public key: %w", err)
 	}
@@ -158,7 +158,7 @@ func testShellWithCommand(connName string, cmd string, timeout time.Duration) er
 
 	log.Printf("✓ Connected! Starting shell...")
 
-	termSize := waveobj.TermSize{Rows: 24, Cols: 80}
+	termSize := gulinobj.TermSize{Rows: 24, Cols: 80}
 	shellProc, err := shellexec.StartRemoteShellProcNoWsh(ctx, termSize, "", shellexec.CommandOptsType{}, conn)
 	if err != nil {
 		return fmt.Errorf("failed to start shell: %w", err)
@@ -225,16 +225,16 @@ func testWshExec(connName string, cmd string, timeout time.Duration) error {
 		Env:   make(map[string]string),
 		Exp:   time.Now().Add(5 * time.Minute),
 	}
-	swapToken.Env["TERM_PROGRAM"] = "waveterm"
-	swapToken.Env["WAVETERM"] = "1"
-	swapToken.Env["WAVETERM_VERSION"] = wavebase.WaveVersion
-	swapToken.Env["WAVETERM_CONN"] = connName
+	swapToken.Env["TERM_PROGRAM"] = "gulin"
+	swapToken.Env["GULIN"] = "1"
+	swapToken.Env["GULIN_VERSION"] = gulinbase.GulinVersion
+	swapToken.Env["GULIN_CONN"] = connName
 
 	cmdOpts := shellexec.CommandOptsType{
 		SwapToken: swapToken,
 	}
 
-	termSize := waveobj.TermSize{Rows: 24, Cols: 80}
+	termSize := gulinobj.TermSize{Rows: 24, Cols: 80}
 	shellProc, err := shellexec.StartRemoteShellProc(ctx, ctx, termSize, "", cmdOpts, conn)
 	if err != nil {
 		return fmt.Errorf("failed to start shell: %w", err)
@@ -286,7 +286,7 @@ func testInteractiveShell(connName string, timeout time.Duration) error {
 	log.Printf("Note: This is a simple test - output may be mixed with prompts")
 	log.Printf("Type commands and press Enter. Type 'exit' to quit.\n")
 
-	termSize := waveobj.TermSize{Rows: 24, Cols: 80}
+	termSize := gulinobj.TermSize{Rows: 24, Cols: 80}
 	shellProc, err := shellexec.StartRemoteShellProcNoWsh(ctx, termSize, "", shellexec.CommandOptsType{}, conn)
 	if err != nil {
 		return fmt.Errorf("failed to start shell: %w", err)

@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wps"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wps"
 )
 
 var instance *Watcher
@@ -41,7 +41,7 @@ func GetWatcher() *Watcher {
 			log.Printf("failed to create file watcher: %v", err)
 			return
 		}
-		configDirAbsPath := wavebase.GetWaveConfigDir()
+		configDirAbsPath := gulinbase.GetGulinConfigDir()
 		log.Printf("create config watcher, configdir=%q", configDirAbsPath)
 		instance = &Watcher{watcher: watcher}
 		err = instance.watcher.Add(configDirAbsPath)
@@ -111,7 +111,7 @@ func (w *Watcher) Close() {
 }
 
 func (w *Watcher) broadcast(message WatcherUpdate) {
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event: wps.Event_Config,
 		Data:  message,
 	})

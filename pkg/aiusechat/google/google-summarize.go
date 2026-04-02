@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/generative-ai-go/genai"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 	"google.golang.org/api/option"
 )
 
@@ -149,15 +149,15 @@ func detectMimeType(data []byte) string {
 
 func getMaxFileSize(mimeType, mode string) (int, string) {
 	if mimeType == "application/pdf" {
-		return 5 * 1024 * 1024, "5MB"
+		return 100 * 1024 * 1024, "100MB"
 	}
 	if strings.HasPrefix(mimeType, "image/") {
-		return 7 * 1024 * 1024, "7MB"
+		return 100 * 1024 * 1024, "100MB"
 	}
 	if mode == ModeHTMLContent || mode == ModeHTMLFull {
-		return 500 * 1024, "500KB"
+		return 100 * 1024 * 1024, "100MB"
 	}
-	return 200 * 1024, "200KB"
+	return 100 * 1024 * 1024, "100MB"
 }
 
 // SummarizeFile reads a file and generates a summary using Google's Generative AI.

@@ -9,16 +9,16 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/service/blockservice"
-	"github.com/wavetermdev/waveterm/pkg/service/clientservice"
-	"github.com/wavetermdev/waveterm/pkg/service/objectservice"
-	"github.com/wavetermdev/waveterm/pkg/service/userinputservice"
-	"github.com/wavetermdev/waveterm/pkg/service/windowservice"
-	"github.com/wavetermdev/waveterm/pkg/service/workspaceservice"
-	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/web/webcmd"
+	"github.com/gulindev/gulin/pkg/service/blockservice"
+	"github.com/gulindev/gulin/pkg/service/clientservice"
+	"github.com/gulindev/gulin/pkg/service/objectservice"
+	"github.com/gulindev/gulin/pkg/service/userinputservice"
+	"github.com/gulindev/gulin/pkg/service/windowservice"
+	"github.com/gulindev/gulin/pkg/service/workspaceservice"
+	"github.com/gulindev/gulin/pkg/tsgen/tsgenmeta"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/web/webcmd"
 )
 
 var ServiceMap = map[string]any{
@@ -32,20 +32,20 @@ var ServiceMap = map[string]any{
 
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
-var updatesRType = reflect.TypeOf(([]waveobj.WaveObjUpdate{}))
-var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
-var waveObjSliceRType = reflect.TypeOf([]waveobj.WaveObj{})
-var waveObjMapRType = reflect.TypeOf(map[string]waveobj.WaveObj{})
+var updatesRType = reflect.TypeOf(([]gulinobj.GulinObjUpdate{}))
+var gulinObjRType = reflect.TypeOf((*gulinobj.GulinObj)(nil)).Elem()
+var gulinObjSliceRType = reflect.TypeOf([]gulinobj.GulinObj{})
+var gulinObjMapRType = reflect.TypeOf(map[string]gulinobj.GulinObj{})
 var methodMetaRType = reflect.TypeOf(tsgenmeta.MethodMeta{})
-var waveObjUpdateRType = reflect.TypeOf(waveobj.WaveObjUpdate{})
-var uiContextRType = reflect.TypeOf((*waveobj.UIContext)(nil)).Elem()
+var gulinObjUpdateRType = reflect.TypeOf(gulinobj.GulinObjUpdate{})
+var uiContextRType = reflect.TypeOf((*gulinobj.UIContext)(nil)).Elem()
 var wsCommandRType = reflect.TypeOf((*webcmd.WSCommandType)(nil)).Elem()
-var orefRType = reflect.TypeOf((*waveobj.ORef)(nil)).Elem()
+var orefRType = reflect.TypeOf((*gulinobj.ORef)(nil)).Elem()
 
 type WebCallType struct {
 	Service   string             `json:"service"`
 	Method    string             `json:"method"`
-	UIContext *waveobj.UIContext `json:"uicontext,omitempty"`
+	UIContext *gulinobj.UIContext `json:"uicontext,omitempty"`
 	Args      []any              `json:"args"`
 }
 
@@ -53,7 +53,7 @@ type WebReturnType struct {
 	Success bool                    `json:"success,omitempty"`
 	Error   string                  `json:"error,omitempty"`
 	Data    any                     `json:"data,omitempty"`
-	Updates []waveobj.WaveObjUpdate `json:"updates,omitempty"`
+	Updates []gulinobj.GulinObjUpdate `json:"updates,omitempty"`
 }
 
 func convertNumber(argType reflect.Type, jsonArg float64) (any, error) {
@@ -95,8 +95,8 @@ func convertComplex(argType reflect.Type, jsonArg any) (any, error) {
 	return nativeArgVal.Elem().Interface(), nil
 }
 
-func isSpecialWaveArgType(argType reflect.Type) bool {
-	return argType == waveObjRType || argType == waveObjSliceRType || argType == waveObjMapRType || argType == wsCommandRType
+func isSpecialGulinArgType(argType reflect.Type) bool {
+	return argType == gulinObjRType || argType == gulinObjSliceRType || argType == gulinObjMapRType || argType == wsCommandRType
 }
 
 func convertWSCommand(argType reflect.Type, jsonArg any) (any, error) {
@@ -116,78 +116,78 @@ func convertSpecial(argType reflect.Type, jsonArg any) (any, error) {
 		if jsonType.Kind() != reflect.String {
 			return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
 		}
-		oref, err := waveobj.ParseORef(jsonArg.(string))
+		oref, err := gulinobj.ParseORef(jsonArg.(string))
 		if err != nil {
 			return nil, fmt.Errorf("invalid oref string: %v", err)
 		}
 		return oref, nil
 	} else if argType == wsCommandRType {
 		return convertWSCommand(argType, jsonArg)
-	} else if argType == waveObjRType {
+	} else if argType == gulinObjRType {
 		if jsonType.Kind() != reflect.Map {
 			return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
 		}
-		return waveobj.FromJsonMap(jsonArg.(map[string]any))
-	} else if argType == waveObjSliceRType {
+		return gulinobj.FromJsonMap(jsonArg.(map[string]any))
+	} else if argType == gulinObjSliceRType {
 		if jsonType.Kind() != reflect.Slice {
 			return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
 		}
 		sliceArg := jsonArg.([]any)
-		nativeSlice := make([]waveobj.WaveObj, len(sliceArg))
+		nativeSlice := make([]gulinobj.GulinObj, len(sliceArg))
 		for idx, elem := range sliceArg {
 			elemMap, ok := elem.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("cannot convert %T to %s (idx %d is not a map, is %T)", jsonArg, waveObjSliceRType, idx, elem)
+				return nil, fmt.Errorf("cannot convert %T to %s (idx %d is not a map, is %T)", jsonArg, gulinObjSliceRType, idx, elem)
 			}
-			nativeObj, err := waveobj.FromJsonMap(elemMap)
+			nativeObj, err := gulinobj.FromJsonMap(elemMap)
 			if err != nil {
-				return nil, fmt.Errorf("cannot convert %T to %s (idx %d) error: %v", jsonArg, waveObjSliceRType, idx, err)
+				return nil, fmt.Errorf("cannot convert %T to %s (idx %d) error: %v", jsonArg, gulinObjSliceRType, idx, err)
 			}
 			nativeSlice[idx] = nativeObj
 		}
 		return nativeSlice, nil
-	} else if argType == waveObjMapRType {
+	} else if argType == gulinObjMapRType {
 		if jsonType.Kind() != reflect.Map {
 			return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
 		}
 		mapArg := jsonArg.(map[string]any)
-		nativeMap := make(map[string]waveobj.WaveObj)
+		nativeMap := make(map[string]gulinobj.GulinObj)
 		for key, elem := range mapArg {
 			elemMap, ok := elem.(map[string]any)
 			if !ok {
-				return nil, fmt.Errorf("cannot convert %T to %s (key %s is not a map, is %T)", jsonArg, waveObjMapRType, key, elem)
+				return nil, fmt.Errorf("cannot convert %T to %s (key %s is not a map, is %T)", jsonArg, gulinObjMapRType, key, elem)
 			}
-			nativeObj, err := waveobj.FromJsonMap(elemMap)
+			nativeObj, err := gulinobj.FromJsonMap(elemMap)
 			if err != nil {
-				return nil, fmt.Errorf("cannot convert %T to %s (key %s) error: %v", jsonArg, waveObjMapRType, key, err)
+				return nil, fmt.Errorf("cannot convert %T to %s (key %s) error: %v", jsonArg, gulinObjMapRType, key, err)
 			}
 			nativeMap[key] = nativeObj
 		}
 		return nativeMap, nil
 	} else {
-		return nil, fmt.Errorf("invalid special wave argument type %s", argType)
+		return nil, fmt.Errorf("invalid special gulin argument type %s", argType)
 	}
 }
 
 func convertSpecialForReturn(argType reflect.Type, nativeArg any) (any, error) {
-	if argType == waveObjRType {
-		return waveobj.ToJsonMap(nativeArg.(waveobj.WaveObj))
-	} else if argType == waveObjSliceRType {
-		nativeSlice := nativeArg.([]waveobj.WaveObj)
+	if argType == gulinObjRType {
+		return gulinobj.ToJsonMap(nativeArg.(gulinobj.GulinObj))
+	} else if argType == gulinObjSliceRType {
+		nativeSlice := nativeArg.([]gulinobj.GulinObj)
 		jsonSlice := make([]map[string]any, len(nativeSlice))
 		for idx, elem := range nativeSlice {
-			elemMap, err := waveobj.ToJsonMap(elem)
+			elemMap, err := gulinobj.ToJsonMap(elem)
 			if err != nil {
 				return nil, err
 			}
 			jsonSlice[idx] = elemMap
 		}
 		return jsonSlice, nil
-	} else if argType == waveObjMapRType {
-		nativeMap := nativeArg.(map[string]waveobj.WaveObj)
+	} else if argType == gulinObjMapRType {
+		nativeMap := nativeArg.(map[string]gulinobj.GulinObj)
 		jsonMap := make(map[string]map[string]any)
 		for key, elem := range nativeMap {
-			elemMap, err := waveobj.ToJsonMap(elem)
+			elemMap, err := gulinobj.ToJsonMap(elem)
 			if err != nil {
 				return nil, err
 			}
@@ -195,7 +195,7 @@ func convertSpecialForReturn(argType reflect.Type, nativeArg any) (any, error) {
 		}
 		return jsonMap, nil
 	} else {
-		return nil, fmt.Errorf("invalid special wave argument type %s", argType)
+		return nil, fmt.Errorf("invalid special gulin argument type %s", argType)
 	}
 }
 
@@ -203,7 +203,7 @@ func convertArgument(argType reflect.Type, jsonArg any) (any, error) {
 	if jsonArg == nil {
 		return reflect.Zero(argType).Interface(), nil
 	}
-	if isSpecialWaveArgType(argType) {
+	if isSpecialGulinArgType(argType) {
 		return convertSpecial(argType, jsonArg)
 	}
 	jsonType := reflect.TypeOf(jsonArg)
@@ -288,10 +288,10 @@ func convertReturnValues(rtnVals []reflect.Value) *WebReturnType {
 		}
 		if valType == updatesRType {
 			// has a special MarshalJSON method
-			rtn.Updates = val.Interface().([]waveobj.WaveObjUpdate)
+			rtn.Updates = val.Interface().([]gulinobj.GulinObjUpdate)
 			continue
 		}
-		if isSpecialWaveArgType(valType) {
+		if isSpecialGulinArgType(valType) {
 			jsonVal, err := convertSpecialForReturn(valType, val.Interface())
 			if err != nil {
 				rtn.Error = fmt.Errorf("cannot convert special return value: %v", err).Error()
@@ -354,9 +354,9 @@ func CallService(ctx context.Context, webCall WebCallType) *WebReturnType {
 
 // ValidateServiceArg validates the argument type for a service method
 // does not allow interfaces (and the obvious invalid types)
-// arguments + return values have special handling for wave objects
+// arguments + return values have special handling for gulin objects
 func baseValidateServiceArg(argType reflect.Type) error {
-	if argType == waveObjUpdateRType {
+	if argType == gulinObjUpdateRType {
 		// has special MarshalJSON method, so it is safe
 		return nil
 	}
@@ -384,16 +384,16 @@ func baseValidateServiceArg(argType reflect.Type) error {
 }
 
 func validateMethodReturnArg(retType reflect.Type) error {
-	// specifically allow waveobj.WaveObj, []waveobj.WaveObj, map[string]waveobj.WaveObj, and error
-	if isSpecialWaveArgType(retType) || retType == errorRType {
+	// specifically allow gulinobj.GulinObj, []gulinobj.GulinObj, map[string]gulinobj.GulinObj, and error
+	if isSpecialGulinArgType(retType) || retType == errorRType {
 		return nil
 	}
 	return baseValidateServiceArg(retType)
 }
 
 func validateMethodArg(argType reflect.Type) error {
-	// specifically allow waveobj.WaveObj, []waveobj.WaveObj, map[string]waveobj.WaveObj, and context.Context
-	if isSpecialWaveArgType(argType) || argType == contextRType {
+	// specifically allow gulinobj.GulinObj, []gulinobj.GulinObj, map[string]gulinobj.GulinObj, and context.Context
+	if isSpecialGulinArgType(argType) || argType == contextRType {
 		return nil
 	}
 	return baseValidateServiceArg(argType)

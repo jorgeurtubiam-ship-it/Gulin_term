@@ -20,10 +20,10 @@ import {
 } from "./emain-activity";
 import { createBuilderWindow, getAllBuilderWindows, getBuilderWindowByWebContentsId } from "./emain-builder";
 import { callWithOriginalXdgCurrentDesktopAsync, unamePlatform } from "./emain-platform";
-import { getWaveTabViewByWebContentsId } from "./emain-tabview";
+import { getGulinTabViewByWebContentsId } from "./emain-tabview";
 import { handleCtrlShiftState } from "./emain-util";
-import { getWaveVersion } from "./emain-wavesrv";
-import { createNewWaveWindow, focusedWaveWindow, getWaveWindowByWebContentsId } from "./emain-window";
+import { getGulinVersion } from "./emain-gulinsrv";
+import { createNewGulinWindow, focusedGulinWindow, getGulinWindowByWebContentsId } from "./emain-window";
 import { ElectronWshClient } from "./emain-wsh";
 
 const electronApp = electron.app;
@@ -133,7 +133,7 @@ function saveImageFileWithNativeDialog(defaultFileName: string, mimeType: string
     if (defaultFileName == null || defaultFileName == "") {
         defaultFileName = "image";
     }
-    const ww = focusedWaveWindow;
+    const ww = focusedGulinWindow;
     if (ww == null) {
         return;
     }
@@ -201,7 +201,7 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("webview-image-contextmenu", (event: electron.IpcMainEvent, payload: { src: string }) => {
         const menu = new electron.Menu();
-        const win = getWaveWindowByWebContentsId(event.sender.hostWebContents.id);
+        const win = getGulinWindowByWebContentsId(event.sender.hostWebContents.id);
         if (win == null) {
             return;
         }
@@ -226,12 +226,12 @@ export function initIpcHandlers() {
     electron.ipcMain.on("download", (event, payload) => {
         const baseName = encodeURIComponent(path.basename(payload.filePath));
         const streamingUrl =
-            getWebServerEndpoint() + "/wave/stream-file/" + baseName + "?path=" + encodeURIComponent(payload.filePath);
+            getWebServerEndpoint() + "/gulin/stream-file/" + baseName + "?path=" + encodeURIComponent(payload.filePath);
         event.sender.downloadURL(streamingUrl);
     });
 
     electron.ipcMain.on("get-cursor-point", (event) => {
-        const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+        const tabView = getGulinTabViewByWebContentsId(event.sender.id);
         if (tabView == null) {
             event.returnValue = null;
             return;
@@ -246,7 +246,7 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.handle("capture-screenshot", async (event, rect) => {
-        const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+        const tabView = getGulinTabViewByWebContentsId(event.sender.id);
         if (!tabView) {
             throw new Error("No tab view found for the given webContents id");
         }
@@ -260,7 +260,7 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.on("get-about-modal-details", (event) => {
-        event.returnValue = getWaveVersion() as AboutModalDetails;
+        event.returnValue = getGulinVersion() as AboutModalDetails;
     });
 
     electron.ipcMain.on("get-zoom-factor", (event) => {
@@ -284,8 +284,8 @@ export function initIpcHandlers() {
         if (!hasBeforeInputRegisteredMap.get(focusedId)) {
             hasBeforeInputRegisteredMap.set(focusedId, true);
             webviewWc.on("before-input-event", (e, input) => {
-                let waveEvent = keyutil.adaptFromElectronKeyEvent(input);
-                handleCtrlShiftState(parentWc, waveEvent);
+                let gulinEvent = keyutil.adaptFromElectronKeyEvent(input);
+                handleCtrlShiftState(parentWc, gulinEvent);
                 if (webviewFocusId != focusedId) {
                     return;
                 }
@@ -293,9 +293,9 @@ export function initIpcHandlers() {
                     return;
                 }
                 for (let keyDesc of webviewKeys) {
-                    if (keyutil.checkKeyPressed(waveEvent, keyDesc)) {
+                    if (keyutil.checkKeyPressed(gulinEvent, keyDesc)) {
                         e.preventDefault();
-                        parentWc.send("reinject-key", waveEvent);
+                        parentWc.send("reinject-key", gulinEvent);
                         console.log("webview reinject-key", keyDesc);
                         return;
                     }
@@ -313,7 +313,7 @@ export function initIpcHandlers() {
 
     electron.ipcMain.on("set-keyboard-chord-mode", (event) => {
         event.returnValue = null;
-        const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+        const tabView = getGulinTabViewByWebContentsId(event.sender.id);
         tabView?.setKeyboardChordMode(true);
     });
 
@@ -335,7 +335,7 @@ export function initIpcHandlers() {
             const overlayBuffer = overlay.toPNG();
             const png = PNG.sync.read(overlayBuffer);
             const color = fac.prepareResult(fac.getColorFromArray4(png.data));
-            const ww = getWaveWindowByWebContentsId(event.sender.id);
+            const ww = getGulinWindowByWebContentsId(event.sender.id);
             ww.setTitleBarOverlay({
                 color: unamePlatform === "linux" ? color.rgba : "#00000000",
                 symbolColor: color.isDark ? "white" : "black",
@@ -379,17 +379,17 @@ export function initIpcHandlers() {
         );
     });
 
-    electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "wave-ready") => {
-        const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+    electron.ipcMain.on("set-window-init-status", (event, status: "ready" | "gulin-ready") => {
+        const tabView = getGulinTabViewByWebContentsId(event.sender.id);
         if (tabView != null && tabView.initResolve != null) {
             if (status === "ready") {
                 tabView.initResolve();
                 if (tabView.savedInitOpts) {
-                    console.log("savedInitOpts calling wave-init", tabView.waveTabId);
-                    tabView.webContents.send("wave-init", tabView.savedInitOpts);
+                    console.log("savedInitOpts calling gulin-init", tabView.gulinTabId);
+                    tabView.webContents.send("gulin-init", tabView.savedInitOpts);
                 }
-            } else if (status === "wave-ready") {
-                tabView.waveReadyResolve();
+            } else if (status === "gulin-ready") {
+                tabView.gulinReadyResolve();
             }
             return;
         }
@@ -445,7 +445,7 @@ export function initIpcHandlers() {
         console.log("set-builder-window-appid", bw.builderId, appId);
     });
 
-    electron.ipcMain.on("open-new-window", () => fireAndForget(createNewWaveWindow));
+    electron.ipcMain.on("open-new-window", () => fireAndForget(createNewGulinWindow));
 
     electron.ipcMain.on("close-builder-window", async (event) => {
         const bw = getBuilderWindowByWebContentsId(event.sender.id);
@@ -472,7 +472,7 @@ export function initIpcHandlers() {
     });
 
     electron.ipcMain.handle("save-text-file", async (event, fileName: string, content: string) => {
-        const ww = focusedWaveWindow;
+        const ww = focusedGulinWindow;
         if (ww == null) {
             return false;
         }

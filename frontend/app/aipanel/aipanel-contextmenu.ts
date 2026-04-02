@@ -1,23 +1,23 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { waveAIHasSelection } from "@/app/aipanel/waveai-focus-utils";
+import { gulinAIHasSelection } from "@/app/aipanel/gulinai-focus-utils";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { isDev } from "@/app/store/global";
 import { globalStore } from "@/app/store/jotaiStore";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
-import { WaveAIModel } from "./waveai-model";
+import { GulinAIModel } from "./gulinai-model";
 
-export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boolean): Promise<void> {
+export async function handleGulinAIContextMenu(e: React.MouseEvent, showCopy: boolean): Promise<void> {
     e.preventDefault();
     e.stopPropagation();
 
-    const model = WaveAIModel.getInstance();
+    const model = GulinAIModel.getInstance();
     const menu: ContextMenuItem[] = [];
 
     if (showCopy) {
-        const hasSelection = waveAIHasSelection();
+        const hasSelection = gulinAIHasSelection();
         if (hasSelection) {
             menu.push({
                 role: "copy",
@@ -40,7 +40,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
     });
 
     const defaultTokens = model.inBuilder ? 24576 : 4096;
-    const currentMaxTokens = rtInfo?.["waveai:maxoutputtokens"] ?? defaultTokens;
+    const currentMaxTokens = rtInfo?.["gulinai:maxoutputtokens"] ?? defaultTokens;
 
     const maxTokensSubmenu: ContextMenuItem[] = [];
 
@@ -53,7 +53,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
                 click: () => {
                     RpcApi.SetRTInfoCommand(TabRpcClient, {
                         oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 24576 },
+                        data: { "gulinai:maxoutputtokens": 24576 },
                     });
                 },
             },
@@ -64,7 +64,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
                 click: () => {
                     RpcApi.SetRTInfoCommand(TabRpcClient, {
                         oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 65536 },
+                        data: { "gulinai:maxoutputtokens": 65536 },
                     });
                 },
             }
@@ -78,7 +78,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
                 click: () => {
                     RpcApi.SetRTInfoCommand(TabRpcClient, {
                         oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 1024 },
+                        data: { "gulinai:maxoutputtokens": 1024 },
                     });
                 },
             });
@@ -91,7 +91,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
                 click: () => {
                     RpcApi.SetRTInfoCommand(TabRpcClient, {
                         oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 4096 },
+                        data: { "gulinai:maxoutputtokens": 4096 },
                     });
                 },
             },
@@ -102,7 +102,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
                 click: () => {
                     RpcApi.SetRTInfoCommand(TabRpcClient, {
                         oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 16384 },
+                        data: { "gulinai:maxoutputtokens": 16384 },
                     });
                 },
             },
@@ -113,7 +113,7 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
                 click: () => {
                     RpcApi.SetRTInfoCommand(TabRpcClient, {
                         oref: model.orefContext,
-                        data: { "waveai:maxoutputtokens": 65536 },
+                        data: { "gulinai:maxoutputtokens": 65536 },
                     });
                 },
             }
@@ -135,22 +135,22 @@ export async function handleWaveAIContextMenu(e: React.MouseEvent, showCopy: boo
                 {
                     event: "action:other",
                     props: {
-                        "action:type": "waveai:configuremodes:contextmenu",
+                        "action:type": "gulinai:configuremodes:contextmenu",
                     },
                 },
                 { noresponse: true }
             );
-            model.openWaveAIConfig();
+            model.openGulinAIConfig();
         },
     });
 
-    if (model.canCloseWaveAIPanel()) {
+    if (model.canCloseGulinAIPanel()) {
         menu.push({ type: "separator" });
 
         menu.push({
-            label: "Hide Wave AI",
+            label: "Hide Gulin AI",
             click: () => {
-                model.closeWaveAIPanel();
+                model.closeGulinAIPanel();
             },
         });
     }

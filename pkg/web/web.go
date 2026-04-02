@@ -21,19 +21,19 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
-	"github.com/wavetermdev/waveterm/pkg/authkey"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/fileshare/wshfs"
-	"github.com/wavetermdev/waveterm/pkg/schema"
-	"github.com/wavetermdev/waveterm/pkg/service"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshserver"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/aiusechat"
+	"github.com/gulindev/gulin/pkg/authkey"
+	"github.com/gulindev/gulin/pkg/filestore"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/remote/fileshare/wshfs"
+	"github.com/gulindev/gulin/pkg/schema"
+	"github.com/gulindev/gulin/pkg/service"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshserver"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 type WebFnType = func(http.ResponseWriter, *http.Request)
@@ -52,7 +52,7 @@ const (
 	ContentLengthHeaderKey = "Content-Length"
 	LastModifiedHeaderKey  = "Last-Modified"
 
-	WaveZoneFileInfoHeaderKey = "X-ZoneFileInfo"
+	GulinZoneFileInfoHeaderKey = "X-ZoneFileInfo"
 )
 
 const HttpReadTimeout = 5 * time.Second
@@ -150,7 +150,7 @@ func marshalReturnValue(data any, err error) []byte {
 	return rtn
 }
 
-func handleWaveFile(w http.ResponseWriter, r *http.Request) {
+func handleGulinFile(w http.ResponseWriter, r *http.Request) {
 	zoneId := r.URL.Query().Get("zoneid")
 	name := r.URL.Query().Get("name")
 	offsetStr := r.URL.Query().Get("offset")
@@ -191,7 +191,7 @@ func handleWaveFile(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeBinary)
 	w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", file.Size-dataStartIdx))
-	w.Header().Set(WaveZoneFileInfoHeaderKey, base64.StdEncoding.EncodeToString(jsonFileBArr))
+	w.Header().Set(GulinZoneFileInfoHeaderKey, base64.StdEncoding.EncodeToString(jsonFileBArr))
 	w.Header().Set(LastModifiedHeaderKey, time.UnixMilli(file.ModTs).UTC().Format(http.TimeFormat))
 	if dataStartIdx >= file.Size {
 		w.WriteHeader(http.StatusOK)
@@ -226,7 +226,7 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 		rw := &notFoundBlockingResponseWriter{w: w, headers: http.Header{}}
 
 		// Serve the file using http.ServeFile
-		path, err := wavebase.ExpandHomeDir(path)
+		path, err := gulinbase.ExpandHomeDir(path)
 		if err == nil {
 			http.ServeFile(rw, r, filepath.Clean(path))
 			// if the file was not found, serve the transparent GIF
@@ -238,7 +238,7 @@ func handleLocalStreamFile(w http.ResponseWriter, r *http.Request, path string, 
 			serveTransparentGIF(w)
 		}
 	} else {
-		path, err := wavebase.ExpandHomeDir(path)
+		path, err := gulinbase.ExpandHomeDir(path)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -431,7 +431,7 @@ func MakeTCPListener(serviceName string) (net.Listener, error) {
 }
 
 func MakeUnixListener() (net.Listener, error) {
-	serverAddr := wavebase.GetDomainSocketName()
+	serverAddr := gulinbase.GetDomainSocketName()
 	os.Remove(serverAddr) // ignore error
 	rtn, err := net.Listen("unix", serverAddr)
 	if err != nil {
@@ -449,35 +449,38 @@ func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
 
 	// Create separate routers for different timeout requirements
-	waveRouter := mux.NewRouter()
-	waveRouter.HandleFunc("/wave/api-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIApiListHandler))
-	waveRouter.HandleFunc("/wave/api-register", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIApiRegisterHandler))
-	waveRouter.HandleFunc("/wave/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
-	waveRouter.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
-	waveRouter.PathPrefix("/wave/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
-	waveRouter.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
-	waveRouter.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
-	waveRouter.HandleFunc("/wave/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatHandler))
-	waveRouter.HandleFunc("/wave/chat-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIGetChatListHandler))
-	waveRouter.HandleFunc("/wave/brain-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIBrainListHandler))
-	waveRouter.HandleFunc("/wave/db-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIDBListHandler))
-	waveRouter.HandleFunc("/wave/db-schema", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIDBSchemaHandler))
-	waveRouter.HandleFunc("/wave/db-query", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.WaveAIDBQueryHandler))
+	gulinRouter := mux.NewRouter()
+	gulinRouter.HandleFunc("/gulin/api-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIApiListHandler))
+	gulinRouter.HandleFunc("/gulin/api-register", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIApiRegisterHandler))
+	gulinRouter.HandleFunc("/gulin/stream-local-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamLocalFile))
+	gulinRouter.HandleFunc("/gulin/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
+	gulinRouter.PathPrefix("/gulin/stream-file/").HandlerFunc(WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
+	gulinRouter.HandleFunc("/gulin/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleGulinFile))
+	gulinRouter.HandleFunc("/gulin/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
+	gulinRouter.HandleFunc("/gulin/aichat", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIGetChatHandler))
+	gulinRouter.HandleFunc("/gulin/chat-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIGetChatListHandler))
+	gulinRouter.HandleFunc("/gulin/brain-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIBrainListHandler))
+	gulinRouter.HandleFunc("/gulin/db-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIDBListHandler))
+	gulinRouter.HandleFunc("/gulin/db-schema", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIDBSchemaHandler))
+	gulinRouter.HandleFunc("/gulin/db-query", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, aiusechat.GulinAIDBQueryHandler))
+	gulinRouter.HandleFunc("/gulin/widgets-list", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, WidgetListHandler))
+	gulinRouter.HandleFunc("/gulin/widgets-save", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, WidgetSaveHandler))
+	gulinRouter.HandleFunc("/gulin/widgets-delete", WebFnWrap(WebFnOpts{JsonErrors: true, AllowCaching: false}, WidgetDeleteHandler))
 	vdomRouter := mux.NewRouter()
 	vdomRouter.HandleFunc("/vdom/{uuid}/{path:.*}", WebFnWrap(WebFnOpts{AllowCaching: true}, handleVDom))
 
 	// Routes that need timeout handling
-	gr.PathPrefix("/wave/").Handler(http.TimeoutHandler(waveRouter, HttpTimeoutDuration, "Timeout"))
+	gr.PathPrefix("/gulin/").Handler(http.TimeoutHandler(gulinRouter, HttpTimeoutDuration, "Timeout"))
 	gr.PathPrefix("/vdom/").Handler(http.TimeoutHandler(vdomRouter, HttpTimeoutDuration, "Timeout"))
 
 	// Routes that should NOT have timeout handling (for streaming)
-	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.WaveAIPostMessageHandler))
+	gr.HandleFunc("/api/post-chat-message", WebFnWrap(WebFnOpts{AllowCaching: false}, aiusechat.GulinAIPostMessageHandler))
 
 	// Other routes without timeout
 	gr.PathPrefix(schemaPrefix).Handler(http.StripPrefix(schemaPrefix, schema.GetSchemaHandler()))
 
 	handler := http.Handler(gr)
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		originalHandler := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")

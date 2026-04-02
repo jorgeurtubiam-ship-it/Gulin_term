@@ -1,15 +1,15 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// wave pubsub system
+// gulin pubsub system
 package wps
 
 import (
 	"strings"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinobj"
 )
 
 // this broker interface is mostly generic
@@ -18,7 +18,7 @@ import (
 const MaxPersist = 4096
 
 type Client interface {
-	SendEvent(routeId string, event WaveEvent)
+	SendEvent(routeId string, event GulinEvent)
 }
 
 type BrokerSubscription struct {
@@ -33,7 +33,7 @@ type persistKey struct {
 }
 
 type persistEventWrap struct {
-	Events []*WaveEvent
+	Events []*GulinEvent
 }
 
 type BrokerType struct {
@@ -172,7 +172,7 @@ func (b *BrokerType) UnsubscribeAll(subRouteId string) {
 }
 
 // does not take wildcards, use "" for all
-func (b *BrokerType) ReadEventHistory(eventType string, scope string, maxItems int) []*WaveEvent {
+func (b *BrokerType) ReadEventHistory(eventType string, scope string, maxItems int) []*GulinEvent {
 	if maxItems <= 0 {
 		return nil
 	}
@@ -187,12 +187,12 @@ func (b *BrokerType) ReadEventHistory(eventType string, scope string, maxItems i
 		maxItems = len(pe.Events)
 	}
 	// return new arr
-	rtn := make([]*WaveEvent, maxItems)
+	rtn := make([]*GulinEvent, maxItems)
 	copy(rtn, pe.Events[len(pe.Events)-maxItems:])
 	return rtn
 }
 
-func (b *BrokerType) persistEvent(event WaveEvent) {
+func (b *BrokerType) persistEvent(event GulinEvent) {
 	if event.Persist <= 0 {
 		return
 	}
@@ -212,7 +212,7 @@ func (b *BrokerType) persistEvent(event WaveEvent) {
 		pe := b.PersistMap[key]
 		if pe == nil {
 			pe = &persistEventWrap{
-				Events: make([]*WaveEvent, 0, numPersist),
+				Events: make([]*GulinEvent, 0, numPersist),
 			}
 			b.PersistMap[key] = pe
 		}
@@ -223,7 +223,7 @@ func (b *BrokerType) persistEvent(event WaveEvent) {
 	}
 }
 
-func (b *BrokerType) Publish(event WaveEvent) {
+func (b *BrokerType) Publish(event GulinEvent) {
 	// log.Printf("BrokerType.Publish: %v\n", event)
 	if event.Persist > 0 {
 		b.persistEvent(event)
@@ -238,17 +238,17 @@ func (b *BrokerType) Publish(event WaveEvent) {
 	}
 }
 
-func (b *BrokerType) SendUpdateEvents(updates waveobj.UpdatesRtnType) {
+func (b *BrokerType) SendUpdateEvents(updates gulinobj.UpdatesRtnType) {
 	for _, update := range updates {
-		b.Publish(WaveEvent{
-			Event:  Event_WaveObjUpdate,
-			Scopes: []string{waveobj.MakeORef(update.OType, update.OID).String()},
+		b.Publish(GulinEvent{
+			Event:  Event_GulinObjUpdate,
+			Scopes: []string{gulinobj.MakeORef(update.OType, update.OID).String()},
 			Data:   update,
 		})
 	}
 }
 
-func (b *BrokerType) getMatchingRouteIds(event WaveEvent) []string {
+func (b *BrokerType) getMatchingRouteIds(event GulinEvent) []string {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	bs := b.SubMap[event.Event]

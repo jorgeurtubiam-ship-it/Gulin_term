@@ -1,12 +1,12 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { ClientModel } from "@/app/store/client-model";
 import { appHandleKeyDown } from "@/app/store/keymodel";
 import { modalsModel } from "@/app/store/modalmodel";
 import type { TabModel } from "@/app/store/tab-model";
-import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { gulinEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
 import { DefaultRouter, TabRpcClient } from "@/app/store/wshrpcutil";
@@ -92,7 +92,7 @@ export class TermViewModel implements ViewModel {
         this.termWshClient = new TermWshClient(blockId, this);
         DefaultRouter.registerRoute(makeFeBlockRouteId(blockId), this.termWshClient);
         this.nodeModel = nodeModel;
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.blockAtom = WOS.getGulinObjectAtom<Block>(`block:${blockId}`);
         this.vdomBlockId = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:vdomblockid"];
@@ -118,7 +118,7 @@ export class TermViewModel implements ViewModel {
             const blockData = get(this.blockAtom);
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
-                return "Wave App";
+                return "Gulin App";
             }
             if (blockData?.meta?.controller == "cmd") {
                 return "";
@@ -145,7 +145,7 @@ export class TermViewModel implements ViewModel {
                 rtn.push({
                     elemtype: "iconbutton",
                     icon: "bolt",
-                    title: "Switch to Wave App",
+                    title: "Switch to Gulin App",
                     click: () => {
                         this.setTermMode("vdom");
                     },
@@ -199,7 +199,7 @@ export class TermViewModel implements ViewModel {
                                 className: "green !py-[2px] !px-[10px] text-[11px] font-[500] ml-2",
                                 title: "Ask Gulin IA to analyze and fix this error",
                                 onClick: () => {
-                                    const aiModel = WaveAIModel.getInstance();
+                                    const aiModel = GulinAIModel.getInstance();
                                     const layoutModel = WorkspaceLayoutModel.getInstance();
 
                                     // Make sure AI panel is visible
@@ -353,7 +353,7 @@ export class TermViewModel implements ViewModel {
         initialShellProcStatus.then((rts) => {
             this.updateShellProcStatus(rts);
         });
-        this.shellProcStatusUnsubFn = waveEventSubscribeSingle({
+        this.shellProcStatusUnsubFn = gulinEventSubscribeSingle({
             eventType: "controllerstatus",
             scope: WOS.makeORef("block", blockId),
             handler: (event) => {
@@ -386,7 +386,7 @@ export class TermViewModel implements ViewModel {
             .catch((error) => {
                 console.log("error getting initial block job status", error);
             });
-        this.blockJobStatusUnsubFn = waveEventSubscribeSingle({
+        this.blockJobStatusUnsubFn = gulinEventSubscribeSingle({
             eventType: "block:jobstatus",
             scope: `block:${blockId}`,
             handler: (event) => {
@@ -423,7 +423,7 @@ export class TermViewModel implements ViewModel {
                 elemtype: "iconbutton",
                 icon: "sparkles",
                 className: "text-muted",
-                title: "No shell integration — Wave AI unable to run commands.",
+                title: "No shell integration — Gulin AI unable to run commands.",
                 noAction: true,
             };
         }
@@ -432,19 +432,19 @@ export class TermViewModel implements ViewModel {
                 elemtype: "iconbutton",
                 icon: "sparkles",
                 className: "text-accent",
-                title: "Shell ready — Wave AI can run commands in this terminal.",
+                title: "Shell ready — Gulin AI can run commands in this terminal.",
                 noAction: true,
             };
         }
         if (shellIntegrationStatus === "running-command") {
-            let title = "Shell busy — Wave AI unable to run commands while another command is running.";
+            let title = "Shell busy — Gulin AI unable to run commands while another command is running.";
 
             if (this.termRef.current) {
                 const inAltBuffer = this.termRef.current.terminal?.buffer?.active?.type === "alternate";
                 const lastCommand = get(this.termRef.current.lastCommandAtom);
                 const blockingCmd = getBlockingCommand(lastCommand, inAltBuffer);
                 if (blockingCmd) {
-                    title = `Wave AI integration disabled while you're inside ${blockingCmd}.`;
+                    title = `Gulin AI integration disabled while you're inside ${blockingCmd}.`;
                 }
             }
 
@@ -575,8 +575,8 @@ export class TermViewModel implements ViewModel {
         return false;
     }
 
-    keyDownHandler(waveEvent: WaveKeyboardEvent): boolean {
-        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:r")) {
+    keyDownHandler(gulinEvent: GulinKeyboardEvent): boolean {
+        if (keyutil.checkKeyPressed(gulinEvent, "Ctrl:r")) {
             const shellIntegrationStatus = readAtom(this.termRef?.current?.shellIntegrationStatusAtom);
             if (shellIntegrationStatus === "ready") {
                 recordTEvent("action:term", { "action:type": "term:ctrlr" });
@@ -584,8 +584,8 @@ export class TermViewModel implements ViewModel {
             // just for telemetry, we allow this keybinding through, back to the terminal
             return false;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
-            const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${this.blockId}`);
+        if (keyutil.checkKeyPressed(gulinEvent, "Cmd:Escape")) {
+            const blockAtom = WOS.getGulinObjectAtom<Block>(`block:${this.blockId}`);
             const blockData = globalStore.get(blockAtom);
             const newTermMode = blockData?.meta?.["term:mode"] == "vdom" ? null : "vdom";
             const vdomBlockId = globalStore.get(this.vdomBlockId);
@@ -595,37 +595,37 @@ export class TermViewModel implements ViewModel {
             this.setTermMode(newTermMode);
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Shift:End")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Shift:End")) {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.scrollToBottom();
             }
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Shift:Home")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Shift:Home")) {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.scrollToLine(0);
             }
             return true;
         }
-        if (isMacOS() && keyutil.checkKeyPressed(waveEvent, "Cmd:End")) {
+        if (isMacOS() && keyutil.checkKeyPressed(gulinEvent, "Cmd:End")) {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.scrollToBottom();
             }
             return true;
         }
-        if (isMacOS() && keyutil.checkKeyPressed(waveEvent, "Cmd:Home")) {
+        if (isMacOS() && keyutil.checkKeyPressed(gulinEvent, "Cmd:Home")) {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.scrollToLine(0);
             }
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Shift:PageDown")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Shift:PageDown")) {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.scrollPages(1);
             }
             return true;
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Shift:PageUp")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Shift:PageUp")) {
             if (this.termRef?.current?.terminal) {
                 this.termRef.current.terminal.scrollPages(-1);
             }
@@ -634,7 +634,7 @@ export class TermViewModel implements ViewModel {
         const blockData = globalStore.get(this.blockAtom);
         if (blockData.meta?.["term:mode"] == "vdom") {
             const vdomModel = this.getVDomModel();
-            return vdomModel?.keyDownHandler(waveEvent);
+            return vdomModel?.keyDownHandler(gulinEvent);
         }
         return false;
     }
@@ -659,40 +659,40 @@ export class TermViewModel implements ViewModel {
     }
 
     handleTerminalKeydown(event: KeyboardEvent): boolean {
-        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
-        if (waveEvent.type != "keydown") {
+        const gulinEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
+        if (gulinEvent.type != "keydown") {
             return true;
         }
 
         // Handle Escape key during IME composition
-        if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Escape")) {
             if (this.termRef.current?.isComposing) {
                 // Reset composition state when Escape is pressed during composition
                 this.termRef.current.resetCompositionState();
             }
         }
 
-        if (this.keyDownHandler(waveEvent)) {
+        if (this.keyDownHandler(gulinEvent)) {
             event.preventDefault();
             event.stopPropagation();
             return false;
         }
 
         if (isMacOS()) {
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowLeft")) {
+            if (keyutil.checkKeyPressed(gulinEvent, "Cmd:ArrowLeft")) {
                 this.sendDataToController("\x01"); // Ctrl-A (beginning of line)
                 event.preventDefault();
                 event.stopPropagation();
                 return false;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "Cmd:ArrowRight")) {
+            if (keyutil.checkKeyPressed(gulinEvent, "Cmd:ArrowRight")) {
                 this.sendDataToController("\x05"); // Ctrl-E (end of line)
                 event.preventDefault();
                 event.stopPropagation();
                 return false;
             }
         }
-        if (keyutil.checkKeyPressed(waveEvent, "Tab") || keyutil.checkKeyPressed(waveEvent, "Enter")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Tab") || keyutil.checkKeyPressed(gulinEvent, "Enter")) {
             const buffer = this.termRef.current?.terminal?.buffer?.active;
             if (buffer) {
                 const currentLineIdx = buffer.cursorY + buffer.baseY;
@@ -743,7 +743,7 @@ export class TermViewModel implements ViewModel {
                                     ]
                                 };
 
-                                const aiGen = RpcApi.StreamWaveAiCommand(TabRpcClient, beMsg as any);
+                                const aiGen = RpcApi.StreamGulinAiCommand(TabRpcClient, beMsg as any);
                                 let fullCmd = "";
                                 for await (const msg of aiGen) {
                                     fullCmd += msg.text ?? "";
@@ -761,7 +761,7 @@ export class TermViewModel implements ViewModel {
             }
         }
 
-        if (keyutil.checkKeyPressed(waveEvent, "Shift:Enter")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Shift:Enter")) {
             const shiftEnterNewlineAtom = getOverrideConfigAtom(this.blockId, "term:shiftenternewline");
             const shiftEnterNewlineEnabled = globalStore.get(shiftEnterNewlineAtom) ?? true;
             if (shiftEnterNewlineEnabled) {
@@ -773,20 +773,20 @@ export class TermViewModel implements ViewModel {
         }
 
         // Check for Ctrl-V paste (platform-dependent)
-        if (this.shouldHandleCtrlVPaste() && keyutil.checkKeyPressed(waveEvent, "Ctrl:v")) {
+        if (this.shouldHandleCtrlVPaste() && keyutil.checkKeyPressed(gulinEvent, "Ctrl:v")) {
             event.preventDefault();
             event.stopPropagation();
             getApi().nativePaste();
             return false;
         }
 
-        if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
+        if (keyutil.checkKeyPressed(gulinEvent, "Ctrl:Shift:v")) {
             event.preventDefault();
             event.stopPropagation();
             getApi().nativePaste();
             // this.termRef.current?.pasteHandler();
             return false;
-        } else if (keyutil.checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
+        } else if (keyutil.checkKeyPressed(gulinEvent, "Ctrl:Shift:c")) {
             event.preventDefault();
             event.stopPropagation();
             const sel = this.termRef.current?.terminal.getSelection();
@@ -795,18 +795,18 @@ export class TermViewModel implements ViewModel {
             }
             navigator.clipboard.writeText(sel);
             return false;
-        } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:k")) {
+        } else if (keyutil.checkKeyPressed(gulinEvent, "Cmd:k")) {
             event.preventDefault();
             event.stopPropagation();
             this.termRef.current?.terminal?.clear();
             return false;
         }
         const shellProcStatus = globalStore.get(this.shellProcStatus);
-        if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+        if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(gulinEvent, "Enter")) {
             fireAndForget(() => this.forceRestartController());
             return false;
         }
-        const appHandled = appHandleKeyDown(waveEvent);
+        const appHandled = appHandleKeyDown(gulinEvent);
         if (appHandled) {
             event.preventDefault();
             event.stopPropagation();
@@ -874,10 +874,10 @@ export class TermViewModel implements ViewModel {
             });
             menu.push({ type: "separator" });
             menu.push({
-                label: "Send to Wave AI",
+                label: "Send to Gulin AI",
                 click: () => {
                     if (selection) {
-                        const aiModel = WaveAIModel.getInstance();
+                        const aiModel = GulinAIModel.getInstance();
                         aiModel.appendText(selection, true, { scrollToBottom: true });
                         const layoutModel = WorkspaceLayoutModel.getInstance();
                         if (!layoutModel.getAIPanelVisible()) {

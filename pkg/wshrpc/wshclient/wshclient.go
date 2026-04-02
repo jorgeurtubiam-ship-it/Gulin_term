@@ -6,14 +6,14 @@
 package wshclient
 
 import (
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/vdom"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/vdom"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 )
 
 // command "activity", wshserver.ActivityCommand
@@ -173,14 +173,14 @@ func ControllerResyncCommand(w *wshutil.WshRpc, data wshrpc.CommandControllerRes
 }
 
 // command "createblock", wshserver.CreateBlockCommand
-func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, opts *wshrpc.RpcOpts) (waveobj.ORef, error) {
-	resp, err := sendRpcRequestCallHelper[waveobj.ORef](w, "createblock", data, opts)
+func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, opts *wshrpc.RpcOpts) (gulinobj.ORef, error) {
+	resp, err := sendRpcRequestCallHelper[gulinobj.ORef](w, "createblock", data, opts)
 	return resp, err
 }
 
 // command "createsubblock", wshserver.CreateSubBlockCommand
-func CreateSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateSubBlockData, opts *wshrpc.RpcOpts) (waveobj.ORef, error) {
-	resp, err := sendRpcRequestCallHelper[waveobj.ORef](w, "createsubblock", data, opts)
+func CreateSubBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateSubBlockData, opts *wshrpc.RpcOpts) (gulinobj.ORef, error) {
+	resp, err := sendRpcRequestCallHelper[gulinobj.ORef](w, "createsubblock", data, opts)
 	return resp, err
 }
 
@@ -245,19 +245,19 @@ func ElectronSystemBellCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
 }
 
 // command "eventpublish", wshserver.EventPublishCommand
-func EventPublishCommand(w *wshutil.WshRpc, data wps.WaveEvent, opts *wshrpc.RpcOpts) error {
+func EventPublishCommand(w *wshutil.WshRpc, data wps.GulinEvent, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "eventpublish", data, opts)
 	return err
 }
 
 // command "eventreadhistory", wshserver.EventReadHistoryCommand
-func EventReadHistoryCommand(w *wshutil.WshRpc, data wshrpc.CommandEventReadHistoryData, opts *wshrpc.RpcOpts) ([]*wps.WaveEvent, error) {
-	resp, err := sendRpcRequestCallHelper[[]*wps.WaveEvent](w, "eventreadhistory", data, opts)
+func EventReadHistoryCommand(w *wshutil.WshRpc, data wshrpc.CommandEventReadHistoryData, opts *wshrpc.RpcOpts) ([]*wps.GulinEvent, error) {
+	resp, err := sendRpcRequestCallHelper[[]*wps.GulinEvent](w, "eventreadhistory", data, opts)
 	return resp, err
 }
 
 // command "eventrecv", wshserver.EventRecvCommand
-func EventRecvCommand(w *wshutil.WshRpc, data wps.WaveEvent, opts *wshrpc.RpcOpts) error {
+func EventRecvCommand(w *wshutil.WshRpc, data wps.GulinEvent, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "eventrecv", data, opts)
 	return err
 }
@@ -416,6 +416,24 @@ func GetFullConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wconfig.Full
 	return resp, err
 }
 
+// command "getgulinaichat", wshserver.GetGulinAIChatCommand
+func GetGulinAIChatCommand(w *wshutil.WshRpc, data wshrpc.CommandGetGulinAIChatData, opts *wshrpc.RpcOpts) (*uctypes.UIChat, error) {
+	resp, err := sendRpcRequestCallHelper[*uctypes.UIChat](w, "getgulinaichat", data, opts)
+	return resp, err
+}
+
+// command "getgulinaimodeconfig", wshserver.GetGulinAIModeConfigCommand
+func GetGulinAIModeConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wconfig.AIModeConfigUpdate, error) {
+	resp, err := sendRpcRequestCallHelper[wconfig.AIModeConfigUpdate](w, "getgulinaimodeconfig", nil, opts)
+	return resp, err
+}
+
+// command "getgulinairatelimit", wshserver.GetGulinAIRateLimitCommand
+func GetGulinAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctypes.RateLimitInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*uctypes.RateLimitInfo](w, "getgulinairatelimit", nil, opts)
+	return resp, err
+}
+
 // command "getjwtpublickey", wshserver.GetJwtPublicKeyCommand
 func GetJwtPublicKeyCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "getjwtpublickey", nil, opts)
@@ -423,14 +441,14 @@ func GetJwtPublicKeyCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (string, er
 }
 
 // command "getmeta", wshserver.GetMetaCommand
-func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.RpcOpts) (waveobj.MetaMapType, error) {
-	resp, err := sendRpcRequestCallHelper[waveobj.MetaMapType](w, "getmeta", data, opts)
+func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.RpcOpts) (gulinobj.MetaMapType, error) {
+	resp, err := sendRpcRequestCallHelper[gulinobj.MetaMapType](w, "getmeta", data, opts)
 	return resp, err
 }
 
 // command "getrtinfo", wshserver.GetRTInfoCommand
-func GetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandGetRTInfoData, opts *wshrpc.RpcOpts) (*waveobj.ObjRTInfo, error) {
-	resp, err := sendRpcRequestCallHelper[*waveobj.ObjRTInfo](w, "getrtinfo", data, opts)
+func GetRTInfoCommand(w *wshutil.WshRpc, data wshrpc.CommandGetRTInfoData, opts *wshrpc.RpcOpts) (*gulinobj.ObjRTInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*gulinobj.ObjRTInfo](w, "getrtinfo", data, opts)
 	return resp, err
 }
 
@@ -453,8 +471,8 @@ func GetSecretsNamesCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]string, 
 }
 
 // command "gettab", wshserver.GetTabCommand
-func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveobj.Tab, error) {
-	resp, err := sendRpcRequestCallHelper[*waveobj.Tab](w, "gettab", data, opts)
+func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*gulinobj.Tab, error) {
+	resp, err := sendRpcRequestCallHelper[*gulinobj.Tab](w, "gettab", data, opts)
 	return resp, err
 }
 
@@ -476,21 +494,69 @@ func GetVarCommand(w *wshutil.WshRpc, data wshrpc.CommandVarData, opts *wshrpc.R
 	return resp, err
 }
 
-// command "getwaveaichat", wshserver.GetWaveAIChatCommand
-func GetWaveAIChatCommand(w *wshutil.WshRpc, data wshrpc.CommandGetWaveAIChatData, opts *wshrpc.RpcOpts) (*uctypes.UIChat, error) {
-	resp, err := sendRpcRequestCallHelper[*uctypes.UIChat](w, "getwaveaichat", data, opts)
+// command "gulinaiaddcontext", wshserver.GulinAIAddContextCommand
+func GulinAIAddContextCommand(w *wshutil.WshRpc, data wshrpc.CommandGulinAIAddContextData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "gulinaiaddcontext", data, opts)
+	return err
+}
+
+// command "gulinaienabletelemetry", wshserver.GulinAIEnableTelemetryCommand
+func GulinAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "gulinaienabletelemetry", nil, opts)
+	return err
+}
+
+// command "gulinaigettooldiff", wshserver.GulinAIGetToolDiffCommand
+func GulinAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandGulinAIGetToolDiffData, opts *wshrpc.RpcOpts) (*wshrpc.CommandGulinAIGetToolDiffRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandGulinAIGetToolDiffRtnData](w, "gulinaigettooldiff", data, opts)
 	return resp, err
 }
 
-// command "getwaveaimodeconfig", wshserver.GetWaveAIModeConfigCommand
-func GetWaveAIModeConfigCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wconfig.AIModeConfigUpdate, error) {
-	resp, err := sendRpcRequestCallHelper[wconfig.AIModeConfigUpdate](w, "getwaveaimodeconfig", nil, opts)
+// command "gulinaitoolapprove", wshserver.GulinAIToolApproveCommand
+func GulinAIToolApproveCommand(w *wshutil.WshRpc, data wshrpc.CommandGulinAIToolApproveData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "gulinaitoolapprove", data, opts)
+	return err
+}
+
+// command "gulinbridgecreatetoken", wshserver.GulinBridgeCreateTokenCommand
+func GulinBridgeCreateTokenCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (string, error) {
+	resp, err := sendRpcRequestCallHelper[string](w, "gulinbridgecreatetoken", data, opts)
 	return resp, err
 }
 
-// command "getwaveairatelimit", wshserver.GetWaveAIRateLimitCommand
-func GetWaveAIRateLimitCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*uctypes.RateLimitInfo, error) {
-	resp, err := sendRpcRequestCallHelper[*uctypes.RateLimitInfo](w, "getwaveairatelimit", nil, opts)
+// command "gulinbridgelogin", wshserver.GulinBridgeLoginCommand
+func GulinBridgeLoginCommand(w *wshutil.WshRpc, data wshrpc.CommandGulinBridgeLoginData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "gulinbridgelogin", data, opts)
+	return err
+}
+
+// command "gulinbridgelogout", wshserver.GulinBridgeLogoutCommand
+func GulinBridgeLogoutCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "gulinbridgelogout", nil, opts)
+	return err
+}
+
+// command "gulinbridgeregister", wshserver.GulinBridgeRegisterCommand
+func GulinBridgeRegisterCommand(w *wshutil.WshRpc, data wshrpc.CommandGulinBridgeRegisterData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "gulinbridgeregister", data, opts)
+	return err
+}
+
+// command "gulinbridgesyncmodels", wshserver.GulinBridgeSyncModelsCommand
+func GulinBridgeSyncModelsCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "gulinbridgesyncmodels", nil, opts)
+	return err
+}
+
+// command "gulinfilereadstream", wshserver.GulinFileReadStreamCommand
+func GulinFileReadStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandGulinFileReadStreamData, opts *wshrpc.RpcOpts) (*wshrpc.GulinFileInfo, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.GulinFileInfo](w, "gulinfilereadstream", data, opts)
+	return resp, err
+}
+
+// command "gulininfo", wshserver.GulinInfoCommand
+func GulinInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.GulinInfoData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.GulinInfoData](w, "gulininfo", nil, opts)
 	return resp, err
 }
 
@@ -543,8 +609,8 @@ func JobControllerGetAllJobManagerStatusCommand(w *wshutil.WshRpc, opts *wshrpc.
 }
 
 // command "jobcontrollerlist", wshserver.JobControllerListCommand
-func JobControllerListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]*waveobj.Job, error) {
-	resp, err := sendRpcRequestCallHelper[[]*waveobj.Job](w, "jobcontrollerlist", nil, opts)
+func JobControllerListCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) ([]*gulinobj.Job, error) {
+	resp, err := sendRpcRequestCallHelper[[]*gulinobj.Job](w, "jobcontrollerlist", nil, opts)
 	return resp, err
 }
 
@@ -621,7 +687,7 @@ func NetworkOnlineCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (bool, error)
 }
 
 // command "notify", wshserver.NotifyCommand
-func NotifyCommand(w *wshutil.WshRpc, data wshrpc.WaveNotificationOptions, opts *wshrpc.RpcOpts) error {
+func NotifyCommand(w *wshutil.WshRpc, data wshrpc.GulinNotificationOptions, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "notify", data, opts)
 	return err
 }
@@ -880,14 +946,14 @@ func StreamDataAckCommand(w *wshutil.WshRpc, data wshrpc.CommandStreamAckData, o
 	return err
 }
 
+// command "streamgulinai", wshserver.StreamGulinAiCommand
+func StreamGulinAiCommand(w *wshutil.WshRpc, data wshrpc.GulinAIStreamRequest, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.GulinAIPacketType] {
+	return sendRpcRequestResponseStreamHelper[wshrpc.GulinAIPacketType](w, "streamgulinai", data, opts)
+}
+
 // command "streamtest", wshserver.StreamTestCommand
 func StreamTestCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[int] {
 	return sendRpcRequestResponseStreamHelper[int](w, "streamtest", nil, opts)
-}
-
-// command "streamwaveai", wshserver.StreamWaveAiCommand
-func StreamWaveAiCommand(w *wshutil.WshRpc, data wshrpc.WaveAIStreamRequest, opts *wshrpc.RpcOpts) chan wshrpc.RespOrErrorUnion[wshrpc.WaveAIPacketType] {
-	return sendRpcRequestResponseStreamHelper[wshrpc.WaveAIPacketType](w, "streamwaveai", data, opts)
 }
 
 // command "termgetscrollbacklines", wshserver.TermGetScrollbackLinesCommand
@@ -909,8 +975,8 @@ func VDomAsyncInitiationCommand(w *wshutil.WshRpc, data vdom.VDomAsyncInitiation
 }
 
 // command "vdomcreatecontext", wshserver.VDomCreateContextCommand
-func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.VDomCreateContext, opts *wshrpc.RpcOpts) (*waveobj.ORef, error) {
-	resp, err := sendRpcRequestCallHelper[*waveobj.ORef](w, "vdomcreatecontext", data, opts)
+func VDomCreateContextCommand(w *wshutil.WshRpc, data vdom.VDomCreateContext, opts *wshrpc.RpcOpts) (*gulinobj.ORef, error) {
+	resp, err := sendRpcRequestCallHelper[*gulinobj.ORef](w, "vdomcreatecontext", data, opts)
 	return resp, err
 }
 
@@ -927,42 +993,6 @@ func VDomUrlRequestCommand(w *wshutil.WshRpc, data wshrpc.VDomUrlRequestData, op
 // command "waitforroute", wshserver.WaitForRouteCommand
 func WaitForRouteCommand(w *wshutil.WshRpc, data wshrpc.CommandWaitForRouteData, opts *wshrpc.RpcOpts) (bool, error) {
 	resp, err := sendRpcRequestCallHelper[bool](w, "waitforroute", data, opts)
-	return resp, err
-}
-
-// command "waveaiaddcontext", wshserver.WaveAIAddContextCommand
-func WaveAIAddContextCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIAddContextData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "waveaiaddcontext", data, opts)
-	return err
-}
-
-// command "waveaienabletelemetry", wshserver.WaveAIEnableTelemetryCommand
-func WaveAIEnableTelemetryCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "waveaienabletelemetry", nil, opts)
-	return err
-}
-
-// command "waveaigettooldiff", wshserver.WaveAIGetToolDiffCommand
-func WaveAIGetToolDiffCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIGetToolDiffData, opts *wshrpc.RpcOpts) (*wshrpc.CommandWaveAIGetToolDiffRtnData, error) {
-	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandWaveAIGetToolDiffRtnData](w, "waveaigettooldiff", data, opts)
-	return resp, err
-}
-
-// command "waveaitoolapprove", wshserver.WaveAIToolApproveCommand
-func WaveAIToolApproveCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveAIToolApproveData, opts *wshrpc.RpcOpts) error {
-	_, err := sendRpcRequestCallHelper[any](w, "waveaitoolapprove", data, opts)
-	return err
-}
-
-// command "wavefilereadstream", wshserver.WaveFileReadStreamCommand
-func WaveFileReadStreamCommand(w *wshutil.WshRpc, data wshrpc.CommandWaveFileReadStreamData, opts *wshrpc.RpcOpts) (*wshrpc.WaveFileInfo, error) {
-	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveFileInfo](w, "wavefilereadstream", data, opts)
-	return resp, err
-}
-
-// command "waveinfo", wshserver.WaveInfoCommand
-func WaveInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (*wshrpc.WaveInfoData, error) {
-	resp, err := sendRpcRequestCallHelper[*wshrpc.WaveInfoData](w, "waveinfo", nil, opts)
 	return resp, err
 }
 

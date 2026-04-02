@@ -1,19 +1,19 @@
 ---
 name: add-wshcmd
-description: Guide for adding new wsh commands to Wave Terminal. Use when implementing new CLI commands, adding command-line functionality, or extending the wsh command interface.
+description: Guide for adding new wsh commands to Gulin Terminal. Use when implementing new CLI commands, adding command-line functionality, or extending the wsh command interface.
 ---
 
-# Adding a New wsh Command to Wave Terminal
+# Adding a New wsh Command to Gulin Terminal
 
 This guide explains how to add a new command to the `wsh` CLI tool.
 
 ## wsh Command System Overview
 
-Wave Terminal's `wsh` command provides CLI access to Wave Terminal features. The system uses:
+Gulin Terminal's `wsh` command provides CLI access to Gulin Terminal features. The system uses:
 
 1. **Cobra Framework** - CLI command structure and parsing
 2. **Command Files** - Individual command implementations in `cmd/wsh/cmd/wshcmd-*.go`
-3. **RPC Client** - Communication with Wave Terminal backend via `RpcClient`
+3. **RPC Client** - Communication with Gulin Terminal backend via `RpcClient`
 4. **Activity Tracking** - Telemetry for command usage analytics
 5. **Documentation** - User-facing docs in `docs/docs/wsh-reference.mdx`
 
@@ -35,8 +35,8 @@ import (
     "fmt"
 
     "github.com/spf13/cobra"
-    "github.com/wavetermdev/waveterm/pkg/wshrpc"
-    "github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+    "github.com/gulindev/gulin/pkg/wshrpc"
+    "github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var myCommandCmd = &cobra.Command{
@@ -127,9 +127,9 @@ var myCommandCmd = &cobra.Command{
 #### When to Use PreRunE
 
 Include `PreRunE: preRunSetupRpcClient` if your command:
-- Communicates with the Wave Terminal backend
+- Communicates with the Gulin Terminal backend
 - Needs access to `RpcClient` 
-- Requires JWT authentication (WAVETERM_JWT env var)
+- Requires JWT authentication (GULIN_JWT env var)
 - Makes RPC calls via `wshclient.*Command()` functions
 
 **Don't include PreRunE** for commands that:
@@ -287,9 +287,9 @@ func myCommandRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 ```go
 // Get tab ID from environment
-tabId := os.Getenv("WAVETERM_TABID")
+tabId := os.Getenv("GULIN_TABID")
 if tabId == "" {
-    return fmt.Errorf("WAVETERM_TABID not set")
+    return fmt.Errorf("GULIN_TABID not set")
 }
 
 // Create route for tab-level operations
@@ -308,8 +308,8 @@ Use the `wshclient` package to make RPC calls:
 
 ```go
 import (
-    "github.com/wavetermdev/waveterm/pkg/wshrpc"
-    "github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+    "github.com/gulindev/gulin/pkg/wshrpc"
+    "github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 // Simple RPC call
@@ -417,7 +417,7 @@ task build
 
 ### Example 1: Simple Command with No RPC
 
-**Use case:** A command that prints Wave Terminal version info
+**Use case:** A command that prints Gulin Terminal version info
 
 #### Command File (`cmd/wsh/cmd/wshcmd-version.go`)
 
@@ -429,12 +429,12 @@ package cmd
 
 import (
     "github.com/spf13/cobra"
-    "github.com/wavetermdev/waveterm/pkg/wavebase"
+    "github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 var versionCmd = &cobra.Command{
     Use:   "version",
-    Short: "Print Wave Terminal version",
+    Short: "Print Gulin Terminal version",
     RunE:  versionRun,
 }
 
@@ -447,7 +447,7 @@ func versionRun(cmd *cobra.Command, args []string) (rtnErr error) {
         sendActivity("version", rtnErr == nil)
     }()
     
-    fmt.Printf("Wave Terminal %s\n", wavebase.WaveVersion)
+    fmt.Printf("Gulin Terminal %s\n", gulinbase.GulinVersion)
     return nil
 }
 ```
@@ -457,7 +457,7 @@ func versionRun(cmd *cobra.Command, args []string) (rtnErr error) {
 ````markdown
 ## version
 
-Print the current Wave Terminal version.
+Print the current Gulin Terminal version.
 
 ```sh
 wsh version
@@ -487,8 +487,8 @@ import (
     "fmt"
 
     "github.com/spf13/cobra"
-    "github.com/wavetermdev/waveterm/pkg/wshrpc"
-    "github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+    "github.com/gulindev/gulin/pkg/wshrpc"
+    "github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var setTitleCmd = &cobra.Command{
@@ -589,8 +589,8 @@ import (
     "fmt"
 
     "github.com/spf13/cobra"
-    "github.com/wavetermdev/waveterm/pkg/wshrpc"
-    "github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+    "github.com/gulindev/gulin/pkg/wshrpc"
+    "github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var myGroupCmd = &cobra.Command{
@@ -776,15 +776,15 @@ func myCommandRun(cmd *cobra.Command, args []string) (rtnErr error) {
     }()
     
     // Get block ID from environment
-    blockId := os.Getenv("WAVETERM_BLOCKID")
+    blockId := os.Getenv("GULIN_BLOCKID")
     if blockId == "" {
-        return fmt.Errorf("WAVETERM_BLOCKID not set")
+        return fmt.Errorf("GULIN_BLOCKID not set")
     }
     
     // Get tab ID from environment
-    tabId := os.Getenv("WAVETERM_TABID")
+    tabId := os.Getenv("GULIN_TABID")
     if tabId == "" {
-        return fmt.Errorf("WAVETERM_TABID not set")
+        return fmt.Errorf("GULIN_TABID not set")
     }
     
     fmt.Printf("Block: %s, Tab: %s\n", blockId, tabId)

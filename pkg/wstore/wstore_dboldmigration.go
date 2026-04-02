@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
 )
 
-const OldDBName = "~/.waveterm/waveterm.db"
+const OldDBName = "~/.gulin/gulin.db"
 
 func GetOldDBName() string {
-	return wavebase.ExpandHomeDirSafe(OldDBName)
+	return gulinbase.ExpandHomeDirSafe(OldDBName)
 }
 
 func MakeOldDB(ctx context.Context) (*sqlx.DB, error) {
@@ -94,8 +94,8 @@ func TryMigrateOldHistory() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("migrated %d old wave history records\n", len(hist))
-	client, err := DBGetSingleton[*waveobj.Client](ctx)
+	log.Printf("migrated %d old gulin history records\n", len(hist))
+	client, err := DBGetSingleton[*gulinobj.Client](ctx)
 	if err != nil {
 		return err
 	}

@@ -14,12 +14,13 @@ import { LauncherViewModel } from "@/app/view/launcher/launcher";
 import { PreviewModel } from "@/app/view/preview/preview-model";
 import { SysinfoViewModel } from "@/app/view/sysinfo/sysinfo";
 import { TsunamiViewModel } from "@/app/view/tsunami/tsunami";
-import { APIEndpointManagerViewModel } from "@/app/view/waveai/apimanager";
-import { DBConnectionsViewModel } from "@/app/view/waveai/dbconnections";
-import { DBExplorerViewModel } from "@/app/view/waveai/dbexplorer";
-import { MemoryGridViewModel } from "@/app/view/waveai/memorygrid";
+import { APIEndpointManagerViewModel } from "@/app/view/gulinai/apimanager";
+import { DBConnectionsViewModel } from "@/app/view/gulinai/dbconnections";
+import { DBExplorerViewModel } from "@/app/view/gulinai/dbexplorer";
+import { MemoryGridViewModel } from "@/app/view/gulinai/memorygrid";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
+import { WidgetBuilderViewModel } from "@/app/view/widgetbuilder/widgetbuilder";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc } from "@/store/counters";
@@ -32,18 +33,18 @@ import {
 } from "@/store/global";
 import type { TabModel } from "@/app/store/tab-model";
 import { useTabModel } from "@/app/store/tab-model";
-import { getWaveObjectAtom, makeORef, useWaveObjectValue } from "@/store/wos";
+import { getGulinObjectAtom, makeORef, useGulinObjectValue } from "@/store/wos";
 import { focusedBlockId, getElemAsStr } from "@/util/focusutil";
 import { isBlank, useAtomValueSafe } from "@/util/util";
 import { HelpViewModel } from "@/view/helpview/helpview";
 import { TermViewModel } from "@/view/term/term-model";
-import { WaveAiModel } from "@/view/waveai/waveai";
+import { GulinAiModel } from "@/view/gulinai/gulinai";
 import { WebViewModel } from "@/view/webview/webview";
 import clsx from "clsx";
 import { atom, useAtomValue } from "jotai";
 import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { QuickTipsViewModel } from "../view/quicktipsview/quicktipsview";
-import { WaveConfigViewModel } from "../view/waveconfig/waveconfig-model";
+import { GulinConfigViewModel } from "../view/gulinconfig/gulinconfig-model";
 import "./block.scss";
 import { BlockFrame } from "./blockframe";
 import { blockViewToIcon, blockViewToName } from "./blockutil";
@@ -54,7 +55,7 @@ const BlockRegistry: Map<string, ViewModelClass> = new Map();
 BlockRegistry.set("term", TermViewModel);
 BlockRegistry.set("preview", PreviewModel);
 BlockRegistry.set("web", WebViewModel);
-BlockRegistry.set("waveai", WaveAiModel);
+BlockRegistry.set("gulinai", GulinAiModel);
 BlockRegistry.set("cpuplot", SysinfoViewModel);
 BlockRegistry.set("sysinfo", SysinfoViewModel);
 BlockRegistry.set("vdom", VDomModel);
@@ -63,12 +64,13 @@ BlockRegistry.set("help", HelpViewModel);
 BlockRegistry.set("launcher", LauncherViewModel);
 BlockRegistry.set("tsunami", TsunamiViewModel);
 BlockRegistry.set("aifilediff", AiFileDiffViewModel);
-BlockRegistry.set("waveconfig", WaveConfigViewModel);
+BlockRegistry.set("gulinconfig", GulinConfigViewModel);
 BlockRegistry.set("memory-grid", MemoryGridViewModel);
 BlockRegistry.set("db-connections", DBConnectionsViewModel);
 BlockRegistry.set("db-explorer", DBExplorerViewModel);
 BlockRegistry.set("api-manager", APIEndpointManagerViewModel);
 BlockRegistry.set("dashboard", DashboardViewModel);
+BlockRegistry.set("widget-builder", WidgetBuilderViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);
@@ -96,7 +98,7 @@ function getViewElem(
 }
 
 function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
-    const blockDataAtom = getWaveObjectAtom<Block>(makeORef("block", blockId));
+    const blockDataAtom = getGulinObjectAtom<Block>(makeORef("block", blockId));
     let viewModel: ViewModel = {
         viewType: viewType,
         viewIcon: atom((get) => {
@@ -115,7 +117,7 @@ function makeDefaultViewModel(blockId: string, viewType: string): ViewModel {
 }
 
 const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
-    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const [blockData] = useGulinObjectValue<Block>(makeORef("block", nodeModel.blockId));
     if (!blockData) {
         return null;
     }
@@ -131,7 +133,7 @@ const BlockPreview = memo(({ nodeModel, viewModel }: FullBlockProps) => {
 });
 
 const BlockSubBlock = memo(({ nodeModel, viewModel }: FullSubBlockProps) => {
-    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const [blockData] = useGulinObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const viewElem = useMemo(
@@ -157,7 +159,7 @@ const BlockFull = memo(({ nodeModel, viewModel }: FullBlockProps) => {
     const blockRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = useState(false);
-    const [blockData] = useWaveObjectValue<Block>(makeORef("block", nodeModel.blockId));
+    const [blockData] = useGulinObjectValue<Block>(makeORef("block", nodeModel.blockId));
     const isFocused = useAtomValue(nodeModel.isFocused);
     const disablePointerEvents = useAtomValue(nodeModel.disablePointerEvents);
     const isResizing = useAtomValue(nodeModel.isResizing);
@@ -319,7 +321,7 @@ const Block = memo((props: BlockProps) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const tabModel = useTabModel();
-    const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
+    const [blockData, loading] = useGulinObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
     if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {
@@ -345,7 +347,7 @@ const SubBlock = memo((props: SubBlockProps) => {
     counterInc("render-Block");
     counterInc("render-Block-" + props.nodeModel?.blockId?.substring(0, 8));
     const tabModel = useTabModel();
-    const [blockData, loading] = useWaveObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
+    const [blockData, loading] = useGulinObjectValue<Block>(makeORef("block", props.nodeModel.blockId));
     const bcm = getBlockComponentModel(props.nodeModel.blockId);
     let viewModel = bcm?.viewModel;
     if (viewModel == null || viewModel.viewType != blockData?.meta?.view) {

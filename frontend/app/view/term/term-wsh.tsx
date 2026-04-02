@@ -11,7 +11,7 @@ import { bufferLinesToText } from "@/app/view/term/termutil";
 import { isBlank } from "@/util/util";
 import debug from "debug";
 
-const dlog = debug("wave:vdom");
+const dlog = debug("gulin:vdom");
 
 export class TermWshClient extends WshClient {
     blockId: string;

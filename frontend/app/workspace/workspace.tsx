@@ -43,7 +43,7 @@ const WorkspaceElem = memo(() => {
 
     useEffect(() => {
         const isVisible = workspaceLayoutModel.getAIPanelVisible();
-        getApi().setWaveAIOpen(isVisible);
+        getApi().setGulinAIOpen(isVisible);
     }, []);
 
     useEffect(() => {

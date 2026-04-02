@@ -1,9 +1,9 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// WaveObjectStore
+// GulinObjectStore
 
-import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { gulinEventSubscribeSingle } from "@/app/store/wps";
 import { getWebServerEndpoint } from "@/util/endpoints";
 import { fetch } from "@/util/fetchutil";
 import { fireAndForget } from "@/util/util";
@@ -12,14 +12,14 @@ import { useEffect } from "react";
 import { globalStore } from "./jotaiStore";
 import { ObjectService } from "./services";
 
-type WaveObjectDataItemType<T extends WaveObj> = {
+type GulinObjectDataItemType<T extends GulinObj> = {
     value: T;
     loading: boolean;
 };
 
-type WaveObjectValue<T extends WaveObj> = {
+type GulinObjectValue<T extends GulinObj> = {
     pendingPromise: Promise<T>;
-    dataAtom: PrimitiveAtom<WaveObjectDataItemType<T>>;
+    dataAtom: PrimitiveAtom<GulinObjectDataItemType<T>>;
     refCount: number;
     holdTime: number;
 };
@@ -40,7 +40,7 @@ function isBlankNum(num: number): boolean {
     return num == null || isNaN(num) || num == 0;
 }
 
-function isValidWaveObj(val: WaveObj): boolean {
+function isValidGulinObj(val: GulinObj): boolean {
     if (val == null) {
         return false;
     }
@@ -79,11 +79,11 @@ function debugLogBackendCall(methodName: string, durationStr: string, args: any[
 }
 
 function wpsSubscribeToObject(oref: string): () => void {
-    return waveEventSubscribeSingle({
-        eventType: "waveobj:update",
+    return gulinEventSubscribeSingle({
+        eventType: "gulinobj:update",
         scope: oref,
         handler: (event) => {
-            updateWaveObject(event.data);
+            updateGulinObject(event.data);
         },
     });
 }
@@ -94,7 +94,7 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     if (!noUIContext && globalThis.window != null) {
         uiContext = globalStore.get(((window as any).globalAtoms as GlobalAtomsType).uiContext);
     }
-    const waveCall: WebCallType = {
+    const gulinCall: WebCallType = {
         service: service,
         method: method,
         args: args,
@@ -105,10 +105,10 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     const usp = new URLSearchParams();
     usp.set("service", service);
     usp.set("method", method);
-    const url = getWebServerEndpoint() + "/wave/service?" + usp.toString();
+    const url = getWebServerEndpoint() + "/gulin/service?" + usp.toString();
     const fetchPromise = fetch(url, {
         method: "POST",
-        body: JSON.stringify(waveCall),
+        body: JSON.stringify(gulinCall),
     });
     const prtn = fetchPromise
         .then((resp) => {
@@ -122,7 +122,7 @@ function callBackendService(service: string, method: string, args: any[], noUICo
                 return null;
             }
             if (respData.updates != null) {
-                updateWaveObjects(respData.updates);
+                updateGulinObjects(respData.updates);
             }
             if (respData.error != null) {
                 throw new Error(`call ${methodName} error: ${respData.error}`);
@@ -134,18 +134,18 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     return prtn;
 }
 
-const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
+const gulinObjectValueCache = new Map<string, GulinObjectValue<any>>();
 
-function clearWaveObjectCache() {
-    waveObjectValueCache.clear();
+function clearGulinObjectCache() {
+    gulinObjectValueCache.clear();
 }
 
 const defaultHoldTime = 5000; // 5-seconds
 
-function reloadWaveObject<T extends WaveObj>(oref: string): Promise<T> {
-    let wov = waveObjectValueCache.get(oref);
+function reloadGulinObject<T extends GulinObj>(oref: string): Promise<T> {
+    let wov = gulinObjectValueCache.get(oref);
     if (wov === undefined) {
-        wov = getWaveObjectValue<T>(oref, true);
+        wov = getGulinObjectValue<T>(oref, true);
         return wov.pendingPromise;
     }
     const prtn = GetObject<T>(oref);
@@ -155,7 +155,7 @@ function reloadWaveObject<T extends WaveObj>(oref: string): Promise<T> {
     return prtn;
 }
 
-function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boolean): WaveObjectValue<T> {
+function createGulinValueObject<T extends GulinObj>(oref: string, shouldFetch: boolean): GulinObjectValue<T> {
     const wov = { pendingPromise: null, dataAtom: null, refCount: 0, holdTime: Date.now() + 5000 };
     wov.dataAtom = atom({ value: null, loading: true });
     if (!shouldFetch) {
@@ -179,22 +179,22 @@ function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boo
         }
         wov.pendingPromise = null;
         globalStore.set(wov.dataAtom, { value: val, loading: false });
-        console.log("WaveObj resolved", oref, Date.now() - startTs + "ms");
+        console.log("GulinObj resolved", oref, Date.now() - startTs + "ms");
     });
     return wov;
 }
 
-function getWaveObjectValue<T extends WaveObj>(oref: string, createIfMissing = true): WaveObjectValue<T> {
-    let wov = waveObjectValueCache.get(oref);
+function getGulinObjectValue<T extends GulinObj>(oref: string, createIfMissing = true): GulinObjectValue<T> {
+    let wov = gulinObjectValueCache.get(oref);
     if (wov === undefined && createIfMissing) {
-        wov = createWaveValueObject(oref, true);
-        waveObjectValueCache.set(oref, wov);
+        wov = createGulinValueObject(oref, true);
+        gulinObjectValueCache.set(oref, wov);
     }
     return wov;
 }
 
-function loadAndPinWaveObject<T extends WaveObj>(oref: string): Promise<T> {
-    const wov = getWaveObjectValue<T>(oref);
+function loadAndPinGulinObject<T extends GulinObj>(oref: string): Promise<T> {
+    const wov = getGulinObjectValue<T>(oref);
     wov.refCount++;
     if (wov.pendingPromise == null) {
         const dataValue = globalStore.get(wov.dataAtom);
@@ -203,8 +203,8 @@ function loadAndPinWaveObject<T extends WaveObj>(oref: string): Promise<T> {
     return wov.pendingPromise;
 }
 
-function getWaveObjectAtom<T extends WaveObj>(oref: string): WritableWaveObjectAtom<T> {
-    const wov = getWaveObjectValue<T>(oref);
+function getGulinObjectAtom<T extends GulinObj>(oref: string): WritableGulinObjectAtom<T> {
+    const wov = getGulinObjectValue<T>(oref);
     return atom(
         (get) => get(wov.dataAtom).value,
         (_get, set, value: T) => {
@@ -213,8 +213,8 @@ function getWaveObjectAtom<T extends WaveObj>(oref: string): WritableWaveObjectA
     );
 }
 
-function getWaveObjectLoadingAtom(oref: string): Atom<boolean> {
-    const wov = getWaveObjectValue(oref);
+function getGulinObjectLoadingAtom(oref: string): Atom<boolean> {
+    const wov = getGulinObjectValue(oref);
     return atom((get) => {
         const dataValue = get(wov.dataAtom);
         if (dataValue.loading) {
@@ -224,8 +224,8 @@ function getWaveObjectLoadingAtom(oref: string): Atom<boolean> {
     });
 }
 
-function useWaveObjectValue<T extends WaveObj>(oref: string): [T, boolean] {
-    const wov = getWaveObjectValue<T>(oref);
+function useGulinObjectValue<T extends GulinObj>(oref: string): [T, boolean] {
+    const wov = getGulinObjectValue<T>(oref);
     useEffect(() => {
         wov.refCount++;
         return () => {
@@ -236,51 +236,51 @@ function useWaveObjectValue<T extends WaveObj>(oref: string): [T, boolean] {
     return [atomVal.value, atomVal.loading];
 }
 
-function updateWaveObject(update: WaveObjUpdate) {
+function updateGulinObject(update: GulinObjUpdate) {
     if (update == null) {
         return;
     }
     const oref = makeORef(update.otype, update.oid);
-    const wov = getWaveObjectValue(oref);
+    const wov = getGulinObjectValue(oref);
     if (update.updatetype == "delete") {
-        console.log("WaveObj deleted", oref);
+        console.log("GulinObj deleted", oref);
         globalStore.set(wov.dataAtom, { value: null, loading: false });
     } else {
-        if (!isValidWaveObj(update.obj)) {
-            console.log("invalid wave object update", update);
+        if (!isValidGulinObj(update.obj)) {
+            console.log("invalid gulin object update", update);
             return;
         }
-        const curValue: WaveObjectDataItemType<WaveObj> = globalStore.get(wov.dataAtom);
+        const curValue: GulinObjectDataItemType<GulinObj> = globalStore.get(wov.dataAtom);
         if (curValue.value != null && curValue.value.version >= update.obj.version) {
             return;
         }
-        console.log("WaveObj updated", oref);
+        console.log("GulinObj updated", oref);
         globalStore.set(wov.dataAtom, { value: update.obj, loading: false });
     }
     wov.holdTime = Date.now() + defaultHoldTime;
     return;
 }
 
-function updateWaveObjects(vals: WaveObjUpdate[]) {
+function updateGulinObjects(vals: GulinObjUpdate[]) {
     for (const val of vals) {
-        updateWaveObject(val);
+        updateGulinObject(val);
     }
 }
 
-function cleanWaveObjectCache() {
+function cleanGulinObjectCache() {
     const now = Date.now();
-    for (const [oref, wov] of waveObjectValueCache) {
+    for (const [oref, wov] of gulinObjectValueCache) {
         if (wov.refCount == 0 && wov.holdTime < now) {
-            waveObjectValueCache.delete(oref);
+            gulinObjectValueCache.delete(oref);
         }
     }
 }
 
-// gets the value of a WaveObject from the cache.
+// gets the value of a GulinObject from the cache.
 // should provide getFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.get function
-function getObjectValue<T extends WaveObj>(oref: string, getFn?: Getter): T {
-    const wov = getWaveObjectValue<T>(oref);
+function getObjectValue<T extends GulinObj>(oref: string, getFn?: Getter): T {
+    const wov = getGulinObjectValue<T>(oref);
     if (getFn == null) {
         getFn = globalStore.get;
     }
@@ -288,12 +288,12 @@ function getObjectValue<T extends WaveObj>(oref: string, getFn?: Getter): T {
     return atomVal.value;
 }
 
-// sets the value of a WaveObject in the cache.
+// sets the value of a GulinObject in the cache.
 // should provide setFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.set function
-function setObjectValue<T extends WaveObj>(value: T, setFn?: Setter, pushToServer?: boolean) {
+function setObjectValue<T extends GulinObj>(value: T, setFn?: Setter, pushToServer?: boolean) {
     const oref = makeORef(value.otype, value.oid);
-    const wov = getWaveObjectValue(oref, false);
+    const wov = getGulinObjectValue(oref, false);
     if (wov === undefined) {
         return;
     }
@@ -308,18 +308,18 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: Setter, pushToServe
 
 export {
     callBackendService,
-    cleanWaveObjectCache,
-    clearWaveObjectCache,
+    cleanGulinObjectCache,
+    clearGulinObjectCache,
     getObjectValue,
-    getWaveObjectAtom,
-    getWaveObjectLoadingAtom,
-    loadAndPinWaveObject,
+    getGulinObjectAtom,
+    getGulinObjectLoadingAtom,
+    loadAndPinGulinObject,
     makeORef,
-    reloadWaveObject,
+    reloadGulinObject,
     setObjectValue,
     splitORef,
-    updateWaveObject,
-    updateWaveObjects,
-    useWaveObjectValue,
+    updateGulinObject,
+    updateGulinObjects,
+    useGulinObjectValue,
     wpsSubscribeToObject,
 };

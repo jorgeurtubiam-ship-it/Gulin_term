@@ -30,4 +30,4 @@ ipcRenderer.on("webview-get-text", (event) => {
     ipcRenderer.send("webview-get-text-response", { text });
 });
 
-console.log("loaded wave preload-webview.ts");
+console.log("loaded gulin preload-webview.ts");

@@ -7,17 +7,17 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var editConfigMagnified bool
 
 var editConfigCmd = &cobra.Command{
 	Use:     "editconfig [configfile]",
-	Short:   "edit Wave configuration files",
-	Long:    "Edit Wave configuration files. Defaults to settings.json if no file specified. Common files: settings.json, presets.json, widgets.json",
+	Short:   "edit Gulin configuration files",
+	Long:    "Edit Gulin configuration files. Defaults to settings.json if no file specified. Common files: settings.json, presets.json, widgets.json",
 	Args:    cobra.MaximumNArgs(1),
 	RunE:    editConfigRun,
 	PreRunE: preRunSetupRpcClient,
@@ -40,15 +40,15 @@ func editConfigRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	tabId := getTabIdFromEnv()
 	if tabId == "" {
-		return fmt.Errorf("no WAVETERM_TABID env var set")
+		return fmt.Errorf("no GULIN_TABID env var set")
 	}
 
 	wshCmd := &wshrpc.CommandCreateBlockData{
 		TabId: tabId,
-		BlockDef: &waveobj.BlockDef{
+		BlockDef: &gulinobj.BlockDef{
 			Meta: map[string]interface{}{
-				waveobj.MetaKey_View: "waveconfig",
-				waveobj.MetaKey_File: configFile,
+				gulinobj.MetaKey_View: "gulinconfig",
+				gulinobj.MetaKey_File: configFile,
 			},
 		},
 		Magnified: editConfigMagnified,

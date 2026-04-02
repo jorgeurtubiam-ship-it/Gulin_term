@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 var termScrollbackCmd = &cobra.Command{
@@ -63,7 +63,7 @@ func termScrollbackRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	}
 
 	// Check if the block is a terminal block
-	viewType, ok := metaData[waveobj.MetaKey_View].(string)
+	viewType, ok := metaData[gulinobj.MetaKey_View].(string)
 	if !ok || viewType != "term" {
 		return fmt.Errorf("block %s is not a terminal block (view type: %s)", fullORef.OID, viewType)
 	}

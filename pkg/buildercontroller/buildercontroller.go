@@ -16,17 +16,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
-	"github.com/wavetermdev/waveterm/pkg/utilds"
-	"github.com/wavetermdev/waveterm/pkg/waveappstore"
-	"github.com/wavetermdev/waveterm/pkg/waveapputil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/tsunami/build"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/tsunamiutil"
+	"github.com/gulindev/gulin/pkg/utilds"
+	"github.com/gulindev/gulin/pkg/gulinappstore"
+	"github.com/gulindev/gulin/pkg/gulinapputil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/tsunami/build"
 )
 
 const (
@@ -115,7 +115,7 @@ func GetBuilderAppExecutablePath(appPath string) (string, error) {
 	}
 	binPath := filepath.Join(binDir, binaryName)
 
-	err := wavebase.TryMkdirs(binDir, 0755, "app bin directory")
+	err := gulinbase.TryMkdirs(binDir, 0755, "app bin directory")
 	if err != nil {
 		return "", fmt.Errorf("failed to create app bin directory: %w", err)
 	}
@@ -191,13 +191,13 @@ func (bc *BuilderController) Start(ctx context.Context, appId string, builderEnv
 }
 
 func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, builderEnv map[string]string, resultCh chan<- *BuildResult) {
-	appNS, _, err := waveappstore.ParseAppId(appId)
+	appNS, _, err := gulinappstore.ParseAppId(appId)
 	if err != nil {
 		bc.handleBuildError(fmt.Errorf("failed to parse app id: %w", err), resultCh)
 		return
 	}
 
-	appPath, err := waveappstore.GetAppDir(appId)
+	appPath, err := gulinappstore.GetAppDir(appId)
 	if err != nil {
 		bc.handleBuildError(fmt.Errorf("failed to get app directory: %w", err), resultCh)
 		return
@@ -209,18 +209,18 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 		return
 	}
 
-	nodePath := wavebase.GetWaveAppElectronExecPath()
+	nodePath := gulinbase.GetGulinAppElectronExecPath()
 	if nodePath == "" {
 		bc.handleBuildError(fmt.Errorf("electron executable path not set"), resultCh)
 		return
 	}
 
-	scaffoldPath := waveapputil.GetTsunamiScaffoldPath()
+	scaffoldPath := gulinapputil.GetTsunamiScaffoldPath()
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
 	sdkReplacePath := settings.TsunamiSdkReplacePath
 	sdkVersion := settings.TsunamiSdkVersion
 	if sdkVersion == "" {
-		sdkVersion = waveapputil.DefaultTsunamiSdkVersion
+		sdkVersion = gulinapputil.DefaultTsunamiSdkVersion
 	}
 	goPath := settings.TsunamiGoPath
 
@@ -302,17 +302,17 @@ func (bc *BuilderController) buildAndRun(ctx context.Context, appId string, buil
 }
 
 func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, appBinPath string, builderEnv map[string]string) (*BuilderProcess, error) {
-	manifest, err := waveappstore.ReadAppManifest(appId)
+	manifest, err := gulinappstore.ReadAppManifest(appId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read app manifest: %w", err)
 	}
 
-	secretBindings, err := waveappstore.ReadAppSecretBindings(appId)
+	secretBindings, err := gulinappstore.ReadAppSecretBindings(appId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read secret bindings (ERR-SECRET): %w", err)
 	}
 
-	secretEnv, err := waveappstore.BuildAppSecretEnv(appId, manifest, secretBindings)
+	secretEnv, err := gulinappstore.BuildAppSecretEnv(appId, manifest, secretBindings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build secret environment (ERR-SECRET): %w", err)
 	}
@@ -327,7 +327,7 @@ func (bc *BuilderController) runBuilderApp(ctx context.Context, appId string, ap
 	cmd := exec.Command(appBinPath)
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
 
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		cmd.Env = append(cmd.Env, "TSUNAMI_CORS="+tsunamiutil.DevModeCorsOrigins)
 	}
 
@@ -519,7 +519,7 @@ func (bc *BuilderController) GetStatus() wshrpc.BuilderStatusData {
 	}
 
 	if bc.appId != "" {
-		manifest, err := waveappstore.ReadAppManifest(bc.appId)
+		manifest, err := gulinappstore.ReadAppManifest(bc.appId)
 		if err == nil && manifest != nil {
 			wshrpcManifest := &wshrpc.AppManifest{
 				AppMeta: wshrpc.AppMeta{
@@ -539,13 +539,13 @@ func (bc *BuilderController) GetStatus() wshrpc.BuilderStatusData {
 			statusData.Manifest = wshrpcManifest
 		}
 
-		secretBindings, err := waveappstore.ReadAppSecretBindings(bc.appId)
+		secretBindings, err := gulinappstore.ReadAppSecretBindings(bc.appId)
 		if err == nil {
 			statusData.SecretBindings = secretBindings
 		}
 
 		if manifest != nil && secretBindings != nil {
-			_, err := waveappstore.BuildAppSecretEnv(bc.appId, manifest, secretBindings)
+			_, err := gulinappstore.BuildAppSecretEnv(bc.appId, manifest, secretBindings)
 			statusData.SecretBindingsComplete = (err == nil)
 		}
 	}
@@ -573,17 +573,17 @@ func (bc *BuilderController) setStatus_nolock(status string, port int, exitCode 
 
 func (bc *BuilderController) publishStatus() {
 	status := bc.GetStatus()
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event:  wps.Event_BuilderStatus,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Builder, bc.builderId).String()},
+		Scopes: []string{gulinobj.MakeORef(gulinobj.OType_Builder, bc.builderId).String()},
 		Data:   status,
 	})
 }
 
 func (bc *BuilderController) publishOutputLine(line string, reset bool) {
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event:  wps.Event_BuilderOutput,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Builder, bc.builderId).String()},
+		Scopes: []string{gulinobj.MakeORef(gulinobj.OType_Builder, bc.builderId).String()},
 		Data: map[string]any{
 			"lines": []string{line},
 			"reset": reset,

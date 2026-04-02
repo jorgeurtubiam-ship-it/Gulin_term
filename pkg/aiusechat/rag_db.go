@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 const EmbeddingFileName = "workspace_embeddings.json"
@@ -54,7 +54,7 @@ func GetVectorDB() *VectorDB {
 }
 
 func GetDBPath() string {
-	configDir := wavebase.GetWaveConfigDir()
+	configDir := gulinbase.GetGulinConfigDir()
 	return filepath.Join(configDir, EmbeddingFileName)
 }
 

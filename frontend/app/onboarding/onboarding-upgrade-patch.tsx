@@ -147,7 +147,7 @@ const UpgradeOnboardingPatch = () => {
                             <Logo />
                         </div>
                         <div className="text-center text-[25px] font-normal text-foreground">
-                            Wave {currentVersion.version} Update
+                            Gulin {currentVersion.version} Update
                         </div>
                     </header>
                     <OverlayScrollbarsComponent

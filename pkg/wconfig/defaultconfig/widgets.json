@@ -37,7 +37,7 @@
         "label": "ai",
         "blockdef": {
             "meta": {
-                "view": "waveai"
+                "view": "gulinai"
             }
         }
     },
@@ -78,6 +78,18 @@
         "blockdef": {
             "meta": {
                 "view": "api-manager"
+            }
+        }
+    },
+    "defwidget@widget-builder": {
+        "display:order": 3,
+        "icon": "wand-magic-sparkles",
+        "color": "#818cf8",
+        "label": "widgets",
+        "description": "Crea y gestiona widgets personalizados",
+        "blockdef": {
+            "meta": {
+                "view": "widget-builder"
             }
         }
     }

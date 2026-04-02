@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { globalStore } from "@/app/store/jotaiStore";
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
@@ -24,7 +24,7 @@ function handleBuildPanelContextMenu(e: React.MouseEvent, selectedText: string):
         {
             label: "Add to Context",
             click: () => {
-                const model = WaveAIModel.getInstance();
+                const model = GulinAIModel.getInstance();
                 const formattedText = `from builder output:\n\`\`\`\n${selectedText}\n\`\`\``;
                 model.appendText(formattedText, true);
                 model.focusInput();
@@ -91,7 +91,7 @@ const BuilderBuildPanel = memo(() => {
 
         const linesToSend = filtered.slice(-200);
         const text = linesToSend.join("\n");
-        const aiModel = WaveAIModel.getInstance();
+        const aiModel = GulinAIModel.getInstance();
         const formattedText = `from builder output:\n\`\`\`\n${text}\n\`\`\`\n`;
         aiModel.appendText(formattedText, true, { scrollToBottom: true });
         aiModel.focusInput();

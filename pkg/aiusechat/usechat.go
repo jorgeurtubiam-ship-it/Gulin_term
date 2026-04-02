@@ -20,23 +20,23 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/secretstore"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/ds"
-	"github.com/wavetermdev/waveterm/pkg/util/logutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveappstore"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/aiutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/chatstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/secretstore"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/util/ds"
+	"github.com/gulindev/gulin/pkg/util/logutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinappstore"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/web/sse"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 const DefaultAPI = uctypes.APIType_OpenAIResponses
@@ -62,23 +62,43 @@ func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapab
 	if isBuilder {
 		return []string{}
 	}
-	useNoToolsPrompt := !hasToolsCapability || !widgetAccess
-	basePrompt := SystemPromptText_OpenAI
-	if useNoToolsPrompt {
-		basePrompt = SystemPromptText_NoTools
-	}
-	var prompts []string
-	prompts = append(prompts, basePrompt)
 
-	if !useNoToolsPrompt {
-		if strings.HasSuffix(aiMode, "@plan") {
-			prompts = append(prompts, SystemPrompt_Plan)
-		} else if strings.HasSuffix(aiMode, "@act") {
-			prompts = append(prompts, SystemPrompt_Act)
+	var prompts []string
+	useNoToolsPrompt := !hasToolsCapability || !widgetAccess
+
+	modelLower := strings.ToLower(model)
+	isLiteModel := strings.Contains(modelLower, "lite") || strings.Contains(modelLower, "flash") || strings.Contains(modelLower, "mini")
+
+	// Verificar si es un modo de Agente Experto específico
+	for expertID, expert := range Experts {
+		if strings.Contains(aiMode, string(expertID)) {
+			prompts = append(prompts, expert.SystemPrompt)
+			goto finalize
 		}
 	}
 
-	modelLower := strings.ToLower(model)
+	// Si es el Orquestador y NO es un modelo Lite, usamos el prompt de Comandante
+	if strings.Contains(aiMode, "@orchestrate") && !isLiteModel {
+		prompts = append(prompts, SystemPrompt_Orchestrator)
+	} else {
+		basePrompt := SystemPromptText_OpenAI
+		if useNoToolsPrompt {
+			basePrompt = SystemPromptText_NoTools
+		}
+		prompts = append(prompts, basePrompt)
+
+		if !useNoToolsPrompt {
+			if strings.HasSuffix(aiMode, "@plan") {
+				prompts = append(prompts, SystemPrompt_Plan)
+			} else if strings.HasSuffix(aiMode, "@act") {
+				prompts = append(prompts, SystemPrompt_Act)
+			}
+		}
+	}
+
+finalize:
+	// Los modelos Lite (Gemini Flash, GPT-4o-mini) en el Bridge se confunden con el Strict AddOn.
+	// Solo lo usaremos para modelos locales conocidos por ser difíciles.
 	needsStrictToolAddOn, _ := regexp.MatchString(`(?i)\b(mistral|o?llama|qwen|mixtral|yi|phi|deepseek)\b`, modelLower)
 	if needsStrictToolAddOn && !useNoToolsPrompt {
 		prompts = append(prompts, SystemPromptText_StrictToolAddOn)
@@ -94,20 +114,20 @@ func isLocalEndpoint(endpoint string) bool {
 	return strings.Contains(endpointLower, "localhost") || strings.Contains(endpointLower, "127.0.0.1")
 }
 
-func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo, aiModeName string) (*uctypes.AIOptsType, error) {
+func getGulinAISettings(premium bool, builderMode bool, rtInfo gulinobj.ObjRTInfo, aiModeName string) (*uctypes.AIOptsType, error) {
 	maxTokens := DefaultMaxTokens
 	if builderMode {
 		maxTokens = BuilderMaxTokens
 	}
-	if rtInfo.WaveAIMaxOutputTokens > 0 {
-		maxTokens = rtInfo.WaveAIMaxOutputTokens
+	if rtInfo.GulinAIMaxOutputTokens > 0 {
+		maxTokens = rtInfo.GulinAIMaxOutputTokens
 	}
 	aiMode, config, err := resolveAIMode(aiModeName, premium)
 	if err != nil {
 		return nil, err
 	}
-	if config.WaveAICloud && !telemetry.IsTelemetryEnabled() {
-		return nil, fmt.Errorf("Wave AI cloud modes require telemetry to be enabled")
+	if config.GulinAICloud && !telemetry.IsTelemetryEnabled() {
+		return nil, fmt.Errorf("Gulin AI cloud modes require telemetry to be enabled")
 	}
 	apiToken := config.APIToken
 	if apiToken == "" && config.APITokenSecretName != "" {
@@ -147,7 +167,8 @@ func getWaveAISettings(premium bool, builderMode bool, rtInfo waveobj.ObjRTInfo,
 		AIMode:        aiMode,
 		Endpoint:      baseUrl,
 		Capabilities:  config.Capabilities,
-		WaveAIPremium: config.WaveAIPremium,
+		GulinAIPremium: config.GulinAIPremium,
+		BridgeProvider: config.BridgeProvider,
 	}
 	if apiToken != "" {
 		opts.APIToken = apiToken
@@ -187,8 +208,8 @@ func updateRateLimit(info *uctypes.RateLimitInfo) {
 	defer rateLimitLock.Unlock()
 	globalRateLimitInfo = info
 	go func() {
-		wps.Broker.Publish(wps.WaveEvent{
-			Event: wps.Event_WaveAIRateLimit,
+		wps.Broker.Publish(wps.GulinEvent{
+			Event: wps.Event_GulinAIRateLimit,
 			Data:  info,
 		})
 	}()
@@ -200,7 +221,7 @@ func GetGlobalRateLimit() *uctypes.RateLimitInfo {
 	return globalRateLimitInfo
 }
 
-func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts, cont *uctypes.WaveContinueResponse) (*uctypes.WaveStopReason, []uctypes.GenAIMessage, error) {
+func runAIChatStep(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.GulinChatOpts, cont *uctypes.GulinContinueResponse) (*uctypes.GulinStopReason, []uctypes.GenAIMessage, error) {
 	if chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && shouldUseChatCompletionsAPI(chatOpts.Config.Model) {
 		return nil, nil, fmt.Errorf("Chat completions API not available (must use newer OpenAI models)")
 	}
@@ -213,6 +234,9 @@ func getUsage(msgs []uctypes.GenAIMessage) uctypes.AIUsage {
 	var rtn uctypes.AIUsage
 	var found bool
 	for _, msg := range msgs {
+		if msg == nil {
+			continue
+		}
 		if usage := msg.GetUsage(); usage != nil {
 			if !found {
 				rtn = *usage
@@ -234,13 +258,13 @@ func GetChatUsage(chat *uctypes.AIChat) uctypes.AIUsage {
 	return usage
 }
 
-func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.WaveChatOpts, toolCallID string, toolUseData uctypes.UIMessageDataToolUse) {
+func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.GulinChatOpts, toolCallID string, toolUseData uctypes.UIMessageDataToolUse) {
 	if err := backend.UpdateToolUseData(chatOpts.ChatId, toolCallID, toolUseData); err != nil {
 		log.Printf("failed to update tool use data in chat: %v\n", err)
 	}
 }
 
-func processToolCallInternal(ctx context.Context, backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
+func processToolCallInternal(ctx context.Context, backend UseChatBackend, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
 	if toolCall.ToolUseData == nil {
 		return uctypes.AIToolResult{
 			ToolName:  toolCall.Name,
@@ -322,11 +346,40 @@ func processToolCallInternal(ctx context.Context, backend UseChatBackend, toolCa
 	return result
 }
 
-func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
+func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
 	inputJSON, _ := json.Marshal(toolCall.Input)
 	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
 
 	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
+	
+	// Interceptar la llamada al experto para el Orquestador
+	if toolCall.Name == "call_expert" {
+		expertID, _ := toolCall.Input.(map[string]any)["expert_id"].(string)
+		task, _ := toolCall.Input.(map[string]any)["task"].(string)
+		log.Printf("ORCHESTRATOR delegando tarea a %s: %s\n", expertID, task)
+		
+		resultText, err := runExpertSubChat(ctx, backend, chatOpts, sseHandler, expertID, task)
+		if err != nil {
+			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+			toolCall.ToolUseData.ErrorMessage = fmt.Sprintf("error delegando al experto %s: %v", expertID, err)
+			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+			updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
+			return uctypes.AIToolResult{
+				ToolUseID: toolCall.ID,
+				ToolName:  toolCall.Name,
+				ErrorText: fmt.Sprintf("error delegando al experto %s: %v", expertID, err),
+			}
+		}
+		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
+		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
+		return uctypes.AIToolResult{
+			ToolUseID: toolCall.ID,
+			ToolName:  toolCall.Name,
+			Text:      resultText,
+		}
+	}
+
 	result := processToolCallInternal(ctx, backend, toolCall, chatOpts, toolDef, sseHandler)
 
 	if result.ErrorText != "" {
@@ -348,7 +401,7 @@ func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctyp
 	return result
 }
 
-func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason *uctypes.WaveStopReason, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
+func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason *uctypes.GulinStopReason, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
 	// Create and send all data-tooluse packets at the beginning
 	for i := range stopReason.ToolCalls {
 		toolCall := &stopReason.ToolCalls[i]
@@ -408,7 +461,7 @@ func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason
 	}
 }
 
-func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.WaveChatOpts) (*uctypes.AIMetrics, error) {
+func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseChatBackend, chatOpts uctypes.GulinChatOpts) (*uctypes.AIMetrics, error) {
 	chatCtx, cancelFn := context.WithCancel(ctx)
 	defer cancelFn()
 
@@ -439,7 +492,21 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		IsLocal:       isLocal,
 	}
 	firstStep := true
-	var cont *uctypes.WaveContinueResponse
+	var cont *uctypes.GulinContinueResponse
+	if strings.Contains(chatOpts.Config.AIMode, "@orchestrate") {
+		// Orchestrator optimization: only provide the delegation tool to the Orchestrator
+		// to maintain precision and keep the prompt focused.
+		var filteredTools []uctypes.ToolDefinition
+		for _, tool := range chatOpts.Tools {
+			if tool.Name == "call_expert" {
+				filteredTools = append(filteredTools, tool)
+			}
+		}
+		if len(filteredTools) > 0 {
+			chatOpts.Tools = filteredTools
+			chatOpts.TabTools = nil
+		}
+	}
 	for {
 		if chatOpts.TabStateGenerator != nil {
 			tabState, tabTools, tabId, tabErr := chatOpts.TabStateGenerator()
@@ -459,7 +526,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		stopReason, rtnMessages, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
 		metrics.RequestCount++
-		if chatOpts.Config.IsWaveProxy() {
+		if chatOpts.Config.IsGulinProxy() {
 			metrics.ProxyReqCount++
 			if chatOpts.Config.IsPremiumModel() {
 				metrics.PremiumReqCount++
@@ -484,8 +551,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		if err != nil {
 			metrics.HadError = true
-			_ = sseHandler.AiMsgError(err.Error())
-			_ = sseHandler.AiMsgFinish("", nil)
+			_ = sseHandler.AiMsgFinish("")
 			break
 		}
 		for _, msg := range rtnMessages {
@@ -498,7 +564,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		firstStep = false
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindPremiumRateLimit && chatOpts.Config.APIType == uctypes.APIType_OpenAIResponses && chatOpts.Config.Model == uctypes.PremiumOpenAIModel {
 			log.Printf("Premium rate limit hit with %s, switching to %s\n", uctypes.PremiumOpenAIModel, uctypes.DefaultOpenAIModel)
-			cont = &uctypes.WaveContinueResponse{
+			cont = &uctypes.GulinContinueResponse{
 				Model:            uctypes.DefaultOpenAIModel,
 				ContinueFromKind: uctypes.StopKindPremiumRateLimit,
 			}
@@ -506,8 +572,14 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
+			log.Printf("RunAIChat: processing %d tool calls...\n", len(stopReason.ToolCalls))
 			processAllToolCalls(ctx, backend, stopReason, chatOpts, sseHandler, metrics)
-			cont = &uctypes.WaveContinueResponse{
+			
+			// SYNC FIX: Ensure the chat store has a moment to flush and that we are continuing from the right state
+			log.Printf("RunAIChat: tool calls processed, continuing to next turn.\n")
+			time.Sleep(100 * time.Millisecond)
+
+			cont = &uctypes.GulinContinueResponse{
 				Model:            chatOpts.Config.Model,
 				ContinueFromKind: uctypes.StopKindToolUse,
 			}
@@ -518,7 +590,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	return metrics, nil
 }
 
-func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolCall uctypes.WaveToolCall, chatOpts uctypes.WaveChatOpts) (result uctypes.AIToolResult) {
+func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
 		ToolUseID: toolCall.ID,
@@ -572,7 +644,7 @@ func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolC
 	return
 }
 
-func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.WaveChatOpts) error {
+func GulinAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, message *uctypes.AIMessage, chatOpts uctypes.GulinChatOpts) error {
 	startTime := time.Now()
 
 	// Convert AIMessage to native chat message using backend
@@ -607,7 +679,7 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 				}
 			}
 		}
-		log.Printf("WaveAI call metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
+		log.Printf("GulinAI call metrics: requests=%d tools=%d premium=%d proxy=%d images=%d pdfs=%d textdocs=%d textlen=%d duration=%dms error=%v\n",
 			metrics.RequestCount, metrics.ToolUseCount, metrics.PremiumReqCount, metrics.ProxyReqCount,
 			metrics.ImageCount, metrics.PDFCount, metrics.TextDocCount, metrics.TextLen, metrics.RequestDuration, metrics.HadError)
 
@@ -617,32 +689,32 @@ func WaveAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, me
 }
 
 func sendAIMetricsTelemetry(ctx context.Context, metrics *uctypes.AIMetrics) {
-	event := telemetrydata.MakeTEvent("waveai:post", telemetrydata.TEventProps{
-		WaveAIAPIType:              metrics.Usage.APIType,
-		WaveAIModel:                metrics.Usage.Model,
-		WaveAIChatId:               metrics.ChatId,
-		WaveAIStepNum:              metrics.StepNum,
-		WaveAIInputTokens:          metrics.Usage.InputTokens,
-		WaveAIOutputTokens:         metrics.Usage.OutputTokens,
-		WaveAINativeWebSearchCount: metrics.Usage.NativeWebSearchCount,
-		WaveAIRequestCount:         metrics.RequestCount,
-		WaveAIToolUseCount:         metrics.ToolUseCount,
-		WaveAIToolUseErrorCount:    metrics.ToolUseErrorCount,
-		WaveAIToolDetail:           metrics.ToolDetail,
-		WaveAIPremiumReq:           metrics.PremiumReqCount,
-		WaveAIProxyReq:             metrics.ProxyReqCount,
-		WaveAIHadError:             metrics.HadError,
-		WaveAIImageCount:           metrics.ImageCount,
-		WaveAIPDFCount:             metrics.PDFCount,
-		WaveAITextDocCount:         metrics.TextDocCount,
-		WaveAITextLen:              metrics.TextLen,
-		WaveAIFirstByteMs:          metrics.FirstByteLatency,
-		WaveAIRequestDurMs:         metrics.RequestDuration,
-		WaveAIWidgetAccess:         metrics.WidgetAccess,
-		WaveAIThinkingLevel:        metrics.ThinkingLevel,
-		WaveAIMode:                 metrics.AIMode,
-		WaveAIProvider:             metrics.AIProvider,
-		WaveAIIsLocal:              metrics.IsLocal,
+	event := telemetrydata.MakeTEvent("gulinai:post", telemetrydata.TEventProps{
+		GulinAIAPIType:              metrics.Usage.APIType,
+		GulinAIModel:                metrics.Usage.Model,
+		GulinAIChatId:               metrics.ChatId,
+		GulinAIStepNum:              metrics.StepNum,
+		GulinAIInputTokens:          metrics.Usage.InputTokens,
+		GulinAIOutputTokens:         metrics.Usage.OutputTokens,
+		GulinAINativeWebSearchCount: metrics.Usage.NativeWebSearchCount,
+		GulinAIRequestCount:         metrics.RequestCount,
+		GulinAIToolUseCount:         metrics.ToolUseCount,
+		GulinAIToolUseErrorCount:    metrics.ToolUseErrorCount,
+		GulinAIToolDetail:           metrics.ToolDetail,
+		GulinAIPremiumReq:           metrics.PremiumReqCount,
+		GulinAIProxyReq:             metrics.ProxyReqCount,
+		GulinAIHadError:             metrics.HadError,
+		GulinAIImageCount:           metrics.ImageCount,
+		GulinAIPDFCount:             metrics.PDFCount,
+		GulinAITextDocCount:         metrics.TextDocCount,
+		GulinAITextLen:              metrics.TextLen,
+		GulinAIFirstByteMs:          metrics.FirstByteLatency,
+		GulinAIRequestDurMs:         metrics.RequestDuration,
+		GulinAIWidgetAccess:         metrics.WidgetAccess,
+		GulinAIThinkingLevel:        metrics.ThinkingLevel,
+		GulinAIMode:                 metrics.AIMode,
+		GulinAIProvider:             metrics.AIProvider,
+		GulinAIIsLocal:              metrics.IsLocal,
 	})
 	_ = telemetry.RecordTEvent(ctx, event)
 }
@@ -665,7 +737,7 @@ type BrainSummary struct {
 	Snippet    string `json:"snippet"`
 }
 
-func WaveAIBrainListHandler(w http.ResponseWriter, r *http.Request) {
+func GulinAIBrainListHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -707,7 +779,7 @@ func WaveAIBrainListHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(summaries)
 }
 
-func WaveAIDBSchemaHandler(w http.ResponseWriter, r *http.Request) {
+func GulinAIDBSchemaHandler(w http.ResponseWriter, r *http.Request) {
 	connName := r.URL.Query().Get("connection")
 	if connName == "" {
 		http.Error(w, "connection parameter is required", http.StatusBadRequest)
@@ -759,7 +831,7 @@ func WaveAIDBSchemaHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tables)
 }
 
-func WaveAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
+func GulinAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
 	connName := r.URL.Query().Get("connection")
 	sqlStr := r.URL.Query().Get("sql")
 	tabId := r.URL.Query().Get("tabid")
@@ -834,7 +906,7 @@ func WaveAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
 	dataJson, _ := json.Marshal(results)
 	_, err = wshclient.CreateBlockCommand(rpcClient, wshrpc.CommandCreateBlockData{
 		TabId: tabId,
-		BlockDef: &waveobj.BlockDef{
+		BlockDef: &gulinobj.BlockDef{
 			Meta: map[string]any{
 				"view":          "db-explorer",
 				"db:title":      fmt.Sprintf("Table: %s", connName),
@@ -852,7 +924,7 @@ func WaveAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func WaveAIDBListHandler(w http.ResponseWriter, r *http.Request) {
+func GulinAIDBListHandler(w http.ResponseWriter, r *http.Request) {
 	val, exists, _ := secretstore.GetSecret(DBConnectionsSecretKey)
 	if !exists {
 		w.Header().Set("Content-Type", "application/json")
@@ -873,7 +945,7 @@ func WaveAIDBListHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
-func WaveAIGetChatListHandler(w http.ResponseWriter, r *http.Request) {
+func GulinAIGetChatListHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow GET method
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -890,7 +962,7 @@ func WaveAIGetChatListHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(summaries)
 }
 
-func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
+func GulinAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow POST method
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -915,33 +987,33 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get RTInfo from TabId or BuilderId
-	var rtInfo *waveobj.ObjRTInfo
+	var rtInfo *gulinobj.ObjRTInfo
 	if req.TabId != "" {
-		oref := waveobj.MakeORef(waveobj.OType_Tab, req.TabId)
+		oref := gulinobj.MakeORef(gulinobj.OType_Tab, req.TabId)
 		rtInfo = wstore.GetRTInfo(oref)
 	} else if req.BuilderId != "" {
-		oref := waveobj.MakeORef(waveobj.OType_Builder, req.BuilderId)
+		oref := gulinobj.MakeORef(gulinobj.OType_Builder, req.BuilderId)
 		rtInfo = wstore.GetRTInfo(oref)
 	}
 	if rtInfo == nil {
-		rtInfo = &waveobj.ObjRTInfo{}
+		rtInfo = &gulinobj.ObjRTInfo{}
 	}
 
-	// Get WaveAI settings
+	// Get GulinAI settings
 	premium := shouldUsePremium()
 	builderMode := req.BuilderId != ""
 	if req.AIMode == "" {
 		http.Error(w, "aimode is required in request body", http.StatusBadRequest)
 		return
 	}
-	aiOpts, err := getWaveAISettings(premium, builderMode, *rtInfo, req.AIMode)
+	aiOpts, err := getGulinAISettings(premium, builderMode, *rtInfo, req.AIMode)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("WaveAI configuration error: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("GulinAI configuration error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Call the core WaveAIPostMessage function
-	chatOpts := uctypes.WaveChatOpts{
+	// Call the core GulinAIPostMessage function
+	chatOpts := uctypes.GulinChatOpts{
 		ChatId:               req.ChatID,
 		ClientId:             wstore.GetClientId(),
 		Config:               *aiOpts,
@@ -1039,14 +1111,15 @@ func WaveAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Normal post
-		if err := WaveAIPostMessageWrap(r.Context(), sseHandler, &req.Msg, chatOpts); err != nil {
+		if err := GulinAIPostMessageWrap(r.Context(), sseHandler, &req.Msg, chatOpts); err != nil {
+			log.Printf("GulinAIPostMessageWrap failed with error: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to post message: %v", err), http.StatusInternalServerError)
 			return
 		}
 	}
 }
 
-func RunAIChatWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.WaveChatOpts) error {
+func RunAIChatWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.GulinChatOpts) error {
 	backend, err := GetBackendByAPIType(chatOpts.Config.APIType)
 	if err != nil {
 		return err
@@ -1058,7 +1131,7 @@ func RunAIChatWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts u
 	return err
 }
 
-func WaveAIGetChatHandler(w http.ResponseWriter, r *http.Request) {
+func GulinAIGetChatHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow GET method
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1149,7 +1222,7 @@ func CreateWriteTextFileDiff(ctx context.Context, chatId string, toolCallId stri
 			return nil, nil, fmt.Errorf("failed to read backup file: %w", err)
 		}
 	} else {
-		expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+		expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to expand path: %w", err)
 		}
@@ -1172,13 +1245,13 @@ type StaticFileInfo struct {
 
 func generateBuilderAppData(appId string) (string, string, string, error) {
 	appGoFile := ""
-	fileData, err := waveappstore.ReadAppFile(appId, "app.go")
+	fileData, err := gulinappstore.ReadAppFile(appId, "app.go")
 	if err == nil {
 		appGoFile = string(fileData.Contents)
 	}
 
 	staticFilesJSON := ""
-	allFiles, err := waveappstore.ListAllAppFiles(appId)
+	allFiles, err := gulinappstore.ListAllAppFiles(appId)
 	if err == nil {
 		var staticFiles []StaticFileInfo
 		for _, entry := range allFiles.Entries {
@@ -1200,7 +1273,7 @@ func generateBuilderAppData(appId string) (string, string, string, error) {
 		}
 	}
 
-	platformInfo := wavebase.GetSystemSummary()
+	platformInfo := gulinbase.GetSystemSummary()
 	if currentUser, userErr := user.Current(); userErr == nil && currentUser.Username != "" {
 		platformInfo = fmt.Sprintf("Local Machine: %s, User: %s", platformInfo, currentUser.Username)
 	} else {
@@ -1208,4 +1281,145 @@ func generateBuilderAppData(appId string) (string, string, string, error) {
 	}
 
 	return appGoFile, staticFilesJSON, platformInfo, nil
+}
+
+func runExpertSubChat(ctx context.Context, backend UseChatBackend, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, expertID string, task string) (string, error) {
+	expert, ok := Experts[AgentExpertType(expertID)]
+	if !ok {
+		return "", fmt.Errorf("experto desconocido: %s", expertID)
+	}
+
+	// 1. Configurar el contexto del experto usando un SubChatId efímero para aislamiento total
+	expertSubChatId := "expert-" + uuid.New().String()
+	expertOpts := chatOpts
+	expertOpts.ChatId = expertSubChatId
+	expertOpts.Config.AIMode = string(expert.ID)
+	// Forzamos el uso del modelo más eficiente y barato para el experto (mini)
+	expertOpts.Config.Model = "gpt-4o-mini"
+	if expert.DefaultModel != "" {
+		expertOpts.Config.Model = expert.DefaultModel
+	}
+
+	// 2. Obtener herramientas filtradas para el experto y su prompt específico
+	tabState, tabTools, err := GenerateTabStateAndTools(ctx, chatOpts.TabId, chatOpts.WidgetAccess, &expertOpts)
+	if err != nil {
+		return "", fmt.Errorf("error generando herramientas para experto: %v", err)
+	}
+	expertOpts.TabTools = tabTools
+	expertOpts.TabState = tabState
+	expertOpts.SystemPrompt = getSystemPrompt(expertOpts.Config.APIType, expertOpts.Config.Model, false, true, chatOpts.WidgetAccess, expertOpts.Config.AIMode)
+
+	// 3. Crear y guardar el mensaje para el experto en la base aislada
+	expertTaskMsg := fmt.Sprintf("TAREA ESPECÍFICA (REGLA CRÍTICA: NO EMULAR RESULTADOS, OBTIENELOS USANDO TUS HERRAMIENTAS): %s\n\nResponde solo con el resultado técnico final.", task)
+	aiMessage := uctypes.AIMessage{
+		MessageId: uuid.New().String(),
+		Role:      "user",
+		Parts: []uctypes.AIMessagePart{
+			{
+				Type: uctypes.AIMessagePartTypeText,
+				Text: expertTaskMsg,
+			},
+		},
+	}
+	nativeMsg, err := backend.ConvertAIMessageToNativeChatMessage(aiMessage)
+	if err != nil {
+		return "", fmt.Errorf("error convirtiendo mensaje de experto: %v", err)
+	}
+	if err := chatstore.DefaultChatStore.PostMessage(expertOpts.ChatId, &expertOpts.Config, nativeMsg); err != nil {
+		return "", fmt.Errorf("falló al guardar mensaje del experto: %v", err)
+	}
+
+	// 4. Bucle de Ejecución del Experto (Tool Execution Loop)
+	log.Printf("[MAS] Delegando a %s (Modelo: %s, SubChat: %s) la tarea: %s\n", expert.ID, expertOpts.Config.Model, expertSubChatId, task)
+
+	_ = sseHandler.AiMsgData("data-expert-status", expertID, map[string]string{
+		"status": "running",
+		"task":   task,
+	})
+
+	// Informar al usuario en el chat principal mediante un bloque de pensamiento (Reasoning)
+	reasoningID := "expert-reasoning-" + uuid.New().String()[:8]
+	_ = sseHandler.AiMsgReasoningStart(reasoningID)
+	_ = sseHandler.AiMsgReasoningDelta(reasoningID, fmt.Sprintf("Delegando a %s...\n", expert.Name))
+
+	metrics := &uctypes.AIMetrics{
+		ChatId:  expertSubChatId,
+		AIMode:  expertOpts.Config.AIMode,
+		Usage: uctypes.AIUsage{
+			APIType: expertOpts.Config.APIType,
+			Model:   expertOpts.Config.Model,
+		},
+	}
+
+	var resultText string
+	var cont *uctypes.GulinContinueResponse
+
+	for {
+		stopReason, nativeMsgs, rateLimitInfo, err := backend.RunChatStep(ctx, sseHandler, expertOpts, cont)
+		updateRateLimit(rateLimitInfo)
+		metrics.RequestCount++
+		
+		if len(nativeMsgs) > 0 {
+			usage := getUsage(nativeMsgs)
+			metrics.Usage.InputTokens += usage.InputTokens
+			metrics.Usage.OutputTokens += usage.OutputTokens
+			metrics.Usage.NativeWebSearchCount += usage.NativeWebSearchCount
+		}
+
+		if err != nil {
+			resultText = fmt.Sprintf("Error en experto: %v", err)
+			break
+		}
+
+		// Enviar mensajes resultantes al sub-chat log y retransmitir pensamientos al chat principal
+		for _, msg := range nativeMsgs {
+			if msg != nil {
+				if err := chatstore.DefaultChatStore.PostMessage(expertOpts.ChatId, &expertOpts.Config, msg); err != nil {
+					log.Printf("Error guardando respuesta del experto: %v\n", err)
+				}
+				content := msg.GetContent()
+				if content != "" {
+					log.Printf("[PENSAMIENTO DE %s]: %s\n", expert.Name, content)
+					// Retransmitir al bloque de razonamiento en la UI
+					_ = sseHandler.AiMsgReasoningDelta(reasoningID, content+"\n")
+				}
+			}
+		}
+
+		// Si el experto decidió usar herramientas, procesarlas iterativamente
+		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
+			_ = sseHandler.AiMsgData("data-expert-status", expertID, map[string]string{
+				"status": "tool_use",
+			})
+			metrics.ToolUseCount += len(stopReason.ToolCalls)
+			processAllToolCalls(ctx, backend, stopReason, expertOpts, sseHandler, metrics)
+			cont = &uctypes.GulinContinueResponse{
+				Model:            expertOpts.Config.Model,
+				ContinueFromKind: uctypes.StopKindToolUse,
+			}
+			continue
+		}
+
+		// Si el flujo terminó limpiamente o por otro motivo final
+		if len(nativeMsgs) > 0 {
+			resultText = nativeMsgs[0].GetContent()
+		} else if stopReason != nil && stopReason.Kind != uctypes.StopKindDone {
+			resultText = fmt.Sprintf("Experto se detuvo con motivo: %s", stopReason.Kind)
+		} else {
+			resultText = "Experto completó la tarea sin respuesta textual."
+		}
+		break
+	}
+
+	// Cerrar el bloque de pensamiento en la UI
+	_ = sseHandler.AiMsgReasoningEnd(reasoningID)
+
+	// Notificar conclusión y reportar la telemetría del experto
+	_ = sseHandler.AiMsgData("data-expert-status", expertID, map[string]string{
+		"status": "completed",
+	})
+	
+	sendAIMetricsTelemetry(ctx, metrics)
+
+	return resultText, nil
 }

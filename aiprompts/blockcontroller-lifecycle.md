@@ -46,7 +46,7 @@ The [`TermViewModel`](frontend/app/view/term/term-model.ts:44) manages the front
 **Event Subscription:**
 The constructor subscribes to controller status events (line 317-324):
 ```typescript
-this.shellProcStatusUnsubFn = waveEventSubscribe({
+this.shellProcStatusUnsubFn = gulinEventSubscribe({
     eventType: "controllerstatus",
     scope: WOS.makeORef("block", blockId),
     handler: (event) => {
@@ -86,7 +86,7 @@ The [`ResyncController()`](pkg/blockcontroller/blockcontroller.go:120) function:
 
 ```go
 func ResyncController(ctx context.Context, tabId, blockId string, 
-                      rtOpts *waveobj.RuntimeOpts, force bool) error
+                      rtOpts *gulinobj.RuntimeOpts, force bool) error
 ```
 
 **Steps:**
@@ -107,7 +107,7 @@ func ResyncController(ctx context.Context, tabId, blockId string,
 ```go
 if existingController != nil {
     existingController.Stop(false, Status_Done)
-    wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, blockId))
+    wstore.DeleteRTInfo(gulinobj.MakeORef(gulinobj.OType_Block, blockId))
 }
 ```
 
@@ -161,7 +161,7 @@ The UI reacts to status changes through Jotai atoms:
 ```typescript
 const shellProcStatus = globalStore.get(this.shellProcStatus);
 if ((shellProcStatus == "done" || shellProcStatus == "init") && 
-    keyutil.checkKeyPressed(waveEvent, "Enter")) {
+    keyutil.checkKeyPressed(gulinEvent, "Enter")) {
     this.forceRestartController();
     return false;
 }

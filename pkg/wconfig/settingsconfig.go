@@ -172,6 +172,12 @@ type SettingsType struct {
 	TsunamiSdkReplacePath string `json:"tsunami:sdkreplacepath,omitempty"`
 	TsunamiSdkVersion     string `json:"tsunami:sdkversion,omitempty"`
 	TsunamiGoPath         string `json:"tsunami:gopath,omitempty"`
+
+	GulinBridgeEnabled            bool   `json:"gulinbridge:enabled,omitempty"`
+	GulinBridgeURL                string `json:"gulinbridge:url,omitempty"`
+	GulinBridgeEmail              string `json:"gulinbridge:email,omitempty"`
+	GulinBridgePasswordSecretName string `json:"gulinbridge:passwordsecretname,omitempty"`
+	GulinBridgeTokenSecretName    string `json:"gulinbridge:tokensecretname,omitempty"`
 }
 
 func (s *SettingsType) GetAiSettings() *AiSettingsType {
@@ -294,6 +300,7 @@ type AIModeConfigType struct {
 	SwitchCompat       []string `json:"ai:switchcompat,omitempty"`
 	GulinAICloud        bool     `json:"gulinai:cloud,omitempty"`
 	GulinAIPremium      bool     `json:"gulinai:premium,omitempty"`
+	BridgeProvider      string   `json:"ai:bridge-provider,omitempty"`
 }
 
 type AIModeConfigUpdate struct {

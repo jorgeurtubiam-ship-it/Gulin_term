@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/wcore"
+	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
 // ExtractXmlAttribute extracts an attribute value from an XML-like tag.
@@ -217,7 +217,7 @@ func GeminiSupportsImageToolResults(model string) bool {
 }
 
 // CreateToolUseData creates a UIMessageDataToolUse from tool call information
-func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts uctypes.WaveChatOpts) uctypes.UIMessageDataToolUse {
+func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts uctypes.GulinChatOpts) uctypes.UIMessageDataToolUse {
 	toolUseData := uctypes.UIMessageDataToolUse{
 		ToolCallId: toolCallID,
 		ToolName:   toolName,
@@ -245,6 +245,11 @@ func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts u
 	if toolDef.ToolApproval != nil {
 		toolUseData.Approval = toolDef.ToolApproval(parsedArgs, chatOpts)
 	}
+	
+	// Si estamos en modo @act, forzar la auto-aprobación de todas las herramientas
+	if strings.HasSuffix(chatOpts.Config.AIMode, "@act") {
+		toolUseData.Approval = uctypes.ApprovalAutoApproved
+	}
 
 	if chatOpts.TabId != "" {
 		if argsMap, ok := parsedArgs.(map[string]any); ok {
@@ -263,7 +268,7 @@ func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts u
 }
 
 // SendToolProgress sends tool progress updates via SSE if the tool has a progress descriptor
-func SendToolProgress(toolCallID, toolName string, jsonData []byte, chatOpts uctypes.WaveChatOpts, sseHandler *sse.SSEHandlerCh, usePartialParse bool) {
+func SendToolProgress(toolCallID, toolName string, jsonData []byte, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, usePartialParse bool) {
 	toolDef := chatOpts.GetToolDefinition(toolName)
 	if toolDef == nil || toolDef.ToolProgressDesc == nil {
 		return

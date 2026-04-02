@@ -8,15 +8,15 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/remote"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/remote"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var connCmd = &cobra.Command{
 	Use:   "conn",
-	Short: "manage Wave Terminal connections",
-	Long:  "Commands to manage Wave Terminal SSH and WSL connections",
+	Short: "manage Gulin Terminal connections",
+	Long:  "Commands to manage Gulin Terminal SSH and WSL connections",
 }
 
 var connStatusCmd = &cobra.Command{

@@ -5,7 +5,7 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import type { TabModel } from "@/app/store/tab-model";
 import { getBlockMetaKeyAtom, globalStore, WOS } from "@/app/store/global";
 import { makeORef } from "@/app/store/wos";
-import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { gulinEventSubscribeSingle } from "@/app/store/wps";
 import { RpcResponseHelper, WshClient } from "@/app/store/wshclient";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { makeFeBlockRouteId } from "@/app/store/wshrouter";
@@ -18,7 +18,7 @@ import { PLATFORM, PlatformMacOS } from "@/util/platformutil";
 import debug from "debug";
 import * as jotai from "jotai";
 
-const dlog = debug("wave:vdom");
+const dlog = debug("gulin:vdom");
 
 type AtomContainer = {
     val: any;
@@ -37,8 +37,8 @@ function makeVDomIdMap(vdom: VDomElem, idMap: Map<string, VDomElem>) {
     if (vdom == null) {
         return;
     }
-    if (vdom.waveid != null) {
-        idMap.set(vdom.waveid, vdom);
+    if (vdom.gulinid != null) {
+        idMap.set(vdom.gulinid, vdom);
     }
     if (vdom.children == null) {
         return;
@@ -84,8 +84,8 @@ function annotateEvent(event: VDomEvent, propName: string, reactEvent: React.Syn
         }
     }
     if (propName == "onKeyDown") {
-        const waveKeyEvent = adaptFromReactOrNativeKeyEvent(reactEvent as React.KeyboardEvent);
-        event.keydata = waveKeyEvent;
+        const gulinKeyEvent = adaptFromReactOrNativeKeyEvent(reactEvent as React.KeyboardEvent);
+        event.keydata = gulinKeyEvent;
     }
 }
 
@@ -148,9 +148,9 @@ export class VDomModel {
         this.contextActive = jotai.atom(false);
         this.reset();
         this.viewIcon = jotai.atom("bolt");
-        this.viewName = jotai.atom("Wave App");
+        this.viewName = jotai.atom("Gulin App");
         this.backendRoute = jotai.atom((get) => {
-            const blockData = get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
+            const blockData = get(WOS.getGulinObjectAtom<Block>(makeORef("block", this.blockId)));
             return blockData?.meta?.["vdom:route"];
         });
         this.noPadding = jotai.atom(true);
@@ -161,7 +161,7 @@ export class VDomModel {
         if (curBackendRoute) {
             this.queueUpdate(true);
         }
-        this.routeGoneUnsub = waveEventSubscribeSingle({
+        this.routeGoneUnsub = gulinEventSubscribeSingle({
             eventType: "route:down",
             scope: curBackendRoute,
             handler: (_event) => {
@@ -223,7 +223,7 @@ export class VDomModel {
     }
 
     getBackendRoute(): string {
-        const blockData = globalStore.get(WOS.getWaveObjectAtom<Block>(makeORef("block", this.blockId)));
+        const blockData = globalStore.get(WOS.getGulinObjectAtom<Block>(makeORef("block", this.blockId)));
         return blockData?.meta?.["vdom:route"];
     }
 
@@ -254,7 +254,7 @@ export class VDomModel {
         return fullUrl;
     }
 
-    keyDownHandler(e: WaveKeyboardEvent): boolean {
+    keyDownHandler(e: GulinKeyboardEvent): boolean {
         if (this.backendOpts?.closeonctrlc && checkKeyPressed(e, "Ctrl:c")) {
             this.shouldDispose = true;
             this.queueUpdate(true);
@@ -266,7 +266,7 @@ export class VDomModel {
             }
             this.batchedEvents.push({
                 globaleventtype: "onKeyDown",
-                waveid: null,
+                gulinid: null,
                 eventtype: "onKeyDown",
                 keydata: e,
             });
@@ -435,17 +435,17 @@ export class VDomModel {
         return container;
     }
 
-    tagUseAtoms(waveId: string, atomNames: Set<string>) {
+    tagUseAtoms(gulinId: string, atomNames: Set<string>) {
         for (let atomName of atomNames) {
             let container = this.getAtomContainer(atomName);
-            container.usedBy.add(waveId);
+            container.usedBy.add(gulinId);
         }
     }
 
-    tagUnuseAtoms(waveId: string, atomNames: Set<string>) {
+    tagUnuseAtoms(gulinId: string, atomNames: Set<string>) {
         for (let atomName of atomNames) {
             let container = this.getAtomContainer(atomName);
-            container.usedBy.delete(waveId);
+            container.usedBy.delete(gulinId);
         }
     }
 
@@ -483,9 +483,9 @@ export class VDomModel {
                 continue;
             }
             if (renderUpdate.updatetype == "append") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (parent.children == null) {
@@ -496,9 +496,9 @@ export class VDomModel {
                 continue;
             }
             if (renderUpdate.updatetype == "replace") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (renderUpdate.index < 0 || parent.children == null || parent.children.length <= renderUpdate.index) {
@@ -510,9 +510,9 @@ export class VDomModel {
                 continue;
             }
             if (renderUpdate.updatetype == "remove") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (renderUpdate.index < 0 || parent.children == null || parent.children.length <= renderUpdate.index) {
@@ -524,9 +524,9 @@ export class VDomModel {
                 continue;
             }
             if (renderUpdate.updatetype == "insert") {
-                let parent = idMap.get(renderUpdate.waveid);
+                let parent = idMap.get(renderUpdate.gulinid);
                 if (parent == null) {
-                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.waveid} (for renderupdates)`);
+                    this.addErrorMessage(`Could not find vdom with id ${renderUpdate.gulinid} (for renderupdates)`);
                     continue;
                 }
                 if (parent.children == null) {
@@ -642,7 +642,7 @@ export class VDomModel {
 
     callVDomFunc(fnDecl: VDomFunc, e: React.SyntheticEvent, compId: string, propName: string) {
         const vdomEvent: VDomEvent = {
-            waveid: compId,
+            gulinid: compId,
             eventtype: propName,
         };
         if (fnDecl.globalevent) {
@@ -655,7 +655,7 @@ export class VDomModel {
 
     createFeUpdate(): VDomFrontendUpdate {
         const blockORef = makeORef("block", this.blockId);
-        const blockAtom = WOS.getWaveObjectAtom<Block>(blockORef);
+        const blockAtom = WOS.getGulinObjectAtom<Block>(blockORef);
         const blockData = globalStore.get(blockAtom);
         const isBlockFocused = globalStore.get(this.nodeModel.isFocused);
         const renderContext: VDomRenderContext = {

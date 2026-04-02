@@ -34,7 +34,7 @@ export class AiFileDiffViewModel implements ViewModel {
         this.blockId = blockId;
         this.nodeModel = nodeModel;
         this.tabModel = tabModel;
-        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.blockAtom = WOS.getGulinObjectAtom<Block>(`block:${blockId}`);
         this.diffDataAtom = jotai.atom(null) as jotai.PrimitiveAtom<DiffData | null>;
         this.errorAtom = jotai.atom(null) as jotai.PrimitiveAtom<string | null>;
         this.loadingAtom = jotai.atom<boolean>(true);
@@ -76,7 +76,7 @@ function AiFileDiffView({ blockId, model }: ViewComponentProps<AiFileDiffViewMod
             }
 
             try {
-                const result = await RpcApi.WaveAIGetToolDiffCommand(TabRpcClient, {
+                const result = await RpcApi.GulinAIGetToolDiffCommand(TabRpcClient, {
                     chatid: chatId,
                     toolcallid: toolCallId,
                 });

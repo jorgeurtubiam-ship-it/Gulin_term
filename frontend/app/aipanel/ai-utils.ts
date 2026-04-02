@@ -3,9 +3,9 @@
 
 import { sortByDisplayOrder } from "@/util/util";
 
-const TextFileLimit = 200 * 1024; // 200KB
-const PdfLimit = 5 * 1024 * 1024; // 5MB
-const ImageLimit = 10 * 1024 * 1024; // 10MB
+const TextFileLimit = 100 * 1024 * 1024; // 100MB
+const PdfLimit = 100 * 1024 * 1024; // 100MB
+const ImageLimit = 100 * 1024 * 1024; // 100MB
 const ImagePreviewSize = 128;
 const ImagePreviewWebPQuality = 0.8;
 const ImageMaxEdge = 4096;
@@ -534,14 +534,38 @@ export const createImagePreview = async (file: File): Promise<string | null> => 
 
 
 /**
- * Filter and organize AI mode configs into Wave and custom provider groups
+ * Filter and organize AI mode configs into Gulin and custom provider groups
  * Returns organized configs that should be displayed based on settings and premium status
  */
 export interface FilteredAIModeConfigs {
-    waveProviderConfigs: Array<{ mode: string } & AIModeConfigType>;
+    gulinProviderConfigs: Array<{ mode: string } & AIModeConfigType>;
     otherProviderConfigs: Array<{ mode: string } & AIModeConfigType>;
     shouldShowCloudModes: boolean;
 }
+
+export const sortByProviderAndPrice = (a: any, b: any): number => {
+    const providerA = (a["ai:provider"] || "").toLowerCase();
+    const providerB = (b["ai:provider"] || "").toLowerCase();
+    if (providerA !== providerB) {
+        return providerA.localeCompare(providerB);
+    }
+
+    const nameA = (a["ai:model"] || "").toLowerCase();
+    const nameB = (b["ai:model"] || "").toLowerCase();
+
+    const isCheap = (name: string) => {
+        return name.includes("haiku") || name.includes("mini") || name.includes("flash") || name.includes("small");
+    };
+
+    const cheapA = isCheap(nameA);
+    const cheapB = isCheap(nameB);
+
+    if (cheapA !== cheapB) {
+        return cheapA ? -1 : 1;
+    }
+
+    return nameA.localeCompare(nameB);
+};
 
 export const getFilteredAIModeConfigs = (
     aiModeConfigs: Record<string, AIModeConfigType>,
@@ -554,20 +578,20 @@ export const getFilteredAIModeConfigs = (
 
     const allConfigs = Object.entries(aiModeConfigs)
         .map(([mode, config]) => ({ mode, ...config }))
-        .filter((config) => !(hideQuick && config.mode === "waveai@quick"));
+        .filter((config) => !(hideQuick && config.mode === "gulinai@quick"));
 
     const otherProviderConfigs = allConfigs
-        .filter((config) => config["ai:provider"] !== "wave")
-        .sort(sortByDisplayOrder);
+        .filter((config) => config["ai:provider"] !== "gulin")
+        .sort(sortByProviderAndPrice);
 
     const hasCustomModels = otherProviderConfigs.length > 0;
-    const isCurrentModeCloud = currentMode?.startsWith("waveai@") ?? false;
+    const isCurrentModeCloud = currentMode?.startsWith("gulinai@") ?? false;
     const shouldShowCloudModes = showCloudModes || !hasCustomModels || isCurrentModeCloud;
 
-    const waveProviderConfigs = [];
+    const gulinProviderConfigs = [];
 
     return {
-        waveProviderConfigs,
+        gulinProviderConfigs,
         otherProviderConfigs,
         shouldShowCloudModes,
     };

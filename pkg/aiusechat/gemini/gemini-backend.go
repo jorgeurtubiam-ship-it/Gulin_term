@@ -17,12 +17,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/gulindev/gulin/pkg/aiusechat/aiutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/chatstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
 // ensureAltSse ensures the ?alt=sse query parameter is set on the endpoint
@@ -54,8 +54,37 @@ func appendPartToLastUserMessage(contents []GeminiContent, text string) {
 	}
 }
 
+func truncateGeminiLargeMessages(contents []GeminiContent, isBridgeReq bool) {
+	if !isBridgeReq {
+		return
+	}
+	const MaxMessageLength = 15000
+	for i := range contents {
+		content := &contents[i]
+		for j := range content.Parts {
+			part := &content.Parts[j]
+			if len(part.Text) > MaxMessageLength {
+				truncMsg := fmt.Sprintf("\n\n... [TRUNCATED: The user/tool output was %d bytes, which exceeds the context limit for Gulin Bridge. Only showing the first %d bytes. If this is a tool result, you MUST adjust your command to output less data (e.g., use 'head', 'grep', or aggregate first).]", len(part.Text), MaxMessageLength)
+				part.Text = part.Text[:MaxMessageLength] + truncMsg
+			}
+			if part.FunctionResponse != nil && part.FunctionResponse.Response != nil {
+				// Convert to JSON to check length
+				bytes, err := json.Marshal(part.FunctionResponse.Response)
+				if err == nil && len(bytes) > MaxMessageLength {
+					truncMsg := fmt.Sprintf("\n\n... [TRUNCATED: The tool output was %d bytes, exceeding context limits. Only showing %d bytes. Adjust your tool call to return less data.]", len(bytes), MaxMessageLength)
+					
+					// Re-encode a truncated version
+					part.FunctionResponse.Response = map[string]interface{}{
+						"truncated_output": string(bytes[:MaxMessageLength]) + truncMsg,
+					}
+				}
+			}
+		}
+	}
+}
+
 // buildGeminiHTTPRequest creates an HTTP request for the Gemini API
-func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatOpts uctypes.WaveChatOpts) (*http.Request, error) {
+func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatOpts uctypes.GulinChatOpts) (*http.Request, error) {
 	opts := chatOpts.Config
 
 	if opts.Model == "" {
@@ -139,11 +168,7 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	if chatOpts.AppStaticFiles != "" {
 		appendPartToLastUserMessage(reqBody.Contents, "<CurrentAppStaticFiles>\n"+chatOpts.AppStaticFiles+"\n</CurrentAppStaticFiles>")
 	}
-	if chatOpts.AppGoFile != "" {
-		appendPartToLastUserMessage(reqBody.Contents, "<CurrentAppGoFile>\n"+chatOpts.AppGoFile+"\n</CurrentAppGoFile>")
-	}
-
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		var toolNames []string
 		for _, tool := range allTools {
 			toolNames = append(toolNames, tool.Name)
@@ -180,9 +205,9 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 func RunGeminiChatStep(
 	ctx context.Context,
 	sseHandler *sse.SSEHandlerCh,
-	chatOpts uctypes.WaveChatOpts,
-	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, *GeminiChatMessage, *uctypes.RateLimitInfo, error) {
+	chatOpts uctypes.GulinChatOpts,
+	cont *uctypes.GulinContinueResponse,
+) (*uctypes.GulinStopReason, *GeminiChatMessage, *uctypes.RateLimitInfo, error) {
 	if sseHandler == nil {
 		return nil, nil, nil, errors.New("sse handler is nil")
 	}
@@ -283,9 +308,9 @@ func processGeminiStream(
 	ctx context.Context,
 	body io.Reader,
 	sseHandler *sse.SSEHandlerCh,
-	chatOpts uctypes.WaveChatOpts,
-	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, *GeminiChatMessage, error) {
+	chatOpts uctypes.GulinChatOpts,
+	cont *uctypes.GulinContinueResponse,
+) (*uctypes.GulinStopReason, *GeminiChatMessage, error) {
 	msgID := uuid.New().String()
 	textID := uuid.New().String()
 	textStarted := false
@@ -305,7 +330,7 @@ func processGeminiStream(
 	for {
 		if err := ctx.Err(); err != nil {
 			_ = sseHandler.AiMsgError("request cancelled")
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      uctypes.StopKindCanceled,
 				ErrorType: "cancelled",
 				ErrorText: "request cancelled",
@@ -319,14 +344,14 @@ func processGeminiStream(
 			}
 			if sseHandler.Err() != nil {
 				partialMsg := extractPartialGeminiMessage(msgID, textBuilder.String())
-				return &uctypes.WaveStopReason{
+				return &uctypes.GulinStopReason{
 					Kind:      uctypes.StopKindCanceled,
 					ErrorType: "client_disconnect",
 					ErrorText: "client disconnected",
 				}, partialMsg, nil
 			}
 			_ = sseHandler.AiMsgError(fmt.Sprintf("stream decode error: %v", err))
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      uctypes.StopKindError,
 				ErrorType: "stream",
 				ErrorText: err.Error(),
@@ -349,7 +374,7 @@ func processGeminiStream(
 		if chunk.PromptFeedback != nil && chunk.PromptFeedback.BlockReason != "" {
 			errorMsg := fmt.Sprintf("Content blocked: %s", chunk.PromptFeedback.BlockReason)
 			_ = sseHandler.AiMsgError(errorMsg)
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      uctypes.StopKindContent,
 				ErrorType: "blocked",
 				ErrorText: errorMsg,
@@ -363,7 +388,7 @@ func processGeminiStream(
 
 		// Log grounding metadata (web search queries)
 		if chunk.GroundingMetadata != nil && len(chunk.GroundingMetadata.WebSearchQueries) > 0 {
-			if wavebase.IsDevMode() {
+			if gulinbase.IsDevMode() {
 				log.Printf("gemini: web search queries executed: %v\n", chunk.GroundingMetadata.WebSearchQueries)
 			}
 		}
@@ -377,7 +402,7 @@ func processGeminiStream(
 
 		// Log candidate grounding metadata if present
 		if candidate.GroundingMetadata != nil && len(candidate.GroundingMetadata.WebSearchQueries) > 0 {
-			if wavebase.IsDevMode() {
+			if gulinbase.IsDevMode() {
 				log.Printf("gemini: candidate web search queries: %v\n", candidate.GroundingMetadata.WebSearchQueries)
 			}
 		}
@@ -459,12 +484,12 @@ func processGeminiStream(
 	}
 
 	// Build tool calls for stop reason
-	var waveToolCalls []uctypes.WaveToolCall
+	var gulinToolCalls []uctypes.GulinToolCall
 	if len(functionCalls) > 0 {
 		stopKind = uctypes.StopKindToolUse
 		for _, fcPart := range functionCalls {
 			if fcPart.FunctionCall != nil && fcPart.ToolUseData != nil {
-				waveToolCalls = append(waveToolCalls, uctypes.WaveToolCall{
+				gulinToolCalls = append(gulinToolCalls, uctypes.GulinToolCall{
 					ID:          fcPart.ToolUseData.ToolCallId,
 					Name:        fcPart.FunctionCall.Name,
 					Input:       fcPart.FunctionCall.Args,
@@ -474,10 +499,10 @@ func processGeminiStream(
 		}
 	}
 
-	stopReason := &uctypes.WaveStopReason{
+	stopReason := &uctypes.GulinStopReason{
 		Kind:      stopKind,
 		RawReason: finishReason,
-		ToolCalls: waveToolCalls,
+		ToolCalls: gulinToolCalls,
 	}
 
 	if textStarted {
@@ -485,7 +510,7 @@ func processGeminiStream(
 	}
 	_ = sseHandler.AiMsgFinishStep()
 	if stopKind != uctypes.StopKindToolUse {
-		_ = sseHandler.AiMsgFinish(finishReason, nil)
+		_ = sseHandler.AiMsgFinish(msgID)
 	}
 
 	return stopReason, assistantMsg, nil

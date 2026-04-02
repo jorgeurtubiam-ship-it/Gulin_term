@@ -16,15 +16,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 func FixPath(path string) (string, error) {
 	origPath := path
 	var err error
 	if strings.HasPrefix(path, "~") {
-		path = filepath.Join(wavebase.GetHomeDir(), path[1:])
+		path = filepath.Join(gulinbase.GetHomeDir(), path[1:])
 	} else if !filepath.IsAbs(path) {
 		path, err = filepath.Abs(path)
 		if err != nil {

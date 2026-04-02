@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
 )
 
 func init() {
-	for _, rtype := range waveobj.AllWaveObjTypes() {
-		waveobj.RegisterType(rtype)
+	for _, rtype := range gulinobj.AllGulinObjTypes() {
+		gulinobj.RegisterType(rtype)
 	}
 }
 
@@ -35,7 +35,7 @@ func SetClientId(clientId string) {
 func GetClientId() string {
 	clientIdLock.Lock()
 	defer clientIdLock.Unlock()
-	if wavebase.IsDevMode() && cachedClientId == "" {
+	if gulinbase.IsDevMode() && cachedClientId == "" {
 		panic("cachedClientId is empty")
 	}
 	return cachedClientId
@@ -43,7 +43,7 @@ func GetClientId() string {
 
 func UpdateTabName(ctx context.Context, tabId, name string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		tab, _ := DBGet[*waveobj.Tab](tx.Context(), tabId)
+		tab, _ := DBGet[*gulinobj.Tab](tx.Context(), tabId)
 		if tab == nil {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
@@ -55,7 +55,7 @@ func UpdateTabName(ctx context.Context, tabId, name string) error {
 	})
 }
 
-func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaMapType, mergeSpecial bool) error {
+func UpdateObjectMeta(ctx context.Context, oref gulinobj.ORef, meta gulinobj.MetaMapType, mergeSpecial bool) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		if oref.IsEmpty() {
 			return fmt.Errorf("empty object reference")
@@ -64,12 +64,12 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 		if obj == nil {
 			return ErrNotFound
 		}
-		objMeta := waveobj.GetMeta(obj)
+		objMeta := gulinobj.GetMeta(obj)
 		if objMeta == nil {
 			objMeta = make(map[string]any)
 		}
-		newMeta := waveobj.MergeMeta(objMeta, meta, mergeSpecial)
-		waveobj.SetMeta(obj, newMeta)
+		newMeta := gulinobj.MergeMeta(objMeta, meta, mergeSpecial)
+		gulinobj.SetMeta(obj, newMeta)
 		DBUpdate(tx.Context(), obj)
 		return nil
 	})
@@ -77,15 +77,15 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 
 func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, blockId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		block, _ := DBGet[*waveobj.Block](tx.Context(), blockId)
+		block, _ := DBGet[*gulinobj.Block](tx.Context(), blockId)
 		if block == nil {
 			return fmt.Errorf("block not found: %q", blockId)
 		}
-		currentTab, _ := DBGet[*waveobj.Tab](tx.Context(), currentTabId)
+		currentTab, _ := DBGet[*gulinobj.Tab](tx.Context(), currentTabId)
 		if currentTab == nil {
 			return fmt.Errorf("current tab not found: %q", currentTabId)
 		}
-		newTab, _ := DBGet[*waveobj.Tab](tx.Context(), newTabId)
+		newTab, _ := DBGet[*gulinobj.Tab](tx.Context(), newTabId)
 		if newTab == nil {
 			return fmt.Errorf("new tab not found: %q", newTabId)
 		}
@@ -95,7 +95,7 @@ func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, b
 		}
 		currentTab.BlockIds = utilfn.RemoveElemFromSlice(currentTab.BlockIds, blockId)
 		newTab.BlockIds = append(newTab.BlockIds, blockId)
-		block.ParentORef = waveobj.MakeORef(waveobj.OType_Tab, newTabId).String()
+		block.ParentORef = gulinobj.MakeORef(gulinobj.OType_Tab, newTabId).String()
 		DBUpdate(tx.Context(), block)
 		DBUpdate(tx.Context(), currentTab)
 		DBUpdate(tx.Context(), newTab)

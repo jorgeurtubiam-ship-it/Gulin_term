@@ -12,38 +12,38 @@ function setWpsRpcClient(client: WshClient) {
     WpsRpcClient = client;
 }
 
-type WaveEventSubject<T extends WaveEventName = WaveEventName> = {
-    handler: (event: Extract<WaveEvent, { event: T }>) => void;
+type GulinEventSubject<T extends GulinEventName = GulinEventName> = {
+    handler: (event: Extract<GulinEvent, { event: T }>) => void;
     scope?: string;
 };
 
-type WaveEventSubjectContainer = {
-    handler: (event: WaveEvent) => void;
+type GulinEventSubjectContainer = {
+    handler: (event: GulinEvent) => void;
     scope?: string;
     id: string;
 };
 
-type WaveEventSubscription<T extends WaveEventName = WaveEventName> = WaveEventSubject<T> & {
+type GulinEventSubscription<T extends GulinEventName = GulinEventName> = GulinEventSubject<T> & {
     eventType: T;
 };
 
-type WaveEventUnsubscribe = {
+type GulinEventUnsubscribe = {
     id: string;
     eventType: string;
 };
 
 // key is "eventType" or "eventType|oref"
 const fileSubjects = new Map<string, SubjectWithRef<WSFileEventData>>();
-const waveEventSubjects = new Map<string, WaveEventSubjectContainer[]>();
+const gulinEventSubjects = new Map<string, GulinEventSubjectContainer[]>();
 
 function wpsReconnectHandler() {
-    for (const eventType of waveEventSubjects.keys()) {
-        updateWaveEventSub(eventType);
+    for (const eventType of gulinEventSubjects.keys()) {
+        updateGulinEventSub(eventType);
     }
 }
 
-function updateWaveEventSub(eventType: string) {
-    const subjects = waveEventSubjects.get(eventType);
+function updateGulinEventSub(eventType: string) {
+    const subjects = gulinEventSubjects.get(eventType);
     if (subjects == null) {
         RpcApi.EventUnsubCommand(WpsRpcClient, eventType, { noresponse: true });
         return;
@@ -60,31 +60,31 @@ function updateWaveEventSub(eventType: string) {
     RpcApi.EventSubCommand(WpsRpcClient, subreq, { noresponse: true });
 }
 
-function waveEventSubscribeSingle<T extends WaveEventName>(subscription: WaveEventSubscription<T>): () => void {
-    // console.log("waveEventSubscribeSingle", subscription);
+function gulinEventSubscribeSingle<T extends GulinEventName>(subscription: GulinEventSubscription<T>): () => void {
+    // console.log("gulinEventSubscribeSingle", subscription);
     if (subscription.handler == null) {
         return () => {};
     }
     const id: string = crypto.randomUUID();
-    let subjects = waveEventSubjects.get(subscription.eventType);
+    let subjects = gulinEventSubjects.get(subscription.eventType);
     if (subjects == null) {
         subjects = [];
-        waveEventSubjects.set(subscription.eventType, subjects);
+        gulinEventSubjects.set(subscription.eventType, subjects);
     }
-    const subcont: WaveEventSubjectContainer = {
+    const subcont: GulinEventSubjectContainer = {
         id,
-        handler: subscription.handler as (event: WaveEvent) => void,
+        handler: subscription.handler as (event: GulinEvent) => void,
         scope: subscription.scope,
     };
     subjects.push(subcont);
-    updateWaveEventSub(subscription.eventType);
-    return () => waveEventUnsubscribe({ id, eventType: subscription.eventType });
+    updateGulinEventSub(subscription.eventType);
+    return () => gulinEventUnsubscribe({ id, eventType: subscription.eventType });
 }
 
-function waveEventUnsubscribe(...unsubscribes: WaveEventUnsubscribe[]) {
+function gulinEventUnsubscribe(...unsubscribes: GulinEventUnsubscribe[]) {
     const eventTypeSet = new Set<string>();
     for (const unsubscribe of unsubscribes) {
-        let subjects = waveEventSubjects.get(unsubscribe.eventType);
+        let subjects = gulinEventSubjects.get(unsubscribe.eventType);
         if (subjects == null) {
             return;
         }
@@ -94,13 +94,13 @@ function waveEventUnsubscribe(...unsubscribes: WaveEventUnsubscribe[]) {
         }
         subjects.splice(idx, 1);
         if (subjects.length === 0) {
-            waveEventSubjects.delete(unsubscribe.eventType);
+            gulinEventSubjects.delete(unsubscribe.eventType);
         }
         eventTypeSet.add(unsubscribe.eventType);
     }
 
     for (const eventType of eventTypeSet) {
-        updateWaveEventSub(eventType);
+        updateGulinEventSub(eventType);
     }
 }
 
@@ -123,9 +123,9 @@ function getFileSubject(zoneId: string, fileName: string): SubjectWithRef<WSFile
     return subject;
 }
 
-function handleWaveEvent(event: WaveEvent) {
-    // console.log("handleWaveEvent", event);
-    const subjects = waveEventSubjects.get(event.event);
+function handleGulinEvent(event: GulinEvent) {
+    // console.log("handleGulinEvent", event);
+    const subjects = gulinEventSubjects.get(event.event);
     if (subjects == null) {
         return;
     }
@@ -145,9 +145,9 @@ function handleWaveEvent(event: WaveEvent) {
 
 export {
     getFileSubject,
-    handleWaveEvent,
+    handleGulinEvent,
     setWpsRpcClient,
-    waveEventSubscribeSingle,
-    waveEventUnsubscribe,
+    gulinEventSubscribeSingle,
+    gulinEventUnsubscribe,
     wpsReconnectHandler,
 };

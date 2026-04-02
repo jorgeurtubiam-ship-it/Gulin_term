@@ -35,7 +35,7 @@ type CacheEntry struct {
 	Lock        *sync.Mutex
 	ZoneId      string
 	Name        string
-	File        *WaveFile
+	File        *GulinFile
 	DataEntries map[int]*DataCacheEntry
 	FlushErrors int
 }
@@ -111,7 +111,7 @@ func (entry *CacheEntry) loadFileIntoCache(ctx context.Context) error {
 }
 
 // does not populate the cache entry, returns err if file does not exist
-func (entry *CacheEntry) loadFileForRead(ctx context.Context) (*WaveFile, error) {
+func (entry *CacheEntry) loadFileForRead(ctx context.Context) (*GulinFile, error) {
 	if entry.File != nil {
 		return entry.File, nil
 	}

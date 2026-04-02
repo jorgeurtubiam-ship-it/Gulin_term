@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/gulindev/gulin/pkg/aiusechat"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
 //go:embed testschema.json
@@ -126,7 +126,7 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	// Generate a chat ID
 	chatID := uuid.New().String()
 
-	// Convert to AIMessage format for WaveAIPostMessageWrap
+	// Convert to AIMessage format for GulinAIPostMessageWrap
 	aiMessage := &uctypes.AIMessage{
 		MessageId: uuid.New().String(),
 		Parts: []uctypes.AIMessagePart{
@@ -137,7 +137,7 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 		},
 	}
 
-	fmt.Printf("Testing OpenAI streaming with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Testing OpenAI streaming with GulinAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
 	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
@@ -146,13 +146,13 @@ func testOpenAI(ctx context.Context, model, message string, tools []uctypes.Tool
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	chatOpts := uctypes.WaveChatOpts{
+	chatOpts := uctypes.GulinChatOpts{
 		ChatId:   chatID,
 		ClientId: uuid.New().String(),
 		Config:   *opts,
 		Tools:    tools,
 	}
-	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	err := aiusechat.GulinAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("OpenAI streaming error: %v\n", err)
 	}
@@ -186,7 +186,7 @@ func testOpenAIComp(ctx context.Context, model, message string, tools []uctypes.
 		},
 	}
 
-	fmt.Printf("Testing OpenAI Completions API with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Testing OpenAI Completions API with GulinAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
 	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
@@ -195,14 +195,14 @@ func testOpenAIComp(ctx context.Context, model, message string, tools []uctypes.
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	chatOpts := uctypes.WaveChatOpts{
+	chatOpts := uctypes.GulinChatOpts{
 		ChatId:       chatID,
 		ClientId:     uuid.New().String(),
 		Config:       *opts,
 		Tools:        tools,
 		SystemPrompt: []string{"You are a helpful assistant. Be concise and clear in your responses."},
 	}
-	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	err := aiusechat.GulinAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("OpenAI Completions API streaming error: %v\n", err)
 	}
@@ -236,7 +236,7 @@ func testOpenRouter(ctx context.Context, model, message string, tools []uctypes.
 		},
 	}
 
-	fmt.Printf("Testing OpenRouter with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Testing OpenRouter with GulinAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
 	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
@@ -245,14 +245,14 @@ func testOpenRouter(ctx context.Context, model, message string, tools []uctypes.
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	chatOpts := uctypes.WaveChatOpts{
+	chatOpts := uctypes.GulinChatOpts{
 		ChatId:       chatID,
 		ClientId:     uuid.New().String(),
 		Config:       *opts,
 		Tools:        tools,
 		SystemPrompt: []string{"You are a helpful assistant. Be concise and clear in your responses."},
 	}
-	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	err := aiusechat.GulinAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("OpenRouter streaming error: %v\n", err)
 	}
@@ -285,7 +285,7 @@ func testNanoGPT(ctx context.Context, model, message string, tools []uctypes.Too
 		},
 	}
 
-	fmt.Printf("Testing NanoGPT with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Testing NanoGPT with GulinAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
 	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
@@ -294,14 +294,14 @@ func testNanoGPT(ctx context.Context, model, message string, tools []uctypes.Too
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	chatOpts := uctypes.WaveChatOpts{
+	chatOpts := uctypes.GulinChatOpts{
 		ChatId:       chatID,
 		ClientId:     uuid.New().String(),
 		Config:       *opts,
 		Tools:        tools,
 		SystemPrompt: []string{"You are a helpful assistant. Be concise and clear in your responses."},
 	}
-	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	err := aiusechat.GulinAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("NanoGPT streaming error: %v\n", err)
 	}
@@ -325,7 +325,7 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	// Generate a chat ID
 	chatID := uuid.New().String()
 
-	// Convert to AIMessage format for WaveAIPostMessageWrap
+	// Convert to AIMessage format for GulinAIPostMessageWrap
 	aiMessage := &uctypes.AIMessage{
 		MessageId: uuid.New().String(),
 		Parts: []uctypes.AIMessagePart{
@@ -336,7 +336,7 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 		},
 	}
 
-	fmt.Printf("Testing Anthropic streaming with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Testing Anthropic streaming with GulinAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
 	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
@@ -345,13 +345,13 @@ func testAnthropic(ctx context.Context, model, message string, tools []uctypes.T
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	chatOpts := uctypes.WaveChatOpts{
+	chatOpts := uctypes.GulinChatOpts{
 		ChatId:   chatID,
 		ClientId: uuid.New().String(),
 		Config:   *opts,
 		Tools:    tools,
 	}
-	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	err := aiusechat.GulinAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("Anthropic streaming error: %v\n", err)
 	}
@@ -375,7 +375,7 @@ func testGemini(ctx context.Context, model, message string, tools []uctypes.Tool
 	// Generate a chat ID
 	chatID := uuid.New().String()
 
-	// Convert to AIMessage format for WaveAIPostMessageWrap
+	// Convert to AIMessage format for GulinAIPostMessageWrap
 	aiMessage := &uctypes.AIMessage{
 		MessageId: uuid.New().String(),
 		Parts: []uctypes.AIMessagePart{
@@ -386,7 +386,7 @@ func testGemini(ctx context.Context, model, message string, tools []uctypes.Tool
 		},
 	}
 
-	fmt.Printf("Testing Google Gemini streaming with WaveAIPostMessageWrap, model: %s\n", model)
+	fmt.Printf("Testing Google Gemini streaming with GulinAIPostMessageWrap, model: %s\n", model)
 	fmt.Printf("Message: %s\n", message)
 	fmt.Printf("Chat ID: %s\n", chatID)
 	fmt.Println("---")
@@ -395,14 +395,14 @@ func testGemini(ctx context.Context, model, message string, tools []uctypes.Tool
 	sseHandler := sse.MakeSSEHandlerCh(testWriter, ctx)
 	defer sseHandler.Close()
 
-	chatOpts := uctypes.WaveChatOpts{
+	chatOpts := uctypes.GulinChatOpts{
 		ChatId:       chatID,
 		ClientId:     uuid.New().String(),
 		Config:       *opts,
 		Tools:        tools,
 		SystemPrompt: []string{"You are a helpful assistant. Be concise and clear in your responses."},
 	}
-	err := aiusechat.WaveAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
+	err := aiusechat.GulinAIPostMessageWrap(ctx, sseHandler, aiMessage, chatOpts)
 	if err != nil {
 		fmt.Printf("Google Gemini streaming error: %v\n", err)
 	}

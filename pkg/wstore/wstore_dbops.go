@@ -11,15 +11,15 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/gulindev/gulin/pkg/filestore"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/util/dbutil"
+	"github.com/gulindev/gulin/pkg/gulinobj"
 )
 
 var ErrNotFound = fmt.Errorf("not found")
 
-func waveObjTableName(w waveobj.WaveObj) string {
+func gulinObjTableName(w gulinobj.GulinObj) string {
 	return "db_" + w.GetOType()
 }
 
@@ -27,17 +27,17 @@ func tableNameFromOType(otype string) string {
 	return "db_" + otype
 }
 
-func tableNameGen[T waveobj.WaveObj]() string {
+func tableNameGen[T gulinobj.GulinObj]() string {
 	var zeroObj T
 	return tableNameFromOType(zeroObj.GetOType())
 }
 
-func getOTypeGen[T waveobj.WaveObj]() string {
+func getOTypeGen[T gulinobj.GulinObj]() string {
 	var zeroObj T
 	return zeroObj.GetOType()
 }
 
-func DBGetCount[T waveobj.WaveObj](ctx context.Context) (int, error) {
+func DBGetCount[T gulinobj.GulinObj](ctx context.Context) (int, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
 		table := tableNameGen[T]()
 		query := fmt.Sprintf("SELECT count(*) FROM %s", table)
@@ -99,13 +99,13 @@ func genericCastWithErr[T any](v any, err error) (T, error) {
 	return v.(T), err
 }
 
-func DBGetSingleton[T waveobj.WaveObj](ctx context.Context) (T, error) {
+func DBGetSingleton[T gulinobj.GulinObj](ctx context.Context) (T, error) {
 	rtn, err := DBGetSingletonByType(ctx, getOTypeGen[T]())
 	return genericCastWithErr[T](rtn, err)
 }
 
-func DBGetSingletonByType(ctx context.Context, otype string) (waveobj.WaveObj, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (waveobj.WaveObj, error) {
+func DBGetSingletonByType(ctx context.Context, otype string) (gulinobj.GulinObj, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (gulinobj.GulinObj, error) {
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s LIMIT 1", table)
 		var row idDataType
@@ -113,16 +113,16 @@ func DBGetSingletonByType(ctx context.Context, otype string) (waveobj.WaveObj, e
 		if !found {
 			return nil, ErrNotFound
 		}
-		rtn, err := waveobj.FromJson(row.Data)
+		rtn, err := gulinobj.FromJson(row.Data)
 		if err != nil {
 			return rtn, err
 		}
-		waveobj.SetVersion(rtn, row.Version)
+		gulinobj.SetVersion(rtn, row.Version)
 		return rtn, nil
 	})
 }
 
-func DBExistsORef(ctx context.Context, oref waveobj.ORef) (bool, error) {
+func DBExistsORef(ctx context.Context, oref gulinobj.ORef) (bool, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (bool, error) {
 		table := tableNameFromOType(oref.OType)
 		query := fmt.Sprintf("SELECT oid FROM %s WHERE oid = ?", table)
@@ -130,13 +130,13 @@ func DBExistsORef(ctx context.Context, oref waveobj.ORef) (bool, error) {
 	})
 }
 
-func DBGet[T waveobj.WaveObj](ctx context.Context, id string) (T, error) {
-	rtn, err := DBGetORef(ctx, waveobj.ORef{OType: getOTypeGen[T](), OID: id})
+func DBGet[T gulinobj.GulinObj](ctx context.Context, id string) (T, error) {
+	rtn, err := DBGetORef(ctx, gulinobj.ORef{OType: getOTypeGen[T](), OID: id})
 	return genericCastWithErr[T](rtn, err)
 }
 
-func DBMustGet[T waveobj.WaveObj](ctx context.Context, id string) (T, error) {
-	rtn, err := DBGetORef(ctx, waveobj.ORef{OType: getOTypeGen[T](), OID: id})
+func DBMustGet[T gulinobj.GulinObj](ctx context.Context, id string) (T, error) {
+	rtn, err := DBGetORef(ctx, gulinobj.ORef{OType: getOTypeGen[T](), OID: id})
 	if err != nil {
 		var zeroVal T
 		return zeroVal, err
@@ -148,8 +148,8 @@ func DBMustGet[T waveobj.WaveObj](ctx context.Context, id string) (T, error) {
 	return rtn.(T), nil
 }
 
-func DBGetORef(ctx context.Context, oref waveobj.ORef) (waveobj.WaveObj, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (waveobj.WaveObj, error) {
+func DBGetORef(ctx context.Context, oref gulinobj.ORef) (gulinobj.GulinObj, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (gulinobj.GulinObj, error) {
 		table := tableNameFromOType(oref.OType)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s WHERE oid = ?", table)
 		var row idDataType
@@ -157,41 +157,41 @@ func DBGetORef(ctx context.Context, oref waveobj.ORef) (waveobj.WaveObj, error) 
 		if !found {
 			return nil, nil
 		}
-		rtn, err := waveobj.FromJson(row.Data)
+		rtn, err := gulinobj.FromJson(row.Data)
 		if err != nil {
 			return rtn, err
 		}
-		waveobj.SetVersion(rtn, row.Version)
+		gulinobj.SetVersion(rtn, row.Version)
 		return rtn, nil
 	})
 }
 
-func dbSelectOIDs(ctx context.Context, otype string, oids []string) ([]waveobj.WaveObj, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) ([]waveobj.WaveObj, error) {
+func dbSelectOIDs(ctx context.Context, otype string, oids []string) ([]gulinobj.GulinObj, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]gulinobj.GulinObj, error) {
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s WHERE oid IN (SELECT value FROM json_each(?))", table)
 		var rows []idDataType
 		tx.Select(&rows, query, dbutil.QuickJson(oids))
-		rtn := make([]waveobj.WaveObj, 0, len(rows))
+		rtn := make([]gulinobj.GulinObj, 0, len(rows))
 		for _, row := range rows {
-			waveObj, err := waveobj.FromJson(row.Data)
+			gulinObj, err := gulinobj.FromJson(row.Data)
 			if err != nil {
 				return nil, err
 			}
-			waveobj.SetVersion(waveObj, row.Version)
-			rtn = append(rtn, waveObj)
+			gulinobj.SetVersion(gulinObj, row.Version)
+			rtn = append(rtn, gulinObj)
 		}
 		return rtn, nil
 	})
 }
 
-func DBSelectORefs(ctx context.Context, orefs []waveobj.ORef) ([]waveobj.WaveObj, error) {
+func DBSelectORefs(ctx context.Context, orefs []gulinobj.ORef) ([]gulinobj.GulinObj, error) {
 	oidsByType := make(map[string][]string)
 	for _, oref := range orefs {
 		oidsByType[oref.OType] = append(oidsByType[oref.OType], oref.OID)
 	}
-	return WithTxRtn(ctx, func(tx *TxWrap) ([]waveobj.WaveObj, error) {
-		rtn := make([]waveobj.WaveObj, 0, len(orefs))
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]gulinobj.GulinObj, error) {
+		rtn := make([]gulinobj.GulinObj, 0, len(orefs))
 		for otype, oids := range oidsByType {
 			rtnArr, err := dbSelectOIDs(tx.Context(), otype, oids)
 			if err != nil {
@@ -217,7 +217,7 @@ func DBGetAllOIDsByType(ctx context.Context, otype string) ([]string, error) {
 	})
 }
 
-func DBGetAllObjsByType[T waveobj.WaveObj](ctx context.Context, otype string) ([]T, error) {
+func DBGetAllObjsByType[T gulinobj.GulinObj](ctx context.Context, otype string) ([]T, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]T, error) {
 		rtn := make([]T, 0)
 		table := tableNameFromOType(otype)
@@ -225,22 +225,22 @@ func DBGetAllObjsByType[T waveobj.WaveObj](ctx context.Context, otype string) ([
 		var rows []idDataType
 		tx.Select(&rows, query)
 		for _, row := range rows {
-			waveObj, err := waveobj.FromJson(row.Data)
+			gulinObj, err := gulinobj.FromJson(row.Data)
 			if err != nil {
 				return nil, err
 			}
-			waveobj.SetVersion(waveObj, row.Version)
+			gulinobj.SetVersion(gulinObj, row.Version)
 
-			rtn = append(rtn, waveObj.(T))
+			rtn = append(rtn, gulinObj.(T))
 		}
 		return rtn, nil
 	})
 }
 
-func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.ORef, error) {
-		for _, rtype := range waveobj.AllWaveObjTypes() {
-			otype := reflect.Zero(rtype).Interface().(waveobj.WaveObj).GetOType()
+func DBResolveEasyOID(ctx context.Context, oid string) (*gulinobj.ORef, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*gulinobj.ORef, error) {
+		for _, rtype := range gulinobj.AllGulinObjTypes() {
+			otype := reflect.Zero(rtype).Interface().(gulinobj.GulinObj).GetOType()
 			table := tableNameFromOType(otype)
 			var fullOID string
 			if len(oid) == 8 {
@@ -251,7 +251,7 @@ func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
 				fullOID = tx.GetString(query, oid)
 			}
 			if fullOID != "" {
-				oref := waveobj.MakeORef(otype, fullOID)
+				oref := gulinobj.MakeORef(otype, fullOID)
 				return &oref, nil
 			}
 		}
@@ -259,14 +259,14 @@ func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
 	})
 }
 
-func DBSelectMap[T waveobj.WaveObj](ctx context.Context, ids []string) (map[string]T, error) {
+func DBSelectMap[T gulinobj.GulinObj](ctx context.Context, ids []string) (map[string]T, error) {
 	rtnArr, err := dbSelectOIDs(ctx, getOTypeGen[T](), ids)
 	if err != nil {
 		return nil, err
 	}
 	rtnMap := make(map[string]T)
 	for _, obj := range rtnArr {
-		rtnMap[waveobj.GetOID(obj)] = obj.(T)
+		rtnMap[gulinobj.GetOID(obj)] = obj.(T)
 	}
 	return rtnMap, nil
 }
@@ -276,7 +276,7 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("DELETE FROM %s WHERE oid = ?", table)
 		tx.Exec(query, id)
-		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Delete, OType: otype, OID: id})
+		gulinobj.ContextAddUpdate(ctx, gulinobj.GulinObjUpdate{UpdateType: gulinobj.UpdateType_Delete, OType: otype, OID: id})
 		return nil
 	})
 	if err != nil {
@@ -298,26 +298,26 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 	return nil
 }
 
-func DBUpdate(ctx context.Context, val waveobj.WaveObj) error {
-	oid := waveobj.GetOID(val)
+func DBUpdate(ctx context.Context, val gulinobj.GulinObj) error {
+	oid := gulinobj.GetOID(val)
 	if oid == "" {
 		return fmt.Errorf("cannot update %T value with empty id", val)
 	}
-	jsonData, err := waveobj.ToJson(val)
+	jsonData, err := gulinobj.ToJson(val)
 	if err != nil {
 		return err
 	}
 	return WithTx(ctx, func(tx *TxWrap) error {
-		table := waveObjTableName(val)
+		table := gulinObjTableName(val)
 		query := fmt.Sprintf("UPDATE %s SET data = ?, version = version+1 WHERE oid = ? RETURNING version", table)
 		newVersion := tx.GetInt(query, jsonData, oid)
-		waveobj.SetVersion(val, newVersion)
-		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
+		gulinobj.SetVersion(val, newVersion)
+		gulinobj.ContextAddUpdate(ctx, gulinobj.GulinObjUpdate{UpdateType: gulinobj.UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
 		return nil
 	})
 }
 
-func DBUpdateFn[T waveobj.WaveObj](ctx context.Context, id string, updateFn func(T)) error {
+func DBUpdateFn[T gulinobj.GulinObj](ctx context.Context, id string, updateFn func(T)) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		val, err := DBMustGet[T](tx.Context(), id)
 		if err != nil {
@@ -328,7 +328,7 @@ func DBUpdateFn[T waveobj.WaveObj](ctx context.Context, id string, updateFn func
 	})
 }
 
-func DBUpdateFnErr[T waveobj.WaveObj](ctx context.Context, id string, updateFn func(T) error) error {
+func DBUpdateFnErr[T gulinobj.GulinObj](ctx context.Context, id string, updateFn func(T) error) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		val, err := DBMustGet[T](tx.Context(), id)
 		if err != nil {
@@ -342,21 +342,21 @@ func DBUpdateFnErr[T waveobj.WaveObj](ctx context.Context, id string, updateFn f
 	})
 }
 
-func DBInsert(ctx context.Context, val waveobj.WaveObj) error {
-	oid := waveobj.GetOID(val)
+func DBInsert(ctx context.Context, val gulinobj.GulinObj) error {
+	oid := gulinobj.GetOID(val)
 	if oid == "" {
 		return fmt.Errorf("cannot insert %T value with empty id", val)
 	}
-	jsonData, err := waveobj.ToJson(val)
+	jsonData, err := gulinobj.ToJson(val)
 	if err != nil {
 		return err
 	}
 	return WithTx(ctx, func(tx *TxWrap) error {
-		table := waveObjTableName(val)
-		waveobj.SetVersion(val, 1)
+		table := gulinObjTableName(val)
+		gulinobj.SetVersion(val, 1)
 		query := fmt.Sprintf("INSERT INTO %s (oid, version, data) VALUES (?, ?, ?)", table)
 		tx.Exec(query, oid, 1, jsonData)
-		waveobj.ContextAddUpdate(ctx, waveobj.WaveObjUpdate{UpdateType: waveobj.UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
+		gulinobj.ContextAddUpdate(ctx, gulinobj.GulinObjUpdate{UpdateType: gulinobj.UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
 		return nil
 	})
 }
@@ -373,7 +373,7 @@ func DBFindTabForBlockId(ctx context.Context, blockId string) (string, error) {
 			FROM db_block b
 			WHERE b.oid = ?;`
 			parentORef := tx.GetString(query, blockId)
-			oref, err := waveobj.ParseORef(parentORef)
+			oref, err := gulinobj.ParseORef(parentORef)
 			if err != nil {
 				return "", fmt.Errorf("bad block parent oref: %v", err)
 			}

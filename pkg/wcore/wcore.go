@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-// wave core application coordinator
+// gulin core application coordinator
 package wcore
 
 import (
@@ -17,23 +17,23 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wcloud"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/gulinjwt"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wcloud"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 // the wcore package coordinates actions across the storage layer
-// orchestrating the wave object store, the wave pubsub system, and the wave rpc system
+// orchestrating the gulin object store, the gulin pubsub system, and the gulin rpc system
 
 // Ensures that the initial data is present in the store, creates an initial window if needed
 func EnsureInitialData() (bool, error) {
 	// does not need to run in a transaction since it is called on startup
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	client, err := wstore.DBGetSingleton[*gulinobj.Client](ctx)
 	firstLaunch := false
 	if err == wstore.ErrNotFound {
 		client, err = CreateClient(ctx)
@@ -72,7 +72,7 @@ func EnsureInitialData() (bool, error) {
 	wsId := ""
 	if firstLaunch {
 		log.Println("client has no windows and first launch, creating starter workspace")
-		starterWs, err := CreateWorkspace(ctx, "Starter workspace", "custom@wave-logo-solid", "#58C142", false, true)
+		starterWs, err := CreateWorkspace(ctx, "Starter workspace", "custom@gulin-logo-solid", "#58C142", false, true)
 		if err != nil {
 			return firstLaunch, fmt.Errorf("error creating starter workspace: %w", err)
 		}
@@ -85,8 +85,8 @@ func EnsureInitialData() (bool, error) {
 	return firstLaunch, nil
 }
 
-func CreateClient(ctx context.Context) (*waveobj.Client, error) {
-	client := &waveobj.Client{
+func CreateClient(ctx context.Context) (*gulinobj.Client, error) {
+	client := &gulinobj.Client{
 		OID:       uuid.NewString(),
 		WindowIds: []string{},
 	}
@@ -97,31 +97,31 @@ func CreateClient(ctx context.Context) (*waveobj.Client, error) {
 	return client, nil
 }
 
-func GetClientData(ctx context.Context) (*waveobj.Client, error) {
-	clientData, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+func GetClientData(ctx context.Context) (*gulinobj.Client, error) {
+	clientData, err := wstore.DBGetSingleton[*gulinobj.Client](ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting client data: %w", err)
 	}
 	return clientData, nil
 }
 
-func SendWaveObjUpdate(oref waveobj.ORef) {
+func SendGulinObjUpdate(oref gulinobj.ORef) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	// send a waveobj:update event
-	waveObj, err := wstore.DBGetORef(ctx, oref)
+	// send a gulinobj:update event
+	gulinObj, err := wstore.DBGetORef(ctx, oref)
 	if err != nil {
 		log.Printf("error getting object for update event: %v", err)
 		return
 	}
-	wps.Broker.Publish(wps.WaveEvent{
-		Event:  wps.Event_WaveObjUpdate,
+	wps.Broker.Publish(wps.GulinEvent{
+		Event:  wps.Event_GulinObjUpdate,
 		Scopes: []string{oref.String()},
-		Data: waveobj.WaveObjUpdate{
-			UpdateType: waveobj.UpdateType_Update,
-			OType:      waveObj.GetOType(),
-			OID:        waveobj.GetOID(waveObj),
-			Obj:        waveObj,
+		Data: gulinobj.GulinObjUpdate{
+			UpdateType: gulinobj.UpdateType_Update,
+			OType:      gulinObj.GetOType(),
+			OID:        gulinobj.GetOID(gulinObj),
+			Obj:        gulinObj,
 		},
 	})
 }
@@ -131,7 +131,7 @@ func ResolveBlockIdFromPrefix(ctx context.Context, tabId string, blockIdPrefix s
 		return "", fmt.Errorf("widget_id must be 8 characters")
 	}
 
-	tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+	tab, err := wstore.DBMustGet[*gulinobj.Tab](ctx, tabId)
 	if err != nil {
 		return "", fmt.Errorf("error getting tab: %w", err)
 	}
@@ -165,9 +165,9 @@ func InitMainServer() error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 
-	mainServer, err := wstore.DBGetSingleton[*waveobj.MainServer](ctx)
+	mainServer, err := wstore.DBGetSingleton[*gulinobj.MainServer](ctx)
 	if err == wstore.ErrNotFound {
-		mainServer = &waveobj.MainServer{
+		mainServer = &gulinobj.MainServer{
 			OID: uuid.NewString(),
 		}
 		err = wstore.DBInsert(ctx, mainServer)
@@ -180,7 +180,7 @@ func InitMainServer() error {
 
 	needsUpdate := false
 	if mainServer.JwtPrivateKey == "" || mainServer.JwtPublicKey == "" {
-		keyPair, err := wavejwt.GenerateKeyPair()
+		keyPair, err := gulinjwt.GenerateKeyPair()
 		if err != nil {
 			return fmt.Errorf("error generating jwt keypair: %w", err)
 		}
@@ -205,11 +205,11 @@ func InitMainServer() error {
 		return fmt.Errorf("error decoding jwt public key: %w", err)
 	}
 
-	err = wavejwt.SetPrivateKey(privateKeyBytes)
+	err = gulinjwt.SetPrivateKey(privateKeyBytes)
 	if err != nil {
 		return fmt.Errorf("error setting jwt private key: %w", err)
 	}
-	err = wavejwt.SetPublicKey(publicKeyBytes)
+	err = gulinjwt.SetPublicKey(publicKeyBytes)
 	if err != nil {
 		return fmt.Errorf("error setting jwt public key: %w", err)
 	}

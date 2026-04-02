@@ -12,10 +12,10 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/util/fileutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var setBgCmd = &cobra.Command{
@@ -120,7 +120,7 @@ func setBgRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			bgStyle = strings.ToLower(input)
 		} else {
 			// Handle image input
-			absPath, err := filepath.Abs(wavebase.ExpandHomeDirSafe(input))
+			absPath, err := filepath.Abs(gulinbase.ExpandHomeDirSafe(input))
 			if err != nil {
 				return fmt.Errorf("resolving image path: %v", err)
 			}

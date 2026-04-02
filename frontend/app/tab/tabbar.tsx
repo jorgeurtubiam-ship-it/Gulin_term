@@ -43,7 +43,7 @@ interface TabBarProps {
     workspace: Workspace;
 }
 
-const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
+const GulinAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement> }) => {
     const aiPanelOpen = useAtomValue(WorkspaceLayoutModel.getInstance().panelVisibleAtom);
     const hideAiButton = useAtomValue(getSettingsKeyAtom("app:hideaibutton"));
 
@@ -58,7 +58,7 @@ const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement
 
     return (
         <Tooltip
-            content="Toggle Wave AI Panel"
+            content="Toggle Gulin AI Panel"
             placement="bottom"
             hideOnClick
             divClassName={`flex h-[26px] px-1.5 justify-end items-center rounded-md mr-1 box-border cursor-pointer bg-hover hover:bg-hoverbg transition-colors text-[12px] ${aiPanelOpen ? "text-accent" : "text-secondary"}`}
@@ -71,7 +71,7 @@ const WaveAIButton = memo(({ divRef }: { divRef?: React.RefObject<HTMLDivElement
         </Tooltip>
     );
 });
-WaveAIButton.displayName = "WaveAIButton";
+GulinAIButton.displayName = "GulinAIButton";
 
 const ConfigErrorMessage = () => {
     const fullConfig = useAtomValue(atoms.fullConfigAtom);
@@ -195,7 +195,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
     const draggerLeftRef = useRef<HTMLDivElement>(null);
     const draggerRightRef = useRef<HTMLDivElement>(null);
     const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
-    const waveAIButtonRef = useRef<HTMLDivElement>(null);
+    const gulinAIButtonRef = useRef<HTMLDivElement>(null);
     const appMenuButtonRef = useRef<HTMLDivElement>(null);
     const tabWidthRef = useRef<number>(TabDefaultWidth);
     const scrollableRef = useRef<boolean>(false);
@@ -257,7 +257,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
         const configErrorWidth = configErrorButtonRef.current?.getBoundingClientRect().width ?? 0;
         const appMenuButtonWidth = appMenuButtonRef.current?.getBoundingClientRect().width ?? 0;
         const workspaceSwitcherWidth = workspaceSwitcherRef.current?.getBoundingClientRect().width ?? 0;
-        const waveAIButtonWidth = waveAIButtonRef.current?.getBoundingClientRect().width ?? 0;
+        const gulinAIButtonWidth = gulinAIButtonRef.current?.getBoundingClientRect().width ?? 0;
 
         const nonTabElementsWidth =
             windowDragLeftWidth +
@@ -267,7 +267,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
             configErrorWidth +
             appMenuButtonWidth +
             workspaceSwitcherWidth +
-            waveAIButtonWidth;
+            gulinAIButtonWidth;
         const spaceForTabs = tabbarWrapperWidth - nonTabElementsWidth;
 
         const numberOfTabs = tabIds.length;
@@ -677,7 +677,7 @@ const TabBar = memo(({ workspace }: TabBarProps) => {
                     <i className="fa fa-ellipsis" />
                 </div>
             )}
-            <WaveAIButton divRef={waveAIButtonRef} />
+            <GulinAIButton divRef={gulinAIButtonRef} />
             <Tooltip
                 content="Workspace Switcher"
                 placement="bottom"

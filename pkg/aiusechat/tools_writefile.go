@@ -9,11 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/filebackup"
-	"github.com/wavetermdev/waveterm/pkg/util/fileutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/filebackup"
+	"github.com/gulindev/gulin/pkg/util/fileutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 const MaxEditFileSize = 100 * 1024 // 100KB
@@ -108,7 +108,7 @@ func verifyWriteTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolU
 		return err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -137,7 +137,7 @@ func writeTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.
 		return nil, err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -211,7 +211,7 @@ func GetWriteTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("writing %q", params.Filename)
 		},
 		ToolAnyCallback: writeTextFileCallback,
-		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyWriteTextFileInput,
@@ -251,7 +251,7 @@ func verifyEditTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUs
 		return err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -277,7 +277,7 @@ func EditTextFileDryRun(input any, fileOverride string) ([]byte, []byte, error) 
 		return nil, nil, err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -315,7 +315,7 @@ func editTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.U
 		return nil, err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -403,7 +403,7 @@ func GetEditTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("editing %q (%d %s)", params.Filename, editCount, editWord)
 		},
 		ToolAnyCallback: editTextFileCallback,
-		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyEditTextFileInput,
@@ -438,7 +438,7 @@ func verifyDeleteTextFileInput(input any, toolUseData *uctypes.UIMessageDataTool
 		return err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -462,7 +462,7 @@ func deleteTextFileCallback(ctx context.Context, input any, toolUseData *uctypes
 		return nil, err
 	}
 
-	expandedPath, err := wavebase.ExpandHomeDir(params.Filename)
+	expandedPath, err := gulinbase.ExpandHomeDir(params.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to expand path: %w", err)
 	}
@@ -519,7 +519,7 @@ func GetDeleteTextFileToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("deleting %q", params.Filename)
 		},
 		ToolAnyCallback: deleteTextFileCallback,
-		ToolApproval: func(input any, chatOpts uctypes.WaveChatOpts) string {
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
 			return uctypes.ApprovalNeedsApproval
 		},
 		ToolVerifyInput: verifyDeleteTextFileInput,

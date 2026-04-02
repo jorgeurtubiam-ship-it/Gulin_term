@@ -18,18 +18,18 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/gulindev/gulin/pkg/aiusechat/chatstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
 // RunChatStep executes a chat step using the chat completions API
 func RunChatStep(
 	ctx context.Context,
 	sseHandler *sse.SSEHandlerCh,
-	chatOpts uctypes.WaveChatOpts,
-	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, []*StoredChatMessage, *uctypes.RateLimitInfo, error) {
+	chatOpts uctypes.GulinChatOpts,
+	cont *uctypes.GulinContinueResponse,
+) (*uctypes.GulinStopReason, []*StoredChatMessage, *uctypes.RateLimitInfo, error) {
 	if sseHandler == nil {
 		return nil, nil, nil, errors.New("sse handler is nil")
 	}
@@ -48,8 +48,19 @@ func RunChatStep(
 	// Convert stored messages to chat completions format
 	var messages []ChatRequestMessage
 
+	// For Bridge requests, limit history to avoid large payloads that cause "unexpected EOF"
+	nativeMessages := chat.NativeMessages
+	isBridge := chatOpts.Config.BridgeProvider != "" ||
+		strings.Contains(chatOpts.Config.Endpoint, ":8090") ||
+		strings.Contains(chatOpts.Config.Endpoint, "gulinbridge") ||
+		strings.Contains(chatOpts.Config.Endpoint, "proxy.gulin.cl")
+	if isBridge && len(nativeMessages) > 50 {
+		// Keep last 50 messages to avoid cutting off tool calls and causing 413/EOF
+		nativeMessages = nativeMessages[len(nativeMessages)-50:]
+	}
+
 	// Convert native messages
-	for _, genMsg := range chat.NativeMessages {
+	for _, genMsg := range nativeMessages {
 		var chatMsg *StoredChatMessage
 		var ok bool
 		if chatMsg, ok = genMsg.(*StoredChatMessage); !ok {
@@ -73,6 +84,7 @@ func RunChatStep(
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	log.Printf("openaichat TRACE 1: client.Do returned err=%v", err)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("request failed: %w", err)
 	}
@@ -83,7 +95,189 @@ func RunChatStep(
 		return nil, nil, nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	// Setup SSE if this is a new request (not a continuation)
+	contentType := resp.Header.Get("Content-Type")
+	log.Printf("openaichat TRACE 2: Bridge response Content-Type: %s (isBridge: %v)\n", contentType, isBridge)
+	var bodyReader io.Reader = resp.Body
+	if isBridge || strings.Contains(contentType, "application/json") {
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			if len(bodyBytes) > 0 && (errors.Is(readErr, io.ErrUnexpectedEOF) || strings.Contains(readErr.Error(), "unexpected EOF")) {
+				log.Printf("openaichat TRACE 3: Bridge returned unexpected EOF, but retrieved %d bytes. Attempting recovery...\n", len(bodyBytes))
+			} else {
+				return nil, nil, nil, fmt.Errorf("failed to read non-streaming response: %w", readErr)
+			}
+		} else {
+			log.Printf("openaichat TRACE 3: Bridge non-streaming JSON response (len=%d), converting to SSE chunks\n", len(bodyBytes))
+			log.Printf("openaichat non-streaming JSON DEBUG: %s", string(bodyBytes))
+		}
+		originalBodyBytes := bodyBytes
+
+		// Clean any leading SSE heartbeats (e.g. data: {"heartbeat": true}) that the Bridge might have prepended before yielding the full JSON payload
+		bodyStr := string(bodyBytes)
+		
+		// Improved cleaning: strip all "data:" or "event:" prefixes from the start of every line
+		// to handle cases where multiple SSE chunks are concatenated.
+		lines := strings.Split(bodyStr, "\n")
+		var cleanedLines []string
+		for _, line := range lines {
+			trimmedLine := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmedLine, "data:") {
+				cleanedLines = append(cleanedLines, strings.TrimSpace(strings.TrimPrefix(trimmedLine, "data:")))
+			} else if strings.HasPrefix(trimmedLine, "event:") {
+				// skip events
+				continue
+			} else if trimmedLine != "" && trimmedLine != "[DONE]" {
+				cleanedLines = append(cleanedLines, trimmedLine)
+			}
+		}
+		
+		// If we found multiple data lines, they are likely separate JSON objects (heartbeats) 
+		// if they represent a real stream, we should NOT process them as a single JSON object.
+		canProcessAsSingleJSON := false
+		bodyStr = ""
+		if len(cleanedLines) == 1 {
+			bodyStr = cleanedLines[0]
+			canProcessAsSingleJSON = true
+		} else {
+			// Find if there's only ONE line that isn't a heartbeat/empty
+			choicesCount := 0
+			for _, line := range cleanedLines {
+				if strings.Contains(line, "\"choices\"") {
+					choicesCount++
+					bodyStr = line
+				}
+			}
+			if choicesCount == 1 {
+				canProcessAsSingleJSON = true
+			}
+		}
+
+		cleanedBytes := []byte(bodyStr)
+		
+		// Parse full non-streaming response
+		var fullResp struct {
+			ID      string `json:"id"`
+			Model   string `json:"model"`
+			Created int64  `json:"created"`
+			Error   *struct {
+				Message interface{} `json:"message"`
+				Code    interface{} `json:"code"`
+			} `json:"error"`
+			Choices []struct {
+				Message struct {
+					Role      string     `json:"role"`
+					Content   *string    `json:"content"`
+					Text      *string    `json:"text"`
+					ToolCalls []ToolCall `json:"tool_calls"`
+				} `json:"message"`
+				FinishReason string `json:"finish_reason"`
+			} `json:"choices"`
+		}
+		
+		if canProcessAsSingleJSON && json.Unmarshal(cleanedBytes, &fullResp) == nil && fullResp.Error != nil {
+			var errMsg string
+			if s, ok := fullResp.Error.Message.(string); ok {
+				errMsg = s
+			} else {
+				errMsg = fmt.Sprintf("%v", fullResp.Error.Message)
+			}
+			return nil, nil, nil, fmt.Errorf("AI Provider Error: %s", errMsg)
+		}
+		
+		if !canProcessAsSingleJSON || (json.Unmarshal(cleanedBytes, &fullResp) != nil || len(fullResp.Choices) == 0) {
+			// If it doesn't even contain "data:" anywhere, it is strictly IMPOSSIBLE that this is an SSE stream.
+			// It must be a raw text/HTML error from the proxy (e.g. 502 Bad Gateway or 413 Payload Too Large).
+			if len(originalBodyBytes) > 0 && !strings.Contains(string(originalBodyBytes), "data:") {
+				var errMsg = strings.TrimSpace(string(cleanedBytes))
+				if errMsg == "" {
+					errMsg = strings.TrimSpace(string(originalBodyBytes))
+				}
+				if len(errMsg) > 500 {
+					errMsg = errMsg[:500] + "..."
+				}
+				return nil, nil, nil, fmt.Errorf("Gateway Error: %s", errMsg)
+			}
+			
+			log.Printf("openaichat TRACE 4: failed to parse Bridge JSON properly (err: %v, choices: %d). Must be SSE chunks, falling back to stream decoder. Raw data: %s\n", err, len(fullResp.Choices), string(cleanedBytes))
+			
+			if len(originalBodyBytes) == 0 {
+			    return nil, nil, nil, fmt.Errorf("failed to read bridge response body (0 bytes returned)")
+			}
+			
+			// Fallback: it's actually an SSE stream. Wrap the ORIGINAL body bytes (which contain the `data: ` chunks) so the decoder can read them!
+			// If it's missing the [DONE] terminator because of unexpected EOF cut, append it safely.
+			bodyReader = strings.NewReader(string(originalBodyBytes) + "\n\ndata: [DONE]\n\n")
+		} else {
+			log.Printf("openaichat TRACE 5: parsed successfully. Finish reason: %s\n", fullResp.Choices[0].FinishReason)
+			msg := fullResp.Choices[0].Message
+			finishReason := fullResp.Choices[0].FinishReason
+			var sseBuf strings.Builder
+
+			content := ""
+			if msg.Content != nil {
+				content = *msg.Content
+			} else if msg.Text != nil {
+				content = *msg.Text
+			}
+
+			// Chunk 1: role delta
+			roleChunk := StreamChunk{
+				ID: fullResp.ID, Model: fullResp.Model, Created: fullResp.Created,
+				Choices: []StreamChoice{{Delta: ContentDelta{Role: msg.Role}}},
+			}
+			if b, err := json.Marshal(roleChunk); err == nil {
+				sseBuf.WriteString("data: " + string(b) + "\n\n")
+			}
+
+			// Chunk 2a: text content
+			if content != "" {
+				textChunk := StreamChunk{
+					ID: fullResp.ID, Model: fullResp.Model, Created: fullResp.Created,
+					Choices: []StreamChoice{{Delta: ContentDelta{Content: content}}},
+				}
+				if b, err := json.Marshal(textChunk); err == nil {
+					sseBuf.WriteString("data: " + string(b) + "\n\n")
+				}
+			}
+
+			// Chunk 2b: tool_calls
+			if len(msg.ToolCalls) > 0 {
+				var toolDeltas []ToolCallDelta
+				for i, tc := range msg.ToolCalls {
+					toolDeltas = append(toolDeltas, ToolCallDelta{
+						Index: i,
+						ID:    tc.ID,
+						Type:  tc.Type,
+						Function: &ToolFunctionDelta{
+							Name:      tc.Function.Name,
+							Arguments: tc.Function.Arguments,
+						},
+					})
+				}
+				toolChunk := StreamChunk{
+					ID: fullResp.ID, Model: fullResp.Model, Created: fullResp.Created,
+					Choices: []StreamChoice{{Delta: ContentDelta{ToolCalls: toolDeltas}}},
+				}
+				if b, err := json.Marshal(toolChunk); err == nil {
+					sseBuf.WriteString("data: " + string(b) + "\n\n")
+				}
+			}
+
+			// Chunk 3: finish_reason
+			fr := finishReason
+			finishChunk := StreamChunk{
+				ID: fullResp.ID, Model: fullResp.Model, Created: fullResp.Created,
+				Choices: []StreamChoice{{Delta: ContentDelta{}, FinishReason: &fr}},
+			}
+			if b, err := json.Marshal(finishChunk); err == nil {
+				sseBuf.WriteString("data: " + string(b) + "\n\n")
+			}
+			sseBuf.WriteString("data: [DONE]\n\n")
+			bodyReader = strings.NewReader(sseBuf.String())
+		}
+	}
+
+	// Setup SSE now that we have the final bodyReader ready
 	if cont == nil {
 		if err := sseHandler.SetupSSE(); err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to setup SSE: %w", err)
@@ -91,21 +285,25 @@ func RunChatStep(
 	}
 
 	// Stream processing
-	stopReason, assistantMsg, err := processChatStream(ctx, resp.Body, sseHandler, chatOpts, cont)
+	stopReason, assistantMsg, err := processChatStream(ctx, bodyReader, sseHandler, chatOpts, cont)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	return stopReason, []*StoredChatMessage{assistantMsg}, nil, nil
+	var msgs []*StoredChatMessage
+	if assistantMsg != nil {
+		msgs = []*StoredChatMessage{assistantMsg}
+	}
+	return stopReason, msgs, nil, nil
 }
 
 func processChatStream(
 	ctx context.Context,
 	body io.Reader,
 	sseHandler *sse.SSEHandlerCh,
-	chatOpts uctypes.WaveChatOpts,
-	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, *StoredChatMessage, error) {
+	chatOpts uctypes.GulinChatOpts,
+	cont *uctypes.GulinContinueResponse,
+) (*uctypes.GulinStopReason, *StoredChatMessage, error) {
 	decoder := eventsource.NewDecoder(body)
 	var textBuilder strings.Builder
 	msgID := uuid.New().String()
@@ -122,7 +320,7 @@ func processChatStream(
 	for {
 		if err := ctx.Err(); err != nil {
 			_ = sseHandler.AiMsgError("request cancelled")
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      uctypes.StopKindCanceled,
 				ErrorType: "cancelled",
 				ErrorText: "request cancelled",
@@ -136,14 +334,14 @@ func processChatStream(
 			}
 			if sseHandler.Err() != nil {
 				partialMsg := extractPartialTextMessage(msgID, textBuilder.String())
-				return &uctypes.WaveStopReason{
+				return &uctypes.GulinStopReason{
 					Kind:      uctypes.StopKindCanceled,
 					ErrorType: "client_disconnect",
 					ErrorText: "client disconnected",
 				}, partialMsg, nil
 			}
 			_ = sseHandler.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      uctypes.StopKindError,
 				ErrorType: "stream",
 				ErrorText: err.Error(),
@@ -154,10 +352,35 @@ func processChatStream(
 		if data == "[DONE]" {
 			break
 		}
+		// Log every chunk for deep investigation of Bridge/Provider differences
+		log.Printf("openaichat chunk DEBUG: %s", data)
 
+		// Detect embedded errors in the SSE stream
+		var rawChunk struct {
+			Error interface{} `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(data), &rawChunk); err == nil && rawChunk.Error != nil {
+			_ = sseHandler.AiMsgError(fmt.Sprintf("%v", rawChunk.Error))
+			return &uctypes.GulinStopReason{
+				Kind:      uctypes.StopKindError,
+				ErrorType: "stream_api",
+				ErrorText: fmt.Sprintf("%v", rawChunk.Error),
+			}, nil, fmt.Errorf("AI stream error: %v", rawChunk.Error)
+		}
+
+		data = strings.TrimSpace(data)
+		if data == "" {
+			continue
+		}
+		if !strings.HasPrefix(data, "{") {
+			if !strings.HasPrefix(data, "[DONE]") {
+				log.Printf("openaichat: skipping non-JSON chunk: %s", data)
+			}
+			continue
+		}
 		var chunk StreamChunk
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
-			log.Printf("openaichat: failed to parse chunk: %v\n", err)
+			log.Printf("openaichat: failed to parse chunk: %v (raw data: %s)", err, data)
 			continue
 		}
 
@@ -166,17 +389,28 @@ func processChatStream(
 		}
 
 		choice := chunk.Choices[0]
-		if choice.Delta.Content != "" {
+		// FALLBACK: If Delta is empty but Message is present, use Message (non-streaming Bridge fallback)
+		delta := choice.Delta
+		messageHasContent := choice.Message.Content != "" || choice.Message.Text != "" || len(choice.Message.ToolCalls) > 0
+		if delta.Content == "" && delta.Text == "" && len(delta.ToolCalls) == 0 && messageHasContent {
+			delta = choice.Message
+		}
+
+		content := delta.Content
+		if content == "" && delta.Text != "" {
+			content = delta.Text
+		}
+		if content != "" {
 			if !textStarted {
 				_ = sseHandler.AiMsgTextStart(textID)
 				textStarted = true
 			}
-			textBuilder.WriteString(choice.Delta.Content)
-			_ = sseHandler.AiMsgTextDelta(textID, choice.Delta.Content)
+			textBuilder.WriteString(content)
+			_ = sseHandler.AiMsgTextDelta(textID, content)
 		}
 
-		if len(choice.Delta.ToolCalls) > 0 {
-			for _, tcDelta := range choice.Delta.ToolCalls {
+		if len(delta.ToolCalls) > 0 {
+			for _, tcDelta := range delta.ToolCalls {
 				idx := tcDelta.Index
 				for len(toolCallsInProgress) <= idx {
 					toolCallsInProgress = append(toolCallsInProgress, ToolCall{Type: "function"})
@@ -208,7 +442,7 @@ func processChatStream(
 	stopKind := uctypes.StopKindDone
 	if finishReason == "length" {
 		stopKind = uctypes.StopKindMaxTokens
-	} else if finishReason == "tool_calls" {
+	} else if finishReason == "tool_calls" || len(toolCallsInProgress) > 0 {
 		stopKind = uctypes.StopKindToolUse
 	}
 
@@ -226,12 +460,17 @@ func processChatStream(
 
 	var validToolCalls []ToolCall
 	for _, tc := range toolCallsInProgress {
-		if tc.ID != "" && tc.Function.Name != "" {
+		// Relaxed check: as long as there is a function name, we consider it valid.
+		// If ID is missing, we'll assign one.
+		if tc.Function.Name != "" {
+			if tc.ID == "" {
+				tc.ID = "call_" + tc.Function.Name
+			}
 			validToolCalls = append(validToolCalls, tc)
 		}
 	}
 
-	var waveToolCalls []uctypes.WaveToolCall
+	var gulinToolCalls []uctypes.GulinToolCall
 	if len(validToolCalls) > 0 {
 		for _, tc := range validToolCalls {
 			var inputJSON any
@@ -241,7 +480,7 @@ func processChatStream(
 					continue
 				}
 			}
-			waveToolCalls = append(waveToolCalls, uctypes.WaveToolCall{
+			gulinToolCalls = append(gulinToolCalls, uctypes.GulinToolCall{
 				ID:    tc.ID,
 				Name:  tc.Function.Name,
 				Input: inputJSON,
@@ -249,10 +488,33 @@ func processChatStream(
 		}
 	}
 
-	stopReason := &uctypes.WaveStopReason{
+	// Detect silent empty responses: Bridge returned finish_reason:stop but no content and no tool_calls.
+	// This usually means the Lite model (e.g. gemini-2.5-flash-lite) was overwhelmed by too many tools or the Bridge
+	// silently rejected the request. Return an actionable error instead of an empty message.
+	isBridgeRequest := chatOpts.Config.BridgeProvider != "" ||
+		strings.Contains(chatOpts.Config.Endpoint, ":8090") ||
+		strings.Contains(chatOpts.Config.Endpoint, "gulinbridge") ||
+		strings.Contains(chatOpts.Config.Endpoint, "proxy.gulin.cl")
+	if stopKind == uctypes.StopKindDone && textBuilder.Len() == 0 && len(gulinToolCalls) == 0 && finishReason != "" {
+		log.Printf("openaichat: WARNING - modelo devolvió respuesta vacía (finish_reason=%q, isBridge=%v, model=%s). Posible sobrecarga de herramientas o fallo silencioso del Bridge.\n",
+			finishReason, isBridgeRequest, chatOpts.Config.Model)
+		_ = sseHandler.AiMsgFinishStep()
+		errMsg := fmt.Sprintf("El modelo '%s' devolvió una respuesta vacía (finish_reason: %s). Intente con un modelo más capaz o reduzca el número de herramientas activas.",
+			chatOpts.Config.Model, finishReason)
+		_ = sseHandler.AiMsgError(errMsg)
+		_ = sseHandler.AiMsgFinish(msgID)
+		return &uctypes.GulinStopReason{
+			Kind:      uctypes.StopKindError,
+			ErrorType: "empty_response",
+			ErrorText: errMsg,
+			RawReason: finishReason,
+		}, nil, nil
+	}
+
+	stopReason := &uctypes.GulinStopReason{
 		Kind:      stopKind,
 		RawReason: finishReason,
-		ToolCalls: waveToolCalls,
+		ToolCalls: gulinToolCalls,
 	}
 
 	assistantMsg := &StoredChatMessage{
@@ -271,8 +533,13 @@ func processChatStream(
 		_ = sseHandler.AiMsgTextEnd(textID)
 	}
 	_ = sseHandler.AiMsgFinishStep()
-	if stopKind != uctypes.StopKindToolUse {
-		_ = sseHandler.AiMsgFinish(finishReason, nil)
+	_ = sseHandler.AiMsgFinish(msgID)
+
+	if textBuilder.Len() > 0 {
+		log.Printf("openaichat: raw response text (len=%d): %q\n", textBuilder.Len(), textBuilder.String())
+	}
+	if len(toolCallsInProgress) > 0 {
+		log.Printf("openaichat: tool calls detected: %d\n", len(toolCallsInProgress))
 	}
 
 	return stopReason, assistantMsg, nil

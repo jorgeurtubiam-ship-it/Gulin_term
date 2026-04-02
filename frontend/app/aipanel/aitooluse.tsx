@@ -346,17 +346,113 @@ const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
 
 AIToolProgress.displayName = "AIToolProgress";
 
+interface AIExpertStatusProps {
+    part: GulinUIMessagePart & { type: "data-expert-status" };
+}
+
+export const AIExpertStatus = memo(({ part }: AIExpertStatusProps) => {
+    const { expertid, status, task } = part.data;
+    const isRunning = status === "running";
+
+    return (
+        <div className="flex flex-col gap-1 p-2 rounded bg-indigo-900/40 border border-indigo-700/50 my-2">
+            <div className="flex items-center gap-2">
+                {isRunning ? (
+                    <i className="fa fa-robot fa-spin text-indigo-400"></i>
+                ) : (
+                    <i className="fa fa-check-circle text-green-400"></i>
+                )}
+                <div className="font-semibold text-indigo-200">
+                    {expertid.replace("_", " ").toUpperCase()}
+                </div>
+                <div className="text-xs text-indigo-300 ml-auto">
+                    {isRunning ? "TRABAJANDO..." : "COMPLETADO"}
+                </div>
+            </div>
+            {task && <div className="text-sm text-indigo-100 pl-6 italic">"{task}"</div>}
+        </div>
+    );
+});
+
+AIExpertStatus.displayName = "AIExpertStatus";
+
+// ---- Terminal tool group: consolidates all tool calls sharing the same blockid into one card ----
+
+interface AITerminalToolGroupCardProps {
+    blockid: string;
+    parts: Array<GulinUIMessagePart & { type: "data-tooluse" }>;
+    isStreaming: boolean;
+}
+
+const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) => {
+    // Representative tool: the first one that ran a command (not just output)
+    const commandPart = parts.find((p) => p.data.toolname === "term_run_command") ?? parts[0];
+    const toolData = commandPart.data;
+
+    // Overall status: error if any errored, completed if all done, else pending
+    const hasError = parts.some((p) => p.data.status === "error");
+    const allCompleted = parts.every((p) => p.data.status === "completed");
+    const overallStatus = hasError ? "error" : allCompleted ? "completed" : "pending";
+
+    const statusIcon = overallStatus === "completed" ? "✓" : overallStatus === "error" ? "✗" : "•";
+    const statusColor =
+        overallStatus === "completed" ? "text-success" : overallStatus === "error" ? "text-error" : "text-gray-400";
+
+    // Collect all distinct descriptions from tool calls (skip duplicates)
+    const allDescs: string[] = [];
+    const seenDescs = new Set<string>();
+    for (const p of parts) {
+        const desc = p.data.tooldesc;
+        if (desc && !seenDescs.has(desc)) {
+            seenDescs.add(desc);
+            allDescs.push(desc);
+        }
+    }
+
+    // Show first tool name as the card title
+    const cardTitle = toolData.toolname;
+
+    return (
+        <div
+            className={`flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700 ${statusColor}`}
+        >
+            <div className="flex items-center gap-2">
+                <span className="font-bold">{statusIcon}</span>
+                <div className="font-semibold">{cardTitle}</div>
+            </div>
+            {allDescs.length > 0 && (
+                <div className="text-sm text-gray-400 pl-6 space-y-0.5">
+                    {allDescs.map((desc, i) => (
+                        <ToolDescLine key={i} text={desc} />
+                    ))}
+                </div>
+            )}
+            {parts.some((p) => p.data.errormessage) && (
+                <div className="text-sm text-red-300 pl-6">
+                    {parts.find((p) => p.data.errormessage)?.data.errormessage}
+                </div>
+            )}
+        </div>
+    );
+});
+
+AITerminalToolGroupCard.displayName = "AITerminalToolGroupCard";
+
+// ---- Main group component ----
+
 interface AIToolUseGroupProps {
     parts: Array<GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }>;
     isStreaming: boolean;
+    seenBlockIds?: Set<string>;
 }
 
 type ToolGroupItem =
     | { type: "batch"; parts: Array<GulinUIMessagePart & { type: "data-tooluse" }> }
     | { type: "single"; part: GulinUIMessagePart & { type: "data-tooluse" } }
-    | { type: "progress"; part: GulinUIMessagePart & { type: "data-toolprogress" } };
+    | { type: "progress"; part: GulinUIMessagePart & { type: "data-toolprogress" } }
+    | { type: "terminal-group"; blockid: string; parts: Array<GulinUIMessagePart & { type: "data-tooluse" }> };
 
-export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps) => {
+export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds }: AIToolUseGroupProps) => {
     const tooluseParts = parts.filter((p) => p.type === "data-tooluse") as Array<
         GulinUIMessagePart & { type: "data-tooluse" }
     >;
@@ -372,12 +468,26 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
         return toolName === "read_text_file" || toolName === "read_dir";
     };
 
+    const isTerminalOp = (part: GulinUIMessagePart & { type: "data-tooluse" }) => {
+        return !!part.data?.blockid;
+    };
+
     const needsApproval = (part: GulinUIMessagePart & { type: "data-tooluse" }) => {
         return getEffectiveApprovalStatus(part.data?.approval, isStreaming) === "needs-approval";
     };
 
     const readFileNeedsApproval: Array<GulinUIMessagePart & { type: "data-tooluse" }> = [];
     const readFileOther: Array<GulinUIMessagePart & { type: "data-tooluse" }> = [];
+
+    // Group terminal ops by blockid
+    const terminalGroupMap = new Map<string, Array<GulinUIMessagePart & { type: "data-tooluse" }>>();
+    for (const part of tooluseParts) {
+        if (isTerminalOp(part) && !isFileOp(part)) {
+            const bid = part.data.blockid!;
+            if (!terminalGroupMap.has(bid)) terminalGroupMap.set(bid, []);
+            terminalGroupMap.get(bid)!.push(part);
+        }
+    }
 
     for (const part of tooluseParts) {
         if (isFileOp(part)) {
@@ -392,9 +502,11 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
     const groupedItems: ToolGroupItem[] = [];
     let addedApprovalBatch = false;
     let addedOtherBatch = false;
+    const addedTerminalGroups = new Set<string>();
 
     for (const part of tooluseParts) {
         const isFileOpPart = isFileOp(part);
+        const isTermOp = isTerminalOp(part);
         const partNeedsApproval = needsApproval(part);
 
         if (isFileOpPart && partNeedsApproval) {
@@ -406,6 +518,23 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
             if (!addedOtherBatch) {
                 groupedItems.push({ type: "batch", parts: readFileOther });
                 addedOtherBatch = true;
+            }
+        } else if (isTermOp) {
+            const bid = part.data.blockid!;
+            if (!addedTerminalGroups.has(bid)) {
+                addedTerminalGroups.add(bid);
+                // Skip if already rendered in a previous tool group of this message
+                if (seenBlockIds && seenBlockIds.has(bid)) {
+                    // do nothing — already shown
+                } else {
+                    if (seenBlockIds) seenBlockIds.add(bid);
+                    const groupParts = terminalGroupMap.get(bid)!;
+                    if (groupParts.length === 1) {
+                        groupedItems.push({ type: "single", part: groupParts[0] });
+                    } else {
+                        groupedItems.push({ type: "terminal-group", blockid: bid, parts: groupParts });
+                    }
+                }
             }
         } else {
             groupedItems.push({ type: "single", part });
@@ -429,6 +558,16 @@ export const AIToolUseGroup = memo(({ parts, isStreaming }: AIToolUseGroupProps)
                     return (
                         <div key={idx} className="mt-2">
                             <AIToolProgress part={item.part} />
+                        </div>
+                    );
+                } else if (item.type === "terminal-group") {
+                    return (
+                        <div key={idx} className="mt-2">
+                            <AITerminalToolGroupCard
+                                blockid={item.blockid}
+                                parts={item.parts}
+                                isStreaming={isStreaming}
+                            />
                         </div>
                     );
                 } else {

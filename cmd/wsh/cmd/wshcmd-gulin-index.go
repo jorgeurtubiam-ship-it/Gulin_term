@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat"
+	"github.com/gulindev/gulin/pkg/aiusechat"
 )
 
 var gulinIndexCmd = &cobra.Command{

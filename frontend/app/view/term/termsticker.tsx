@@ -104,7 +104,7 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
             return null;
         }
         const streamingUrl =
-            getWebServerEndpoint() + "/wave/stream-local-file?path=" + encodeURIComponent(sticker.imgsrc);
+            getWebServerEndpoint() + "/gulin/stream-local-file?path=" + encodeURIComponent(sticker.imgsrc);
         return (
             <div className="term-sticker term-sticker-image" style={style} onClick={clickHandler}>
                 <img src={streamingUrl} />

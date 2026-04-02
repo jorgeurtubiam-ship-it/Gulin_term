@@ -12,14 +12,14 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sawka/txwrap"
-	"github.com/wavetermdev/waveterm/pkg/util/migrateutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
+	"github.com/gulindev/gulin/pkg/util/migrateutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
 
-	dbfs "github.com/wavetermdev/waveterm/db"
+	dbfs "github.com/gulindev/gulin/db"
 )
 
-const WStoreDBName = "waveterm.db"
+const WStoreDBName = "gulin.db"
 
 type TxWrap = txwrap.TxWrap
 
@@ -42,8 +42,8 @@ func InitWStore() error {
 }
 
 func GetDBName() string {
-	waveHome := wavebase.GetWaveDataDir()
-	return filepath.Join(waveHome, wavebase.WaveDBDir, WStoreDBName)
+	gulinHome := gulinbase.GetGulinDataDir()
+	return filepath.Join(gulinHome, gulinbase.GulinDBDir, WStoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {
@@ -57,24 +57,24 @@ func MakeDB(ctx context.Context) (*sqlx.DB, error) {
 }
 
 func WithTx(ctx context.Context, fn func(tx *TxWrap) error) (rtnErr error) {
-	waveobj.ContextUpdatesBeginTx(ctx)
+	gulinobj.ContextUpdatesBeginTx(ctx)
 	defer func() {
 		if rtnErr != nil {
-			waveobj.ContextUpdatesRollbackTx(ctx)
+			gulinobj.ContextUpdatesRollbackTx(ctx)
 		} else {
-			waveobj.ContextUpdatesCommitTx(ctx)
+			gulinobj.ContextUpdatesCommitTx(ctx)
 		}
 	}()
 	return txwrap.WithTx(ctx, globalDB, fn)
 }
 
 func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (rtnVal RT, rtnErr error) {
-	waveobj.ContextUpdatesBeginTx(ctx)
+	gulinobj.ContextUpdatesBeginTx(ctx)
 	defer func() {
 		if rtnErr != nil {
-			waveobj.ContextUpdatesRollbackTx(ctx)
+			gulinobj.ContextUpdatesRollbackTx(ctx)
 		} else {
-			waveobj.ContextUpdatesCommitTx(ctx)
+			gulinobj.ContextUpdatesCommitTx(ctx)
 		}
 	}()
 	return txwrap.WithTxRtn(ctx, globalDB, fn)

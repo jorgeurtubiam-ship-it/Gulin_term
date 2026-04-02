@@ -45,7 +45,7 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
     const baseName = fileName ? fileName.split("/").pop() : null;
     const language = baseName && shellFileMap[baseName] ? shellFileMap[baseName] : undefined;
 
-    function codeEditKeyDownHandler(e: WaveKeyboardEvent): boolean {
+    function codeEditKeyDownHandler(e: GulinKeyboardEvent): boolean {
         if (checkKeyPressed(e, "Cmd:e")) {
             fireAndForget(() => model.setEditMode(false));
             return true;
@@ -77,8 +77,8 @@ function CodeEditPreview({ model }: SpecializedViewProps) {
         model.monacoRef.current = editor;
 
         const keyDownDisposer = editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
-            const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
-            const handled = tryReinjectKey(waveEvent);
+            const gulinEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
+            const handled = tryReinjectKey(gulinEvent);
             if (handled) {
                 e.stopPropagation();
                 e.preventDefault();

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Logo from "@/app/asset/logo.svg";
-import { setWaveWindowType } from "@/app/store/windowtype";
+import { setGulinWindowType } from "@/app/store/windowtype";
 import { loadFonts } from "@/util/fontutil";
 import React, { lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
@@ -42,7 +42,7 @@ function PreviewIndex() {
         <div className="min-h-screen bg-background text-foreground font-sans flex flex-col items-center justify-center gap-6">
             <div className="flex flex-col items-center gap-3">
                 <Logo />
-                <h1 className="text-title font-semibold tracking-tight text-foreground">Wave Preview Server</h1>
+                <h1 className="text-title font-semibold tracking-tight text-foreground">Gulin Preview Server</h1>
             </div>
 
             <div className="w-px h-8 bg-border" />
@@ -118,7 +118,7 @@ function PreviewApp() {
 }
 
 function initPreview() {
-    setWaveWindowType("preview");
+    setGulinWindowType("preview");
     loadFonts();
     const root = createRoot(document.getElementById("main")!);
     root.render(<PreviewApp />);

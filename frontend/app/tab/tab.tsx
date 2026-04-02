@@ -20,7 +20,7 @@ import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ObjectService } from "../store/services";
-import { makeORef, useWaveObjectValue } from "../store/wos";
+import { makeORef, useGulinObjectValue } from "../store/wos";
 import "./tab.scss";
 
 interface TabVProps {
@@ -289,7 +289,7 @@ interface TabProps {
 
 const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, isBeforeActive, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
-    const [tabData, _] = useWaveObjectValue<Tab>(makeORef("tab", id));
+    const [tabData, _] = useGulinObjectValue<Tab>(makeORef("tab", id));
     const indicator = useAtomValue(getTabIndicatorAtom(id));
 
     const loadedRef = useRef(false);

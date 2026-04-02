@@ -15,28 +15,28 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/blocklogger"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/remote/conncontroller"
-	"github.com/wavetermdev/waveterm/pkg/streamclient"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/ds"
-	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/shellutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/utilds"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wavejwt"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wcore"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/blocklogger"
+	"github.com/gulindev/gulin/pkg/filestore"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/remote/conncontroller"
+	"github.com/gulindev/gulin/pkg/streamclient"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/util/ds"
+	"github.com/gulindev/gulin/pkg/util/envutil"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/utilds"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinjwt"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wcore"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wstore"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -136,12 +136,12 @@ func InitJobController() {
 	}, nil)
 }
 
-func isJobManagerRunning(job *waveobj.Job) bool {
+func isJobManagerRunning(job *gulinobj.Job) bool {
 	return job.JobManagerStatus == JobManagerStatus_Running
 }
 
 func GetJobManagerStatus(ctx context.Context, jobId string) (string, error) {
-	job, err := wstore.DBGet[*waveobj.Job](ctx, jobId)
+	job, err := wstore.DBGet[*gulinobj.Job](ctx, jobId)
 	if err != nil {
 		return "", fmt.Errorf("failed to get job: %w", err)
 	}
@@ -152,7 +152,7 @@ func GetJobManagerStatus(ctx context.Context, jobId string) (string, error) {
 }
 
 func GetAllJobManagerStatus(ctx context.Context) ([]*wshrpc.JobManagerStatusUpdate, error) {
-	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	allJobs, err := wstore.DBGetAllObjsByType[*gulinobj.Job](ctx, gulinobj.OType_Job)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs: %w", err)
 	}
@@ -169,7 +169,7 @@ func GetAllJobManagerStatus(ctx context.Context) ([]*wshrpc.JobManagerStatusUpda
 }
 
 func GetBlockJobStatus(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
-	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+	block, err := wstore.DBGet[*gulinobj.Block](ctx, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block: %w", err)
 	}
@@ -186,7 +186,7 @@ func GetBlockJobStatus(ctx context.Context, blockId string) (*wshrpc.BlockJobSta
 		return data, nil
 	}
 
-	job, err := wstore.DBGet[*waveobj.Job](ctx, block.JobId)
+	job, err := wstore.DBGet[*gulinobj.Job](ctx, block.JobId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
@@ -223,14 +223,14 @@ func SendBlockJobStatusEvent(ctx context.Context, blockId string) {
 		log.Printf("[block:%s] error getting block job status: %v", blockId, err)
 		return
 	}
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event:  wps.Event_BlockJobStatus,
 		Scopes: []string{fmt.Sprintf("block:%s", blockId)},
 		Data:   data,
 	})
 }
 
-func sendBlockJobStatusEventByJob(ctx context.Context, job *waveobj.Job) {
+func sendBlockJobStatusEventByJob(ctx context.Context, job *gulinobj.Job) {
 	if job == nil || job.AttachedBlockId == "" {
 		return
 	}
@@ -318,7 +318,7 @@ func pruneUnusedJobs(previousCandidates []string) []string {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancelFn()
 
-	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	allJobs, err := wstore.DBGetAllObjsByType[*gulinobj.Job](ctx, gulinobj.OType_Job)
 	if err != nil {
 		log.Printf("[jobpruner] error getting all jobs: %v", err)
 		return previousCandidates
@@ -346,15 +346,15 @@ func pruneUnusedJobs(previousCandidates []string) []string {
 	return currentCandidates
 }
 
-func handleRouteUpEvent(event *wps.WaveEvent) {
+func handleRouteUpEvent(event *wps.GulinEvent) {
 	handleRouteEvent(event, JobConnStatus_Connected)
 }
 
-func handleRouteDownEvent(event *wps.WaveEvent) {
+func handleRouteDownEvent(event *wps.GulinEvent) {
 	handleRouteEvent(event, JobConnStatus_Disconnected)
 }
 
-func handleRouteEvent(event *wps.WaveEvent, newStatus string) {
+func handleRouteEvent(event *wps.GulinEvent, newStatus string) {
 	ctx := context.Background()
 	for _, scope := range event.Scopes {
 		if strings.HasPrefix(scope, "job:") {
@@ -362,7 +362,7 @@ func handleRouteEvent(event *wps.WaveEvent, newStatus string) {
 			SetJobConnStatus(jobId, newStatus)
 			log.Printf("[job:%s] connection status changed to %s", jobId, newStatus)
 
-			job, err := wstore.DBGet[*waveobj.Job](ctx, jobId)
+			job, err := wstore.DBGet[*gulinobj.Job](ctx, jobId)
 			if err != nil {
 				log.Printf("[job:%s] error getting job for status event: %v", jobId, err)
 				continue
@@ -420,7 +420,7 @@ func attemptAutoReconnect(jobId string, connName string) {
 	}
 }
 
-func handleConnChangeEvent(event *wps.WaveEvent) {
+func handleConnChangeEvent(event *wps.GulinEvent) {
 	var connStatus wshrpc.ConnStatus
 	err := utilfn.ReUnmarshal(&connStatus, event.Data)
 	if err != nil {
@@ -454,7 +454,7 @@ func handleConnChangeEvent(event *wps.WaveEvent) {
 	}
 }
 
-func handleBlockCloseEvent(event *wps.WaveEvent) {
+func handleBlockCloseEvent(event *wps.GulinEvent) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	blockId, ok := event.Data.(string)
@@ -486,13 +486,13 @@ func onConnectionUp(connName string) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 
-	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	allJobs, err := wstore.DBGetAllObjsByType[*gulinobj.Job](ctx, gulinobj.OType_Job)
 	if err != nil {
 		log.Printf("[conn:%s] failed to get jobs for reconnection: %v", connName, err)
 		return
 	}
 
-	var jobsToReconnect []*waveobj.Job
+	var jobsToReconnect []*gulinobj.Job
 	for _, job := range allJobs {
 		if job.Connection == connName && isJobManagerRunning(job) {
 			jobsToReconnect = append(jobsToReconnect, job)
@@ -553,7 +553,7 @@ func GetConnectedJobIds() []string {
 func GetNumJobsRunning() int {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	allJobs, err := wstore.DBGetAllObjsByType[*gulinobj.Job](ctx, gulinobj.OType_Job)
 	if err != nil {
 		return 0
 	}
@@ -578,8 +578,8 @@ func GetNumJobsConnected() int {
 	return count
 }
 
-func CheckJobConnected(ctx context.Context, jobId string) (*waveobj.Job, error) {
-	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+func CheckJobConnected(ctx context.Context, jobId string) (*gulinobj.Job, error) {
+	job, err := wstore.DBMustGet[*gulinobj.Job](ctx, jobId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
@@ -606,7 +606,7 @@ type StartJobParams struct {
 	Cmd      string
 	Args     []string
 	Env      map[string]string
-	TermSize *waveobj.TermSize
+	TermSize *gulinobj.TermSize
 	BlockId  string
 }
 
@@ -621,7 +621,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("command is required")
 	}
 	if params.TermSize == nil {
-		params.TermSize = &waveobj.TermSize{Rows: 24, Cols: 80}
+		params.TermSize = &gulinobj.TermSize{Rows: 24, Cols: 80}
 	}
 
 	isConnected, err := conncontroller.IsConnected(params.ConnName)
@@ -638,16 +638,16 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		return "", fmt.Errorf("failed to generate job auth token: %w", err)
 	}
 
-	jobAccessClaims := &wavejwt.WaveJwtClaims{
+	jobAccessClaims := &gulinjwt.GulinJwtClaims{
 		MainServer: true,
 		JobId:      jobId,
 	}
-	jobAccessToken, err := wavejwt.Sign(jobAccessClaims)
+	jobAccessToken, err := gulinjwt.Sign(jobAccessClaims)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate job access token: %w", err)
 	}
 
-	job := &waveobj.Job{
+	job := &gulinobj.Job{
 		OID:              jobId,
 		Connection:       params.ConnName,
 		JobKind:          params.JobKind,
@@ -658,8 +658,8 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		JobAuthToken:     jobAuthToken,
 		JobManagerStatus: JobManagerStatus_Init,
 		AttachedBlockId:  params.BlockId,
-		WaveVersion:      wavebase.WaveVersion,
-		Meta:             make(waveobj.MetaMapType),
+		GulinVersion:      gulinbase.GulinVersion,
+		Meta:             make(gulinobj.MetaMapType),
 	}
 
 	err = wstore.DBInsert(ctx, job)
@@ -686,13 +686,13 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	}
 	err = filestore.WFS.MakeFile(ctx, jobId, JobOutputFileName, wshrpc.FileMeta{}, fileOpts)
 	if err != nil {
-		return "", fmt.Errorf("failed to create WaveFS file: %w", err)
+		return "", fmt.Errorf("failed to create GulinFS file: %w", err)
 	}
 
 	clientId := wstore.GetClientId()
-	publicKey := wavejwt.GetPublicKey()
+	publicKey := gulinjwt.GetPublicKey()
 	publicKeyBase64 := base64.StdEncoding.EncodeToString(publicKey)
-	jobEnv := envutil.CopyAndAddToEnvMap(params.Env, "WAVETERM_JOBID", jobId)
+	jobEnv := envutil.CopyAndAddToEnvMap(params.Env, "GULIN_JOBID", jobId)
 	startJobData := wshrpc.CommandRemoteStartJobData{
 		Cmd:                params.Cmd,
 		Args:               params.Args,
@@ -719,8 +719,8 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	if err != nil {
 		log.Printf("[job:%s] RemoteStartJobCommand failed: %v", jobId, err)
 		errMsg := fmt.Sprintf("failed to start job: %v", err)
-		var updatedJob *waveobj.Job
-		wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+		var updatedJob *gulinobj.Job
+		wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 			job.JobManagerStatus = JobManagerStatus_Done
 			job.JobManagerDoneReason = JobDoneReason_StartupError
 			job.JobManagerStartupError = errMsg
@@ -738,8 +738,8 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	}
 
 	log.Printf("[job:%s] RemoteStartJobCommand succeeded, cmdpid=%d cmdstartts=%d jobmanagerpid=%d jobmanagerstartts=%d", jobId, rtnData.CmdPid, rtnData.CmdStartTs, rtnData.JobManagerPid, rtnData.JobManagerStartTs)
-	var updatedJob *waveobj.Job
-	err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+	var updatedJob *gulinobj.Job
+	err = wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 		job.CmdPid = rtnData.CmdPid
 		job.CmdStartTs = rtnData.CmdStartTs
 		job.JobManagerPid = rtnData.JobManagerPid
@@ -771,12 +771,12 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	return jobId, nil
 }
 
-func doWFSAppend(ctx context.Context, oref waveobj.ORef, fileName string, data []byte) error {
+func doWFSAppend(ctx context.Context, oref gulinobj.ORef, fileName string, data []byte) error {
 	err := filestore.WFS.AppendData(ctx, oref.OID, fileName, data)
 	if err != nil {
 		return err
 	}
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event: wps.Event_BlockFile,
 		Scopes: []string{
 			oref.String(),
@@ -792,17 +792,17 @@ func doWFSAppend(ctx context.Context, oref waveobj.ORef, fileName string, data [
 }
 
 func handleAppendJobFile(ctx context.Context, jobId string, fileName string, data []byte) error {
-	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Job, jobId), fileName, data)
+	err := doWFSAppend(ctx, gulinobj.MakeORef(gulinobj.OType_Job, jobId), fileName, data)
 	if err != nil {
 		return fmt.Errorf("error appending to job file: %w", err)
 	}
 
-	job, err := wstore.DBGet[*waveobj.Job](ctx, jobId)
+	job, err := wstore.DBGet[*gulinobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("error getting job: %w", err)
 	}
 	if job != nil && job.AttachedBlockId != "" {
-		err = doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, job.AttachedBlockId), fileName, data)
+		err = doWFSAppend(ctx, gulinobj.MakeORef(gulinobj.OType_Block, job.AttachedBlockId), fileName, data)
 		if err != nil {
 			return fmt.Errorf("error appending to block file: %w", err)
 		}
@@ -829,13 +829,13 @@ func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *s
 		if n > 0 {
 			appendErr := handleAppendJobFile(ctx, jobId, JobOutputFileName, buf[:n])
 			if appendErr != nil {
-				log.Printf("[job:%s] error appending data to WaveFS: %v", jobId, appendErr)
+				log.Printf("[job:%s] error appending data to GulinFS: %v", jobId, appendErr)
 			}
 		}
 
 		if err == io.EOF {
 			log.Printf("[job:%s] stream ended (EOF)", jobId)
-			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 				job.StreamDone = true
 			})
 			if updateErr != nil {
@@ -848,7 +848,7 @@ func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *s
 		if err != nil {
 			log.Printf("[job:%s] stream error: %v", jobId, err)
 			streamErr := err.Error()
-			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 				job.StreamDone = true
 				job.StreamError = streamErr
 			})
@@ -862,8 +862,8 @@ func runOutputLoop(ctx context.Context, jobId string, streamId string, reader *s
 }
 
 func HandleCmdJobExited(ctx context.Context, jobId string, data wshrpc.CommandJobCmdExitedData) error {
-	var updatedJob *waveobj.Job
-	err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+	var updatedJob *gulinobj.Job
+	err := wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 		job.CmdExitError = data.ExitErr
 		job.CmdExitCode = data.ExitCode
 		job.CmdExitSignal = data.ExitSignal
@@ -893,7 +893,7 @@ func HandleCmdJobExited(ctx context.Context, jobId string, data wshrpc.CommandJo
 }
 
 func tryTerminateJobManager(ctx context.Context, jobId string) {
-	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	job, err := wstore.DBMustGet[*gulinobj.Job](ctx, jobId)
 	if err != nil {
 		log.Printf("[job:%s] error getting job for termination check: %v", jobId, err)
 		return
@@ -939,8 +939,8 @@ func TerminateJobManager(ctx context.Context, jobId string) error {
 
 func doTerminateJobManager(ctx context.Context, jobId string) error {
 	var shouldTerminate bool
-	var job *waveobj.Job
-	err := wstore.DBUpdateFn(ctx, jobId, func(j *waveobj.Job) {
+	var job *gulinobj.Job
+	err := wstore.DBUpdateFn(ctx, jobId, func(j *gulinobj.Job) {
 		job = j
 		if j.JobManagerStatus == JobManagerStatus_Done {
 			shouldTerminate = false
@@ -962,7 +962,7 @@ func doTerminateJobManager(ctx context.Context, jobId string) error {
 }
 
 func DisconnectJob(ctx context.Context, jobId string) error {
-	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+	job, err := wstore.DBMustGet[*gulinobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -986,7 +986,7 @@ func DisconnectJob(ctx context.Context, jobId string) error {
 	return nil
 }
 
-func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
+func remoteTerminateJobManager(ctx context.Context, job *gulinobj.Job) error {
 	log.Printf("[job:%s] terminating job manager", job.OID)
 
 	shouldWrite := jobTerminationMessageWritten.TestAndSet(job.OID, true, func(val bool, exists bool) bool {
@@ -1020,8 +1020,8 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 		return fmt.Errorf("failed to terminate job manager: %w", err)
 	}
 
-	var updatedJob *waveobj.Job
-	updateErr := wstore.DBUpdateFn(ctx, job.OID, func(job *waveobj.Job) {
+	var updatedJob *gulinobj.Job
+	updateErr := wstore.DBUpdateFn(ctx, job.OID, func(job *gulinobj.Job) {
 		job.JobManagerStatus = JobManagerStatus_Done
 		job.JobManagerDoneReason = JobDoneReason_Terminated
 		job.TerminateOnReconnect = false
@@ -1049,15 +1049,15 @@ func remoteTerminateJobManager(ctx context.Context, job *waveobj.Job) error {
 	return nil
 }
 
-func ReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts) error {
+func ReconnectJob(ctx context.Context, jobId string, rtOpts *gulinobj.RuntimeOpts) error {
 	_, err, _ := reconnectGroup.Do(jobId, func() (any, error) {
 		return nil, doReconnectJob(ctx, jobId, rtOpts)
 	})
 	return err
 }
 
-func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOpts) error {
-	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+func doReconnectJob(ctx context.Context, jobId string, rtOpts *gulinobj.RuntimeOpts) error {
+	job, err := wstore.DBMustGet[*gulinobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -1082,18 +1082,18 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 	}
 
 	if rtOpts == nil {
-		rtOpts = &waveobj.RuntimeOpts{
+		rtOpts = &gulinobj.RuntimeOpts{
 			TermSize: job.CmdTermSize,
 		}
 	}
 
 	bareRpc := wshclient.GetBareRpcClient()
 
-	jobAccessClaims := &wavejwt.WaveJwtClaims{
+	jobAccessClaims := &gulinjwt.GulinJwtClaims{
 		MainServer: true,
 		JobId:      jobId,
 	}
-	jobAccessToken, err := wavejwt.Sign(jobAccessClaims)
+	jobAccessToken, err := gulinjwt.Sign(jobAccessClaims)
 	if err != nil {
 		return fmt.Errorf("failed to generate job access token: %w", err)
 	}
@@ -1121,8 +1121,8 @@ func doReconnectJob(ctx context.Context, jobId string, rtOpts *waveobj.RuntimeOp
 	if !rtnData.Success {
 		log.Printf("[job:%s] RemoteReconnectToJobManagerCommand returned error: %s", jobId, rtnData.Error)
 		if rtnData.JobManagerGone {
-			var updatedJob *waveobj.Job
-			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+			var updatedJob *gulinobj.Job
+			updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 				job.JobManagerStatus = JobManagerStatus_Done
 				job.JobManagerDoneReason = JobDoneReason_Gone
 				updatedJob = job
@@ -1177,12 +1177,12 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 		return fmt.Errorf("connection %q is not connected", connName)
 	}
 
-	allJobs, err := wstore.DBGetAllObjsByType[*waveobj.Job](ctx, waveobj.OType_Job)
+	allJobs, err := wstore.DBGetAllObjsByType[*gulinobj.Job](ctx, gulinobj.OType_Job)
 	if err != nil {
 		return fmt.Errorf("failed to get jobs: %w", err)
 	}
 
-	var jobsToReconnect []*waveobj.Job
+	var jobsToReconnect []*gulinobj.Job
 	for _, job := range allJobs {
 		if job.Connection == connName && isJobManagerRunning(job) {
 			jobsToReconnect = append(jobsToReconnect, job)
@@ -1201,8 +1201,8 @@ func ReconnectJobsForConn(ctx context.Context, connName string) error {
 	return nil
 }
 
-func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rtOpts *waveobj.RuntimeOpts) error {
-	job, err := wstore.DBMustGet[*waveobj.Job](ctx, jobId)
+func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rtOpts *gulinobj.RuntimeOpts) error {
+	job, err := wstore.DBMustGet[*gulinobj.Job](ctx, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %w", err)
 	}
@@ -1210,7 +1210,7 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 	termSize := job.CmdTermSize
 	if rtOpts != nil && rtOpts.TermSize.Rows > 0 && rtOpts.TermSize.Cols > 0 {
 		termSize = rtOpts.TermSize
-		err = wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+		err = wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 			job.CmdTermSize = termSize
 		})
 		if err != nil {
@@ -1235,10 +1235,10 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 
 	var currentSeq int64 = 0
 	var totalGap int64 = 0
-	waveFile, err := filestore.WFS.Stat(ctx, jobId, JobOutputFileName)
+	gulinFile, err := filestore.WFS.Stat(ctx, jobId, JobOutputFileName)
 	if err == nil {
-		currentSeq = waveFile.Size
-		totalGap = getMetaInt64(waveFile.Meta, MetaKey_TotalGap)
+		currentSeq = gulinFile.Size
+		totalGap = getMetaInt64(gulinFile.Meta, MetaKey_TotalGap)
 		currentSeq += totalGap
 	}
 
@@ -1260,7 +1260,7 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 		Timeout: 5000,
 	}
 
-	log.Printf("[job:%s] sending JobPrepareConnectCommand with seq=%d (fileSize=%d, totalGap=%d)", jobId, currentSeq, waveFile.Size, totalGap)
+	log.Printf("[job:%s] sending JobPrepareConnectCommand with seq=%d (fileSize=%d, totalGap=%d)", jobId, currentSeq, gulinFile.Size, totalGap)
 	rtnData, err := wshclient.JobPrepareConnectCommand(bareRpc, prepareData, rpcOpts)
 	if err != nil {
 		reader.Close()
@@ -1284,7 +1284,7 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 
 	if rtnData.StreamDone {
 		log.Printf("[job:%s] stream is already done: error=%q", jobId, rtnData.StreamError)
-		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+		updateErr := wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 			if !job.StreamDone {
 				job.StreamDone = true
 				if rtnData.StreamError != "" {
@@ -1345,13 +1345,13 @@ func restartStreaming(ctx context.Context, jobId string, knownConnected bool, rt
 }
 
 // this function must be kept up to date with getBlockTermDurableAtom in frontend/app/store/global.ts
-func IsBlockTermDurable(block *waveobj.Block) bool {
+func IsBlockTermDurable(block *gulinobj.Block) bool {
 	if block == nil {
 		return false
 	}
 
 	// Check if view is "term", and controller is "shell"
-	if block.Meta.GetString(waveobj.MetaKey_View, "") != "term" || block.Meta.GetString(waveobj.MetaKey_Controller, "") != "shell" {
+	if block.Meta.GetString(gulinobj.MetaKey_View, "") != "term" || block.Meta.GetString(gulinobj.MetaKey_Controller, "") != "shell" {
 		return false
 	}
 
@@ -1361,14 +1361,14 @@ func IsBlockTermDurable(block *waveobj.Block) bool {
 	}
 
 	// 2. Check if connection is local or WSL (not durable)
-	connName := block.Meta.GetString(waveobj.MetaKey_Connection, "")
+	connName := block.Meta.GetString(gulinobj.MetaKey_Connection, "")
 	if conncontroller.IsLocalConnName(connName) || conncontroller.IsWslConnName(connName) {
 		return false
 	}
 
 	// 3. Check config hierarchy: blockmeta → connection → global (default true)
 	// Check block meta first
-	if val, exists := block.Meta[waveobj.MetaKey_TermDurable]; exists {
+	if val, exists := block.Meta[gulinobj.MetaKey_TermDurable]; exists {
 		if boolVal, ok := val.(bool); ok {
 			return boolVal
 		}
@@ -1391,7 +1391,7 @@ func IsBlockTermDurable(block *waveobj.Block) bool {
 }
 
 func IsBlockIdTermDurable(blockId string) bool {
-	block, err := wstore.DBGet[*waveobj.Block](context.Background(), blockId)
+	block, err := wstore.DBGet[*gulinobj.Block](context.Background(), blockId)
 	if err != nil || block == nil {
 		return false
 	}
@@ -1403,16 +1403,16 @@ func DeleteJob(ctx context.Context, jobId string) error {
 	jobTerminationMessageWritten.Delete(jobId)
 	err := filestore.WFS.DeleteZone(ctx, jobId)
 	if err != nil {
-		log.Printf("[job:%s] warning: error deleting WaveFS zone: %v", jobId, err)
+		log.Printf("[job:%s] warning: error deleting GulinFS zone: %v", jobId, err)
 	}
-	return wstore.DBDelete(ctx, waveobj.OType_Job, jobId)
+	return wstore.DBDelete(ctx, gulinobj.OType_Job, jobId)
 }
 
 func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
 		var oldJobId string
 
-		err := wstore.DBUpdateFn(tx.Context(), blockId, func(block *waveobj.Block) {
+		err := wstore.DBUpdateFn(tx.Context(), blockId, func(block *gulinobj.Block) {
 			oldJobId = block.JobId
 			block.JobId = jobId
 		})
@@ -1421,7 +1421,7 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 		}
 
 		if oldJobId != "" && oldJobId != jobId {
-			err = wstore.DBUpdateFn(tx.Context(), oldJobId, func(oldJob *waveobj.Job) {
+			err = wstore.DBUpdateFn(tx.Context(), oldJobId, func(oldJob *gulinobj.Job) {
 				if oldJob.AttachedBlockId == blockId {
 					oldJob.AttachedBlockId = ""
 				}
@@ -1431,7 +1431,7 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 			}
 		}
 
-		err = wstore.DBUpdateFnErr(tx.Context(), jobId, func(job *waveobj.Job) error {
+		err = wstore.DBUpdateFnErr(tx.Context(), jobId, func(job *gulinobj.Job) error {
 			if job.AttachedBlockId != "" && job.AttachedBlockId != blockId {
 				return fmt.Errorf("job %s already attached to block %s", jobId, job.AttachedBlockId)
 			}
@@ -1450,7 +1450,7 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 	}
 
 	SendBlockJobStatusEvent(ctx, blockId)
-	wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
+	wcore.SendGulinObjUpdate(gulinobj.MakeORef(gulinobj.OType_Block, blockId))
 	return nil
 }
 
@@ -1458,7 +1458,7 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 	var blockId string
 	var blockUpdated bool
 	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
-		job, err := wstore.DBMustGet[*waveobj.Job](tx.Context(), jobId)
+		job, err := wstore.DBMustGet[*gulinobj.Job](tx.Context(), jobId)
 		if err != nil {
 			return fmt.Errorf("failed to get job: %w", err)
 		}
@@ -1469,9 +1469,9 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 		}
 
 		if updateBlock {
-			block, err := wstore.DBGet[*waveobj.Block](tx.Context(), blockId)
+			block, err := wstore.DBGet[*gulinobj.Block](tx.Context(), blockId)
 			if err == nil && block != nil {
-				err = wstore.DBUpdateFn(tx.Context(), blockId, func(block *waveobj.Block) {
+				err = wstore.DBUpdateFn(tx.Context(), blockId, func(block *gulinobj.Block) {
 					block.JobId = ""
 				})
 				if err != nil {
@@ -1482,7 +1482,7 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 			}
 		}
 
-		err = wstore.DBUpdateFn(tx.Context(), jobId, func(job *waveobj.Job) {
+		err = wstore.DBUpdateFn(tx.Context(), jobId, func(job *gulinobj.Job) {
 			job.AttachedBlockId = ""
 		})
 		if err != nil {
@@ -1499,7 +1499,7 @@ func DetachJobFromBlock(ctx context.Context, jobId string, updateBlock bool) err
 	if blockId != "" {
 		SendBlockJobStatusEvent(ctx, blockId)
 		if blockUpdated {
-			wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
+			wcore.SendGulinObjUpdate(gulinobj.MakeORef(gulinobj.OType_Block, blockId))
 		}
 	}
 
@@ -1510,7 +1510,7 @@ func SendInput(ctx context.Context, data wshrpc.CommandJobInputData) error {
 	jobId := data.JobId
 
 	if data.TermSize != nil {
-		err := wstore.DBUpdateFn(ctx, jobId, func(job *waveobj.Job) {
+		err := wstore.DBUpdateFn(ctx, jobId, func(job *gulinobj.Job) {
 			job.CmdTermSize = *data.TermSize
 		})
 		if err != nil {
@@ -1550,7 +1550,7 @@ func resetTerminalState(logCtx context.Context, blockId string) {
 	blocklogger.Debugf(logCtx, "[conndebug] resetTerminalState: resetting terminal state for block\n")
 	resetSeq := shellutil.GetTerminalResetSeq()
 	resetSeq += "\r\n"
-	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(resetSeq))
+	err := doWFSAppend(ctx, gulinobj.MakeORef(gulinobj.OType_Block, blockId), JobOutputFileName, []byte(resetSeq))
 	if err != nil {
 		log.Printf("error appending terminal reset to block file: %v\n", err)
 	}
@@ -1581,7 +1581,7 @@ func writeSessionSeparatorToTerminal(blockId string, termWidth int) {
 		return
 	}
 	separatorLine := "\r\n"
-	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(separatorLine))
+	err := doWFSAppend(ctx, gulinobj.MakeORef(gulinobj.OType_Block, blockId), JobOutputFileName, []byte(separatorLine))
 	if err != nil {
 		log.Printf("error writing session separator to terminal (blockid=%s): %v", blockId, err)
 	}
@@ -1595,13 +1595,13 @@ func writeMutedMessageToTerminal(blockId string, msg string) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	fullMsg := "\x1b[90m" + msg + "\x1b[0m\r\n"
-	err := doWFSAppend(ctx, waveobj.MakeORef(waveobj.OType_Block, blockId), JobOutputFileName, []byte(fullMsg))
+	err := doWFSAppend(ctx, gulinobj.MakeORef(gulinobj.OType_Block, blockId), JobOutputFileName, []byte(fullMsg))
 	if err != nil {
 		log.Printf("error writing muted message to terminal (blockid=%s): %v", blockId, err)
 	}
 }
 
-func writeJobTerminationMessage(ctx context.Context, jobId string, job *waveobj.Job, msg string) {
+func writeJobTerminationMessage(ctx context.Context, jobId string, job *gulinobj.Job, msg string) {
 	if job == nil {
 		return
 	}

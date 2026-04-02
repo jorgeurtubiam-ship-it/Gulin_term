@@ -7,10 +7,10 @@
     "productName": "GuLiN",
     "description": "AI-Native Terminal - GuLiN Edition",
     "license": "Apache-2.0",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "homepage": "https://gulin.dev",
     "build": {
-        "appId": "dev.lordzero.gulin"
+        "appId": "dev.gulin.app"
     },
     "private": true,
     "main": "./dist/main/index.js",

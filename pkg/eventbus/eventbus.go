@@ -83,5 +83,5 @@ func SendEventToElectron(event WSEventType) {
 	}
 	// send to electron
 	log.Printf("sending event to electron: %q\n", event.EventType)
-	fmt.Fprintf(os.Stderr, "\nWAVESRV-EVENT:%s\n", string(barr))
+	fmt.Fprintf(os.Stderr, "\nGULINSRV-EVENT:%s\n", string(barr))
 }

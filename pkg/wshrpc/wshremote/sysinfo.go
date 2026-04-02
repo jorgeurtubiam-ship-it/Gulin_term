@@ -10,10 +10,10 @@ import (
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 const BYTES_PER_GB = 1073741824
@@ -52,7 +52,7 @@ func generateSingleServerData(client *wshutil.WshRpc, connName string) {
 	getCpuData(values)
 	getMemData(values)
 	tsData := wshrpc.TimeSeriesData{Ts: now.UnixMilli(), Values: values}
-	event := wps.WaveEvent{
+	event := wps.GulinEvent{
 		Event:   wps.Event_SysInfo,
 		Scopes:  []string{connName},
 		Data:    tsData,

@@ -8,7 +8,7 @@ import { Notification, net, safeStorage, shell } from "electron";
 import { getResolvedUpdateChannel } from "emain/updater";
 import { unamePlatform } from "./emain-platform";
 import { getWebContentsByBlockId, webClick, webGetSelector, webGetText, webType } from "./emain-web";
-import { createBrowserWindow, getWaveWindowById, getWaveWindowByWorkspaceId } from "./emain-window";
+import { createBrowserWindow, getGulinWindowById, getGulinWindowByWorkspaceId } from "./emain-window";
 
 export class ElectronWshClientType extends WshClient {
     constructor() {
@@ -19,7 +19,7 @@ export class ElectronWshClientType extends WshClient {
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("tabid and blockid are required");
         }
-        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        const ww = getGulinWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
             throw new Error(`no window found with workspace ${data.workspaceid}`);
         }
@@ -35,7 +35,7 @@ export class ElectronWshClientType extends WshClient {
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("tabid and blockid are required");
         }
-        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        const ww = getGulinWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
             throw new Error(`no window found with workspace ${data.workspaceid}`);
         }
@@ -51,7 +51,7 @@ export class ElectronWshClientType extends WshClient {
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("tabid and blockid are required");
         }
-        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        const ww = getGulinWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
             throw new Error(`no window found with workspace ${data.workspaceid}`);
         }
@@ -66,7 +66,7 @@ export class ElectronWshClientType extends WshClient {
         if (!data.tabid || !data.blockid || !data.workspaceid) {
             throw new Error("tabid and blockid are required");
         }
-        const ww = getWaveWindowByWorkspaceId(data.workspaceid);
+        const ww = getGulinWindowByWorkspaceId(data.workspaceid);
         if (ww == null) {
             throw new Error(`no window found with workspace ${data.workspaceid}`);
         }
@@ -77,7 +77,7 @@ export class ElectronWshClientType extends WshClient {
         await webType(wc, data.selector, data.text);
     }
 
-    async handle_notify(rh: RpcResponseHelper, notificationOptions: WaveNotificationOptions) {
+    async handle_notify(rh: RpcResponseHelper, notificationOptions: GulinNotificationOptions) {
         new Notification({
             title: notificationOptions.title,
             body: notificationOptions.body,
@@ -92,7 +92,7 @@ export class ElectronWshClientType extends WshClient {
     async handle_focuswindow(rh: RpcResponseHelper, windowId: string) {
         console.log(`focuswindow ${windowId}`);
         const fullConfig = await RpcApi.GetFullConfigCommand(ElectronWshClient);
-        let ww = getWaveWindowById(windowId);
+        let ww = getGulinWindowById(windowId);
         if (ww == null) {
             const window = await WindowService.GetWindow(windowId);
             if (window == null) {

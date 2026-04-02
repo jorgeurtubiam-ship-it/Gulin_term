@@ -19,9 +19,9 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/tsunami/rpctypes"
-	"github.com/wavetermdev/waveterm/tsunami/util"
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/gulindev/gulin/tsunami/rpctypes"
+	"github.com/gulindev/gulin/tsunami/util"
+	"github.com/gulindev/gulin/tsunami/vdom"
 )
 
 const TsunamiListenAddrEnvVar = "TSUNAMI_LISTENADDR"
@@ -43,8 +43,8 @@ var defaultClient = makeClient()
 type AppMeta struct {
 	Title     string `json:"title"`
 	ShortDesc string `json:"shortdesc"`
-	Icon      string `json:"icon"`      // for waveapps, the icon to use (fontawesome names)
-	IconColor string `json:"iconcolor"` // for waveapps, the icon color to use (HTML color -- name, hex, rgb)
+	Icon      string `json:"icon"`      // for gulinapps, the icon to use (fontawesome names)
+	IconColor string `json:"iconcolor"` // for gulinapps, the icon color to use (HTML color -- name, hex, rgb)
 }
 
 type SecretMeta struct {
@@ -166,7 +166,7 @@ func (c *ClientImpl) getFaviconPath() string {
 			}
 		}
 	}
-	return "/wave-logo-256.png"
+	return "/gulin-logo-256.png"
 }
 
 func (c *ClientImpl) makeBackendOpts() *rpctypes.VDomBackendOpts {
@@ -305,7 +305,7 @@ func (c *ClientImpl) SendAsyncInitiation() error {
 }
 
 func makeNullRendered() *rpctypes.RenderedElem {
-	return &rpctypes.RenderedElem{WaveId: uuid.New().String(), Tag: vdom.WaveNullTag}
+	return &rpctypes.RenderedElem{GulinId: uuid.New().String(), Tag: vdom.GulinNullTag}
 }
 
 func structToProps(props any) map[string]any {

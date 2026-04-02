@@ -13,16 +13,16 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/wavetermdev/waveterm/pkg/util/unixutil"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/util/unixutil"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 type CmdDef struct {
 	Cmd      string
 	Args     []string
 	Env      map[string]string
-	TermSize waveobj.TermSize
+	TermSize gulinobj.TermSize
 }
 
 type JobCmd struct {
@@ -31,7 +31,7 @@ type JobCmd struct {
 	cmd           *exec.Cmd
 	cmdPty        pty.Pty
 	ptsName       string
-	termSize      waveobj.TermSize
+	termSize      gulinobj.TermSize
 	cleanedUp     bool
 	ptyClosed     bool
 	processExited bool
@@ -152,7 +152,7 @@ func (jm *JobCmd) GetExitInfo() (bool, *wshrpc.CommandJobCmdExitedData) {
 	return true, exitData
 }
 
-func (jm *JobCmd) setTermSize_withlock(termSize waveobj.TermSize) error {
+func (jm *JobCmd) setTermSize_withlock(termSize gulinobj.TermSize) error {
 	if jm.cmdPty == nil {
 		return fmt.Errorf("no active pty")
 	}
@@ -170,7 +170,7 @@ func (jm *JobCmd) setTermSize_withlock(termSize waveobj.TermSize) error {
 	return nil
 }
 
-func (jm *JobCmd) SetTermSize(termSize waveobj.TermSize) error {
+func (jm *JobCmd) SetTermSize(termSize gulinobj.TermSize) error {
 	jm.lock.Lock()
 	defer jm.lock.Unlock()
 	return jm.setTermSize_withlock(termSize)

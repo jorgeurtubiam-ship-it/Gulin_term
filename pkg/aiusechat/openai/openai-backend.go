@@ -16,15 +16,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/launchdarkly/eventsource"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/aiutil"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/chatstore"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/util/logutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/web/sse"
+	"github.com/gulindev/gulin/pkg/aiusechat/aiutil"
+	"github.com/gulindev/gulin/pkg/aiusechat/chatstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/util/logutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
-// sanitizeHostnameInError removes the Wave cloud hostname from error messages
+// sanitizeHostnameInError removes the Gulin cloud hostname from error messages
 func sanitizeHostnameInError(err error) error {
 	if err == nil {
 		return nil
@@ -416,7 +416,7 @@ type openaiStreamingState struct {
 	msgID          string
 	model          string
 	stepStarted    bool
-	chatOpts       uctypes.WaveChatOpts
+	chatOpts       uctypes.GulinChatOpts
 	webSearchCount int
 }
 
@@ -477,9 +477,9 @@ func RemoveToolUseCall(chatId string, callId string) error {
 func RunOpenAIChatStep(
 	ctx context.Context,
 	sse *sse.SSEHandlerCh,
-	chatOpts uctypes.WaveChatOpts,
-	cont *uctypes.WaveContinueResponse,
-) (*uctypes.WaveStopReason, []*OpenAIChatMessage, *uctypes.RateLimitInfo, error) {
+	chatOpts uctypes.GulinChatOpts,
+	cont *uctypes.GulinContinueResponse,
+) (*uctypes.GulinStopReason, []*OpenAIChatMessage, *uctypes.RateLimitInfo, error) {
 	if sse == nil {
 		return nil, nil, nil, errors.New("sse handler is nil")
 	}
@@ -571,7 +571,7 @@ func RunOpenAIChatStep(
 	defer resp.Body.Close()
 
 	// Parse rate limit info from header if present (do this before error check)
-	rateLimitInfo := uctypes.ParseRateLimitHeader(resp.Header.Get("X-Wave-RateLimit"))
+	rateLimitInfo := uctypes.ParseRateLimitHeader(resp.Header.Get("X-Gulin-RateLimit"))
 
 	ct := resp.Header.Get("Content-Type")
 	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(ct, "text/event-stream") {
@@ -579,14 +579,14 @@ func RunOpenAIChatStep(
 		if resp.StatusCode == http.StatusTooManyRequests && rateLimitInfo != nil {
 			if rateLimitInfo.PReq == 0 && rateLimitInfo.Req > 0 {
 				// Premium requests exhausted, but regular requests available
-				stopReason := &uctypes.WaveStopReason{
+				stopReason := &uctypes.GulinStopReason{
 					Kind: uctypes.StopKindPremiumRateLimit,
 				}
 				return stopReason, nil, rateLimitInfo, nil
 			}
 			if rateLimitInfo.Req == 0 {
 				// All requests exhausted
-				stopReason := &uctypes.WaveStopReason{
+				stopReason := &uctypes.GulinStopReason{
 					Kind: uctypes.StopKindRateLimit,
 				}
 				return stopReason, nil, rateLimitInfo, nil
@@ -633,14 +633,14 @@ func parseOpenAIHTTPError(resp *http.Response) error {
 }
 
 // handleOpenAIStreamingResp handles the OpenAI SSE streaming response
-func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decoder *eventsource.Decoder, cont *uctypes.WaveContinueResponse, chatOpts uctypes.WaveChatOpts) (*uctypes.WaveStopReason, []*OpenAIChatMessage) {
+func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decoder *eventsource.Decoder, cont *uctypes.GulinContinueResponse, chatOpts uctypes.GulinChatOpts) (*uctypes.GulinStopReason, []*OpenAIChatMessage) {
 	// Per-response state
 	state := &openaiStreamingState{
 		blockMap: map[string]*openaiBlockState{},
 		chatOpts: chatOpts,
 	}
 
-	var rtnStopReason *uctypes.WaveStopReason
+	var rtnStopReason *uctypes.GulinStopReason
 	var rtnMessages []*OpenAIChatMessage
 
 	// Ensure step is closed on error/cancellation
@@ -650,7 +650,7 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 		}
 		_ = sse.AiMsgFinishStep()
 		if rtnStopReason == nil || rtnStopReason.Kind != uctypes.StopKindToolUse {
-			_ = sse.AiMsgFinish("", nil)
+			_ = sse.AiMsgFinish(state.msgID)
 		}
 	}()
 
@@ -661,7 +661,7 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 			if errors.Is(err, io.EOF) {
 				// EOF without proper completion - protocol error
 				_ = sse.AiMsgError("stream ended unexpectedly without completion")
-				return &uctypes.WaveStopReason{
+				return &uctypes.GulinStopReason{
 					Kind:      uctypes.StopKindError,
 					ErrorType: "protocol",
 					ErrorText: "stream ended unexpectedly without completion",
@@ -674,7 +674,7 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 				if partialMessages != nil {
 					rtnMessages = append(rtnMessages, partialMessages...)
 				}
-				return &uctypes.WaveStopReason{
+				return &uctypes.GulinStopReason{
 					Kind:      uctypes.StopKindCanceled,
 					ErrorType: "client_disconnect",
 					ErrorText: "client disconnected",
@@ -682,7 +682,7 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 			}
 			// transport error mid-stream
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      uctypes.StopKindError,
 				ErrorType: "stream",
 				ErrorText: err.Error(),
@@ -744,10 +744,10 @@ func handleOpenAIEvent(
 	event eventsource.Event,
 	sse *sse.SSEHandlerCh,
 	state *openaiStreamingState,
-	cont *uctypes.WaveContinueResponse,
-) (final *uctypes.WaveStopReason, messages []*OpenAIChatMessage) {
+	cont *uctypes.GulinContinueResponse,
+) (final *uctypes.GulinStopReason, messages []*OpenAIChatMessage) {
 	if err := sse.Err(); err != nil {
-		return &uctypes.WaveStopReason{
+		return &uctypes.GulinStopReason{
 			Kind:      uctypes.StopKindCanceled,
 			ErrorType: "client_disconnect",
 			ErrorText: "client disconnected",
@@ -762,7 +762,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseCreatedEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 		state.msgID = ev.Response.Id
 		state.model = ev.Response.Model
@@ -783,7 +783,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseOutputItemAddedEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		switch ev.Item.Type {
@@ -816,7 +816,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseOutputItemDoneEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		if st := state.blockMap[ev.Item.Id]; st != nil {
@@ -834,7 +834,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseContentPartAddedEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		switch ev.Part.Type {
@@ -853,7 +853,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseOutputTextDeltaEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockText {
@@ -869,7 +869,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseContentPartDoneEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockText {
@@ -881,14 +881,14 @@ func handleOpenAIEvent(
 		var ev openaiResponseCompletedEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		// Handle error case
 		if ev.Response.Error != nil {
 			errorMsg := "OpenAI API error"
 			_ = sse.AiMsgError(errorMsg)
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      uctypes.StopKindError,
 				ErrorType: "api",
 				ErrorText: errorMsg,
@@ -920,7 +920,7 @@ func handleOpenAIEvent(
 			finalMessages, _ := extractMessageAndToolsFromResponse(ev.Response, state)
 
 			_ = sse.AiMsgError(errorMsg)
-			return &uctypes.WaveStopReason{
+			return &uctypes.GulinStopReason{
 				Kind:      stopKind,
 				RawReason: reason,
 				ErrorText: errorMsg,
@@ -935,7 +935,7 @@ func handleOpenAIEvent(
 			stopKind = uctypes.StopKindToolUse
 		}
 
-		return &uctypes.WaveStopReason{
+		return &uctypes.GulinStopReason{
 			Kind:      stopKind,
 			RawReason: ev.Response.Status,
 			ToolCalls: toolCalls,
@@ -945,7 +945,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseFunctionCallArgumentsDeltaEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockToolUse {
 			st.partialJSON = append(st.partialJSON, []byte(ev.Delta)...)
@@ -957,7 +957,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseFunctionCallArgumentsDoneEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		// Get the function call info from the block state
@@ -983,7 +983,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseReasoningSummaryPartAddedEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockReasoning {
@@ -1002,7 +1002,7 @@ func handleOpenAIEvent(
 		var ev openaiResponseReasoningSummaryTextDeltaEvent
 		if err := json.Unmarshal([]byte(data), &ev); err != nil {
 			_ = sse.AiMsgError(err.Error())
-			return &uctypes.WaveStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
+			return &uctypes.GulinStopReason{Kind: uctypes.StopKindError, ErrorType: "decode", ErrorText: err.Error()}, nil
 		}
 
 		if st := state.blockMap[ev.ItemId]; st != nil && st.kind == openaiBlockReasoning {
@@ -1020,9 +1020,9 @@ func handleOpenAIEvent(
 }
 
 // extractMessageAndToolsFromResponse extracts the final OpenAI message and tool calls from the completed response
-func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStreamingState) ([]*OpenAIChatMessage, []uctypes.WaveToolCall) {
+func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStreamingState) ([]*OpenAIChatMessage, []uctypes.GulinToolCall) {
 	var messageContent []OpenAIMessageContent
-	var toolCalls []uctypes.WaveToolCall
+	var toolCalls []uctypes.GulinToolCall
 	var messages []*OpenAIChatMessage
 
 	// Process all output items in the response
@@ -1040,7 +1040,7 @@ func extractMessageAndToolsFromResponse(resp openaiResponse, state *openaiStream
 			}
 		case "function_call":
 			// Extract tool call information
-			toolCall := uctypes.WaveToolCall{
+			toolCall := uctypes.GulinToolCall{
 				ID:   outputItem.CallId,
 				Name: outputItem.Name,
 			}

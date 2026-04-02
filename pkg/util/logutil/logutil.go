@@ -6,12 +6,12 @@ package logutil
 import (
 	"log"
 
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 // DevPrintf logs using log.Printf only if running in dev mode
 func DevPrintf(format string, v ...any) {
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		log.Printf(format, v...)
 	}
 }

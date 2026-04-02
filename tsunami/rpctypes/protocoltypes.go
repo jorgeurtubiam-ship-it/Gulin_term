@@ -6,12 +6,12 @@ package rpctypes
 import (
 	"fmt"
 
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/gulindev/gulin/tsunami/vdom"
 )
 
 // rendered element (output from rendering pipeline)
 type RenderedElem struct {
-	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
+	GulinId   string         `json:"gulinid,omitempty"` // required, except for #text nodes
 	Tag      string         `json:"tag"`
 	Props    map[string]any `json:"props,omitempty"`
 	Children []RenderedElem `json:"children,omitempty"`
@@ -55,7 +55,7 @@ type VDomBackendUpdate struct {
 
 // the over the wire format for a vdom element
 type VDomTransferElem struct {
-	WaveId   string         `json:"waveid,omitempty"` // required, except for #text nodes
+	GulinId   string         `json:"gulinid,omitempty"` // required, except for #text nodes
 	Tag      string         `json:"tag"`
 	Props    map[string]any `json:"props,omitempty"`
 	Children []string       `json:"children,omitempty"`
@@ -74,7 +74,7 @@ func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
 			continue
 		}
 		renderedElems = append(renderedElems, *reUpdate.VDom)
-		beUpdate.RenderUpdates[idx].VDomWaveId = reUpdate.VDom.WaveId
+		beUpdate.RenderUpdates[idx].VDomGulinId = reUpdate.VDom.GulinId
 		beUpdate.RenderUpdates[idx].VDom = nil
 	}
 	transferElems, transferText := ConvertElemsToTransferElems(renderedElems)
@@ -109,7 +109,7 @@ func ConvertElemsToTransferElems(elems []RenderedElem) ([]VDomTransferElem, []VD
 			return textIdStr
 		}
 
-		// Convert children to WaveId references, handling potential #text nodes
+		// Convert children to GulinId references, handling potential #text nodes
 		childrenIds := make([]string, len(elem.Children))
 		for i, child := range elem.Children {
 			childrenIds[i] = processElem(child) // Children are not roots
@@ -117,7 +117,7 @@ func ConvertElemsToTransferElems(elems []RenderedElem) ([]VDomTransferElem, []VD
 
 		// Create the VDomTransferElem for the current element
 		transferElem := VDomTransferElem{
-			WaveId:   elem.WaveId,
+			GulinId:   elem.GulinId,
 			Tag:      elem.Tag,
 			Props:    elem.Props,
 			Children: childrenIds,
@@ -125,7 +125,7 @@ func ConvertElemsToTransferElems(elems []RenderedElem) ([]VDomTransferElem, []VD
 		}
 		transferElems = append(transferElems, transferElem)
 
-		return elem.WaveId
+		return elem.GulinId
 	}
 
 	// Start processing each top-level element, marking them as roots
@@ -137,16 +137,16 @@ func ConvertElemsToTransferElems(elems []RenderedElem) ([]VDomTransferElem, []VD
 }
 
 func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
-	seen := make(map[string]int) // maps WaveId to its index in the result slice
+	seen := make(map[string]int) // maps GulinId to its index in the result slice
 	var result []VDomTransferElem
 
 	for _, elem := range elems {
-		if idx, exists := seen[elem.WaveId]; exists {
+		if idx, exists := seen[elem.GulinId]; exists {
 			// Overwrite the previous element with the latest one
 			result[idx] = elem
 		} else {
 			// Add new element and store its index
-			seen[elem.WaveId] = len(result)
+			seen[elem.GulinId] = len(result)
 			result = append(result, elem)
 		}
 	}
@@ -177,8 +177,8 @@ type VDomBackendOpts struct {
 
 type VDomRenderUpdate struct {
 	UpdateType string        `json:"updatetype" tstype:"\"root\"|\"append\"|\"replace\"|\"remove\"|\"insert\""`
-	WaveId     string        `json:"waveid,omitempty"`
-	VDomWaveId string        `json:"vdomwaveid,omitempty"`
+	GulinId     string        `json:"gulinid,omitempty"`
+	VDomGulinId string        `json:"vdomgulinid,omitempty"`
 	VDom       *RenderedElem `json:"vdom,omitempty"` // these get removed for transfer (encoded to transferelems)
 	Index      *int          `json:"index,omitempty"`
 }

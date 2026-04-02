@@ -13,16 +13,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/daystr"
-	"github.com/wavetermdev/waveterm/pkg/util/dbutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/util/daystr"
+	"github.com/gulindev/gulin/pkg/util/dbutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 const MaxTzNameLen = 50
@@ -38,7 +38,7 @@ func GetTosAgreedTs() int64 {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	client, err := wstore.DBGetSingleton[*gulinobj.Client](ctx)
 	if err != nil || client == nil || client.TosAgreed == 0 {
 		return 0
 	}
@@ -63,8 +63,8 @@ type TelemetryData struct {
 	ActiveMinutes       int                          `json:"activeminutes"`
 	FgMinutes           int                          `json:"fgminutes"`
 	OpenMinutes         int                          `json:"openminutes"`
-	WaveAIActiveMinutes int                          `json:"waveaiactiveminutes,omitempty"`
-	WaveAIFgMinutes     int                          `json:"waveaifgminutes,omitempty"`
+	GulinAIActiveMinutes int                          `json:"gulinaiactiveminutes,omitempty"`
+	GulinAIFgMinutes     int                          `json:"gulinaifgminutes,omitempty"`
 	NumTabs             int                          `json:"numtabs"`
 	NumBlocks           int                          `json:"numblocks,omitempty"`
 	NumWindows          int                          `json:"numwindows,omitempty"`
@@ -151,8 +151,8 @@ func mergeActivity(curActivity *telemetrydata.TEventProps, newActivity telemetry
 	curActivity.ActiveMinutes += newActivity.ActiveMinutes
 	curActivity.FgMinutes += newActivity.FgMinutes
 	curActivity.OpenMinutes += newActivity.OpenMinutes
-	curActivity.WaveAIActiveMinutes += newActivity.WaveAIActiveMinutes
-	curActivity.WaveAIFgMinutes += newActivity.WaveAIFgMinutes
+	curActivity.GulinAIActiveMinutes += newActivity.GulinAIActiveMinutes
+	curActivity.GulinAIFgMinutes += newActivity.GulinAIFgMinutes
 	curActivity.TermCommandsRun += newActivity.TermCommandsRun
 	curActivity.TermCommandsRemote += newActivity.TermCommandsRemote
 	curActivity.TermCommandsDurable += newActivity.TermCommandsDurable
@@ -316,13 +316,13 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, wavebase.WaveVersion, wavebase.ClientArch(), wavebase.BuildTime, wavebase.UnameKernelRelease())
+			tx.Exec(query, dayStr, tdata, tzName, tzOffset, gulinbase.GulinVersion, gulinbase.ClientArch(), gulinbase.BuildTime, gulinbase.UnameKernelRelease())
 		}
 		tdata.FgMinutes += update.FgMinutes
 		tdata.ActiveMinutes += update.ActiveMinutes
 		tdata.OpenMinutes += update.OpenMinutes
-		tdata.WaveAIFgMinutes += update.WaveAIFgMinutes
-		tdata.WaveAIActiveMinutes += update.WaveAIActiveMinutes
+		tdata.GulinAIFgMinutes += update.GulinAIFgMinutes
+		tdata.GulinAIActiveMinutes += update.GulinAIActiveMinutes
 		tdata.NewTab += update.NewTab
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown
@@ -386,7 +386,7 @@ func UpdateActivity(ctx context.Context, update wshrpc.ActivityUpdate) error {
                      clientversion = ?,
                      buildtime = ?
                  WHERE day = ?`
-		tx.Exec(query, tdata, wavebase.WaveVersion, wavebase.BuildTime, dayStr)
+		tx.Exec(query, tdata, gulinbase.GulinVersion, gulinbase.BuildTime, dayStr)
 		return nil
 	})
 	if txErr != nil {

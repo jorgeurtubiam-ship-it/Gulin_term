@@ -6,7 +6,7 @@ package engine
 import (
 	"strconv"
 
-	"github.com/wavetermdev/waveterm/tsunami/vdom"
+	"github.com/gulindev/gulin/tsunami/vdom"
 )
 
 // generic hook structure
@@ -37,11 +37,11 @@ func makeContextVal(root *RootElem, comp *ComponentImpl, opts *RenderOpts) *Rend
 	}
 }
 
-func (vc *RenderContextImpl) GetCompWaveId() string {
+func (vc *RenderContextImpl) GetCompGulinId() string {
 	if vc.Comp == nil {
 		return ""
 	}
-	return vc.Comp.WaveId
+	return vc.Comp.GulinId
 }
 
 func (vc *RenderContextImpl) getOrderedHook() *Hook {
@@ -68,12 +68,12 @@ func UseRenderTs(vc *RenderContextImpl) int64 {
 }
 
 func UseId(vc *RenderContextImpl) string {
-	return vc.GetCompWaveId()
+	return vc.GetCompGulinId()
 }
 
 func UseLocal(vc *RenderContextImpl, initialVal any) string {
 	hookVal := vc.getOrderedHook()
-	atomName := "$local." + vc.GetCompWaveId() + "#" + strconv.Itoa(hookVal.Idx)
+	atomName := "$local." + vc.GetCompGulinId() + "#" + strconv.Itoa(hookVal.Idx)
 	if !hookVal.Init {
 		hookVal.Init = true
 		atom := MakeAtomImpl(initialVal, nil)
@@ -90,7 +90,7 @@ func UseVDomRef(vc *RenderContextImpl) any {
 	hookVal := vc.getOrderedHook()
 	if !hookVal.Init {
 		hookVal.Init = true
-		refId := vc.GetCompWaveId() + ":" + strconv.Itoa(hookVal.Idx)
+		refId := vc.GetCompGulinId() + ":" + strconv.Itoa(hookVal.Idx)
 		hookVal.Val = &vdom.VDomRef{Type: vdom.ObjectType_Ref, RefId: refId}
 	}
 	refVal, ok := hookVal.Val.(*vdom.VDomRef)
@@ -131,14 +131,14 @@ func UseEffect(vc *RenderContextImpl, fn func() func(), deps []any) {
 		hookVal.Init = true
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.addEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
+		vc.Root.addEffectWork(vc.GetCompGulinId(), hookVal.Idx, compTag)
 		return
 	}
 	// If deps is nil, always run (like React with no dependency array)
 	if deps == nil {
 		hookVal.Fn = fn
 		hookVal.Deps = deps
-		vc.Root.addEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
+		vc.Root.addEffectWork(vc.GetCompGulinId(), hookVal.Idx, compTag)
 		return
 	}
 
@@ -147,7 +147,7 @@ func UseEffect(vc *RenderContextImpl, fn func() func(), deps []any) {
 	}
 	hookVal.Fn = fn
 	hookVal.Deps = deps
-	vc.Root.addEffectWork(vc.GetCompWaveId(), hookVal.Idx, compTag)
+	vc.Root.addEffectWork(vc.GetCompGulinId(), hookVal.Idx, compTag)
 }
 
 func UseResync(vc *RenderContextImpl) bool {

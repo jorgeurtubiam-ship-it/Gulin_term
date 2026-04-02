@@ -7,7 +7,7 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import {
     atoms,
-    fetchWaveFile,
+    fetchGulinFile,
     getOverrideConfigAtom,
     getSettingsKeyAtom,
     globalStore,
@@ -36,7 +36,7 @@ import {
 } from "./osc-handlers";
 import { bufferLinesToText, createTempFileFromBlob, extractAllClipboardData, normalizeCursorStyle } from "./termutil";
 
-const dlog = debug("wave:termwrap");
+const dlog = debug("gulin:termwrap");
 
 const TermFileName = "term";
 const TermCacheFileName = "cache:term:full";
@@ -113,13 +113,13 @@ export class TermWrap {
         blockId: string,
         connectElem: HTMLDivElement,
         options: TermTypes.ITerminalOptions & TermTypes.ITerminalInitOnlyOptions,
-        waveOptions: TermWrapOptions
+        gulinOptions: TermWrapOptions
     ) {
         this.loaded = false;
         this.tabId = tabId;
         this.blockId = blockId;
-        this.sendDataHandler = waveOptions.sendDataHandler;
-        this.nodeModel = waveOptions.nodeModel;
+        this.sendDataHandler = gulinOptions.sendDataHandler;
+        this.nodeModel = gulinOptions.nodeModel;
         this.ptyOffset = 0;
         this.dataBytesProcessed = 0;
         this.hasResized = false;
@@ -164,7 +164,7 @@ export class TermWrap {
                 }
             )
         );
-        if (WebGLSupported && waveOptions.useWebGl) {
+        if (WebGLSupported && gulinOptions.useWebGl) {
             const webglAddon = new WebglAddon();
             this.toDispose.push(
                 webglAddon.onContextLoss(() => {
@@ -211,10 +211,10 @@ export class TermWrap {
             if (e.isComposing && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 return true;
             }
-            if (!waveOptions.keydownHandler) {
+            if (!gulinOptions.keydownHandler) {
                 return true;
             }
-            return waveOptions.keydownHandler(e);
+            return gulinOptions.keydownHandler(e);
         });
         this.connectElem = connectElem;
         this.mainFileSubject = null;
@@ -436,7 +436,7 @@ export class TermWrap {
     async loadInitialTerminalData(): Promise<void> {
         const startTs = Date.now();
         const zoneId = this.getZoneId();
-        const { data: cacheData, fileInfo: cacheFile } = await fetchWaveFile(zoneId, TermCacheFileName);
+        const { data: cacheData, fileInfo: cacheFile } = await fetchGulinFile(zoneId, TermCacheFileName);
         let ptyOffset = 0;
         if (cacheFile != null) {
             ptyOffset = cacheFile.meta["ptyoffset"] ?? 0;
@@ -458,7 +458,7 @@ export class TermWrap {
                 }
             }
         }
-        const { data: mainData, fileInfo: mainFile } = await fetchWaveFile(zoneId, TermFileName, ptyOffset);
+        const { data: mainData, fileInfo: mainFile } = await fetchGulinFile(zoneId, TermFileName, ptyOffset);
         console.log(
             `terminal loaded cachefile:${cacheData?.byteLength ?? 0} main:${mainData?.byteLength ?? 0} bytes, ${Date.now() - startTs}ms`
         );

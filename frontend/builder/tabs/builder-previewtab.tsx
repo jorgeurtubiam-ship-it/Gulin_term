@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { BuilderBuildPanelModel } from "@/builder/store/builder-buildpanel-model";
 import { atoms } from "@/store/global";
@@ -16,7 +16,7 @@ const EmptyStateView = memo(() => {
                 <div className="flex flex-col gap-3">
                     <h2 className="text-2xl font-semibold text-primary">No App to Preview</h2>
                     <p className="text-base text-secondary leading-relaxed">
-                        Get started by using the AI chat interface on the left to create your WaveApp. Describe what you
+                        Get started by using the AI chat interface on the left to create your GulinApp. Describe what you
                         want to build, and the AI will help you generate the code.
                     </p>
                 </div>
@@ -32,11 +32,11 @@ EmptyStateView.displayName = "EmptyStateView";
 
 const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
     const displayMsg = errorMsg && errorMsg.trim() ? errorMsg : "Unknown Error";
-    const waveAIModel = WaveAIModel.getInstance();
+    const gulinAIModel = GulinAIModel.getInstance();
     const buildPanelModel = BuilderBuildPanelModel.getInstance();
     const appPanelModel = BuilderAppPanelModel.getInstance();
     const outputLines = useAtomValue(buildPanelModel.outputLines);
-    const isStreaming = useAtomValue(waveAIModel.isAIStreaming);
+    const isStreaming = useAtomValue(gulinAIModel.isAIStreaming);
 
     const isSecretError = displayMsg.includes("ERR-SECRET");
 
@@ -48,14 +48,14 @@ const ErrorStateView = memo(({ errorMsg }: { errorMsg: string }) => {
 
     const handleAddToContext = () => {
         const context = getBuildContext();
-        waveAIModel.appendText(context, true);
-        waveAIModel.focusInput();
+        gulinAIModel.appendText(context, true);
+        gulinAIModel.focusInput();
     };
 
     const handleAskAIToFix = async () => {
         const context = getBuildContext();
-        waveAIModel.appendText("Please help me fix this build error:\n\n" + context, true);
-        await waveAIModel.handleSubmit();
+        gulinAIModel.appendText("Please help me fix this build error:\n\n" + context, true);
+        await gulinAIModel.handleSubmit();
     };
 
     const handleGoToSecrets = () => {
@@ -128,7 +128,7 @@ const BuildingStateView = memo(() => {
                 <div className="flex flex-col gap-3">
                     <h2 className="text-2xl font-semibold text-primary">App is Building...</h2>
                     <p className="text-base text-secondary leading-relaxed">
-                        Your WaveApp is being compiled and prepared. This may take a few moments.
+                        Your GulinApp is being compiled and prepared. This may take a few moments.
                     </p>
                 </div>
             </div>
@@ -153,7 +153,7 @@ const StoppedStateView = memo(({ onStart }: { onStart: () => void }) => {
                 <div className="flex flex-col gap-3">
                     <h2 className="text-2xl font-semibold text-primary">App is Not Running</h2>
                     <p className="text-base text-secondary leading-relaxed">
-                        Your WaveApp is currently not running. Click the button below to start it.
+                        Your GulinApp is currently not running. Click the button below to start it.
                     </p>
                 </div>
                 {!isStarting && (
@@ -210,7 +210,7 @@ const BuilderPreviewTab = memo(() => {
     const shouldShowWebView = status === "running" && builderStatus?.port && builderStatus.port !== 0;
 
     if (shouldShowWebView) {
-        const previewUrl = `http://localhost:${builderStatus.port}/?clientid=wave:${builderId}`;
+        const previewUrl = `http://localhost:${builderStatus.port}/?clientid=gulin:${builderId}`;
         return (
             <div className="w-full h-full">
                 <webview src={previewUrl} className="w-full h-full" />

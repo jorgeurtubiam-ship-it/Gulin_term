@@ -9,13 +9,13 @@ import { base64ToString, fireAndForget, isSshConnName, isWslConnName } from "@/u
 import debug from "debug";
 import type { TermWrap } from "./termwrap";
 
-const dlog = debug("wave:termwrap");
+const dlog = debug("gulin:termwrap");
 
 const Osc52MaxDecodedSize = 75 * 1024; // max clipboard size for OSC 52 (matches common terminal implementations)
 const Osc52MaxRawLength = 128 * 1024; // includes selector + base64 + whitespace (rough check)
 
 // OSC 16162 - Shell Integration Commands
-// See aiprompts/wave-osc-16162.md for full documentation
+// See aiprompts/gulin-osc-16162.md for full documentation
 export type ShellIntegrationStatus = "ready" | "running-command";
 
 type Osc16162Command =

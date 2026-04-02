@@ -12,15 +12,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/eventbus"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/eventbus"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 var WorkspaceColors = [...]string{
@@ -34,7 +34,7 @@ var WorkspaceColors = [...]string{
 }
 
 var WorkspaceIcons = [...]string{
-	"custom@wave-logo-solid",
+	"custom@gulin-logo-solid",
 	"triangle",
 	"star",
 	"heart",
@@ -50,8 +50,8 @@ var WorkspaceIcons = [...]string{
 	"mug-hot",
 }
 
-func CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool, isInitialLaunch bool) (*waveobj.Workspace, error) {
-	ws := &waveobj.Workspace{
+func CreateWorkspace(ctx context.Context, name string, icon string, color string, applyDefaults bool, isInitialLaunch bool) (*gulinobj.Workspace, error) {
+	ws := &gulinobj.Workspace{
 		OID:    uuid.NewString(),
 		TabIds: []string{},
 		Name:   "",
@@ -67,7 +67,7 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 		return nil, fmt.Errorf("error creating tab: %w", err)
 	}
 
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event: wps.Event_WorkspaceUpdate,
 	})
 
@@ -76,7 +76,7 @@ func CreateWorkspace(ctx context.Context, name string, icon string, color string
 }
 
 // Returns updated workspace, whether it was updated, error.
-func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (*waveobj.Workspace, bool, error) {
+func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon string, color string, applyDefaults bool) (*gulinobj.Workspace, bool, error) {
 	ws, err := GetWorkspace(ctx, workspaceId)
 	updated := false
 	if err != nil {
@@ -103,7 +103,7 @@ func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon 
 		wsList, err := ListWorkspaces(ctx)
 		if err != nil {
 			log.Printf("error listing workspaces: %v", err)
-			wsList = waveobj.WorkspaceList{}
+			wsList = gulinobj.WorkspaceList{}
 		}
 		ws.Color = WorkspaceColors[len(wsList)%len(WorkspaceColors)]
 		updated = true
@@ -119,7 +119,7 @@ func UpdateWorkspace(ctx context.Context, workspaceId string, name string, icon 
 // Returns true if workspace was deleted, false if it was not deleted.
 func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool, string, error) {
 	log.Printf("DeleteWorkspace %s\n", workspaceId)
-	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, workspaceId)
+	workspace, err := wstore.DBMustGet[*gulinobj.Workspace](ctx, workspaceId)
 	if err != nil && wstore.ErrNotFound == err {
 		return true, "", fmt.Errorf("workspace already deleted %w", err)
 	}
@@ -142,12 +142,12 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		}
 	}
 	windowId, _ := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
-	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
+	err = wstore.DBDelete(ctx, gulinobj.OType_Workspace, workspaceId)
 	if err != nil {
 		return false, "", fmt.Errorf("error deleting workspace: %w", err)
 	}
 	log.Printf("deleted workspace %s\n", workspaceId)
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event: wps.Event_WorkspaceUpdate,
 	})
 
@@ -183,11 +183,11 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 	return true, "", nil
 }
 
-func GetWorkspace(ctx context.Context, wsID string) (*waveobj.Workspace, error) {
-	return wstore.DBMustGet[*waveobj.Workspace](ctx, wsID)
+func GetWorkspace(ctx context.Context, wsID string) (*gulinobj.Workspace, error) {
+	return wstore.DBMustGet[*gulinobj.Workspace](ctx, wsID)
 }
 
-func getTabPresetMeta() (waveobj.MetaMapType, error) {
+func getTabPresetMeta() (gulinobj.MetaMapType, error) {
 	settings := wconfig.GetWatcher().GetFullConfig()
 	tabPreset := settings.Settings.TabPreset
 	if tabPreset == "" {
@@ -230,7 +230,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		}
 		tabNames := make([]string, 0, len(ws.TabIds))
 		for _, tabId := range ws.TabIds {
-			tab, err := wstore.DBMustGet[*waveobj.Tab](ctx, tabId)
+			tab, err := wstore.DBMustGet[*gulinobj.Tab](ctx, tabId)
 			if err != nil || tab == nil {
 				continue
 			}
@@ -260,7 +260,7 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 		if presetErr != nil {
 			log.Printf("error getting tab preset meta: %v\n", presetErr)
 		} else if len(presetMeta) > 0 {
-			tabORef := waveobj.ORefFromWaveObj(tab)
+			tabORef := gulinobj.ORefFromGulinObj(tab)
 			wstore.UpdateObjectMeta(ctx, *tabORef, presetMeta, true)
 		}
 	}
@@ -271,20 +271,20 @@ func CreateTab(ctx context.Context, workspaceId string, tabName string, activate
 	return tab.OID, nil
 }
 
-func createTabObj(ctx context.Context, workspaceId string, name string, meta waveobj.MetaMapType) (*waveobj.Tab, error) {
+func createTabObj(ctx context.Context, workspaceId string, name string, meta gulinobj.MetaMapType) (*gulinobj.Tab, error) {
 	ws, err := GetWorkspace(ctx, workspaceId)
 	if err != nil {
 		return nil, fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 	}
 	layoutStateId := uuid.NewString()
-	tab := &waveobj.Tab{
+	tab := &gulinobj.Tab{
 		OID:         uuid.NewString(),
 		Name:        name,
 		BlockIds:    []string{},
 		LayoutState: layoutStateId,
 		Meta:        meta,
 	}
-	layoutState := &waveobj.LayoutState{
+	layoutState := &gulinobj.LayoutState{
 		OID: layoutStateId,
 	}
 	ws.TabIds = append(ws.TabIds, tab.OID)
@@ -299,7 +299,7 @@ func createTabObj(ctx context.Context, workspaceId string, name string, meta wav
 // recursive: if true, will recursively close parent window, workspace, if they are empty.
 // Returns new active tab id, error.
 func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive bool) (string, error) {
-	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	ws, _ := wstore.DBGet[*gulinobj.Workspace](ctx, workspaceId)
 	if ws == nil {
 		return "", fmt.Errorf("workspace not found: %q", workspaceId)
 	}
@@ -312,7 +312,7 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
 
 	// close blocks (sends events + stops block controllers)
-	tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+	tab, _ := wstore.DBGet[*gulinobj.Tab](ctx, tabId)
 	if tab != nil {
 		for _, blockId := range tab.BlockIds {
 			err := DeleteBlock(ctx, blockId, false)
@@ -334,9 +334,9 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	ws.ActiveTabId = newActiveTabId
 
 	wstore.DBUpdate(ctx, ws)
-	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
+	wstore.DBDelete(ctx, gulinobj.OType_Tab, tabId)
 	if tab != nil {
-		wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
+		wstore.DBDelete(ctx, gulinobj.OType_LayoutState, tab.LayoutState)
 	}
 
 	// if no tabs remaining, close window
@@ -360,7 +360,7 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 		if err != nil {
 			return fmt.Errorf("workspace %s not found: %w", workspaceId, err)
 		}
-		tab, _ := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+		tab, _ := wstore.DBGet[*gulinobj.Tab](ctx, tabId)
 		if tab == nil {
 			return fmt.Errorf("tab not found: %q", tabId)
 		}
@@ -373,12 +373,12 @@ func SetActiveTab(ctx context.Context, workspaceId string, tabId string) error {
 func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId string) {
 	eventbus.SendEventToElectron(eventbus.WSEventType{
 		EventType: eventbus.WSEvent_ElectronUpdateActiveTab,
-		Data:      &waveobj.ActiveTabUpdate{WorkspaceId: workspaceId, NewActiveTabId: newActiveTabId},
+		Data:      &gulinobj.ActiveTabUpdate{WorkspaceId: workspaceId, NewActiveTabId: newActiveTabId},
 	})
 }
 
 func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
-	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	ws, _ := wstore.DBGet[*gulinobj.Workspace](ctx, workspaceId)
 	if ws == nil {
 		return fmt.Errorf("workspace not found: %q", workspaceId)
 	}
@@ -387,12 +387,12 @@ func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []str
 	return nil
 }
 
-func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
-	workspaces, err := wstore.DBGetAllObjsByType[*waveobj.Workspace](ctx, waveobj.OType_Workspace)
+func ListWorkspaces(ctx context.Context) (gulinobj.WorkspaceList, error) {
+	workspaces, err := wstore.DBGetAllObjsByType[*gulinobj.Workspace](ctx, gulinobj.OType_Workspace)
 	if err != nil {
 		return nil, err
 	}
-	windows, err := wstore.DBGetAllObjsByType[*waveobj.Window](ctx, waveobj.OType_Window)
+	windows, err := wstore.DBGetAllObjsByType[*gulinobj.Window](ctx, gulinobj.OType_Window)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +401,7 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 		workspaceToWindow[window.WorkspaceId] = window.OID
 	}
 
-	var wl waveobj.WorkspaceList
+	var wl gulinobj.WorkspaceList
 	for _, workspace := range workspaces {
 		if workspace.Name == "" || workspace.Icon == "" || workspace.Color == "" {
 			continue
@@ -410,7 +410,7 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 		if !ok {
 			windowId = ""
 		}
-		wl = append(wl, &waveobj.WorkspaceListEntry{
+		wl = append(wl, &gulinobj.WorkspaceListEntry{
 			WorkspaceId: workspace.OID,
 			WindowId:    windowId,
 		})
@@ -421,7 +421,7 @@ func ListWorkspaces(ctx context.Context) (waveobj.WorkspaceList, error) {
 func SetIcon(workspaceId string, icon string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	ws, e := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	ws, e := wstore.DBGet[*gulinobj.Workspace](ctx, workspaceId)
 	if e != nil {
 		return e
 	}
@@ -436,7 +436,7 @@ func SetIcon(workspaceId string, icon string) error {
 func SetColor(workspaceId string, color string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	ws, e := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	ws, e := wstore.DBGet[*gulinobj.Workspace](ctx, workspaceId)
 	if e != nil {
 		return e
 	}
@@ -451,7 +451,7 @@ func SetColor(workspaceId string, color string) error {
 func SetName(workspaceId string, name string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	ws, e := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
+	ws, e := wstore.DBGet[*gulinobj.Workspace](ctx, workspaceId)
 	if e != nil {
 		return e
 	}

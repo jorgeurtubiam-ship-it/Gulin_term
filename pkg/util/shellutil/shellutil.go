@@ -18,12 +18,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/utilds"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/util/envutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/utilds"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
 )
 
 var (
@@ -45,11 +45,11 @@ var (
 	//go:embed shellintegration/bash_preexec.sh
 	BashStartup_Preexec string
 
-	//go:embed shellintegration/fish_wavefish.sh
-	FishStartup_Wavefish string
+	//go:embed shellintegration/fish_gulinfish.sh
+	FishStartup_Gulinfish string
 
-	//go:embed shellintegration/pwsh_wavepwsh.sh
-	PwshStartup_wavepwsh string
+	//go:embed shellintegration/pwsh_gulinpwsh.sh
+	PwshStartup_gulinpwsh string
 
 	ZshExtendedHistoryPattern = regexp.MustCompile(`^: [0-9]+:`)
 )
@@ -80,7 +80,7 @@ const (
 	BashIntegrationDir = "shell/bash"
 	PwshIntegrationDir = "shell/pwsh"
 	FishIntegrationDir = "shell/fish"
-	WaveHomeBinDir     = "bin"
+	GulinHomeBinDir     = "bin"
 	ZshHistoryFileName = ".zsh_history"
 )
 
@@ -211,20 +211,20 @@ func findInstalledGitBash() (string, error) {
 	return "", nil
 }
 
-func DefaultTermSize() waveobj.TermSize {
-	return waveobj.TermSize{Rows: DefaultTermRows, Cols: DefaultTermCols}
+func DefaultTermSize() gulinobj.TermSize {
+	return gulinobj.TermSize{Rows: DefaultTermRows, Cols: DefaultTermCols}
 }
 
-func WaveshellLocalEnvVars(termType string) map[string]string {
+func GulinshellLocalEnvVars(termType string) map[string]string {
 	rtn := make(map[string]string)
 	if termType != "" {
 		rtn["TERM"] = termType
 	}
 	// these are not necessary since they should be set with the swap token, but no harm in setting them here
-	rtn["TERM_PROGRAM"] = "waveterm"
-	rtn["WAVETERM"], _ = os.Executable()
-	rtn["WAVETERM_VERSION"] = wavebase.WaveVersion
-	rtn["WAVETERM_WSHBINDIR"] = filepath.Join(wavebase.GetWaveDataDir(), WaveHomeBinDir)
+	rtn["TERM_PROGRAM"] = "gulin"
+	rtn["GULIN"], _ = os.Executable()
+	rtn["GULIN_VERSION"] = gulinbase.GulinVersion
+	rtn["GULIN_WSHBINDIR"] = filepath.Join(gulinbase.GetGulinDataDir(), GulinHomeBinDir)
 	return rtn
 }
 
@@ -276,22 +276,22 @@ func InitCustomShellStartupFiles() error {
 }
 
 func GetLocalBashRcFileOverride() string {
-	return filepath.Join(wavebase.GetWaveDataDir(), BashIntegrationDir, ".bashrc")
+	return filepath.Join(gulinbase.GetGulinDataDir(), BashIntegrationDir, ".bashrc")
 }
 
-func GetLocalWaveFishFilePath() string {
-	return filepath.Join(wavebase.GetWaveDataDir(), FishIntegrationDir, "wave.fish")
+func GetLocalGulinFishFilePath() string {
+	return filepath.Join(gulinbase.GetGulinDataDir(), FishIntegrationDir, "gulin.fish")
 }
 
-func GetLocalWavePowershellEnv() string {
-	return filepath.Join(wavebase.GetWaveDataDir(), PwshIntegrationDir, "wavepwsh.ps1")
+func GetLocalGulinPowershellEnv() string {
+	return filepath.Join(gulinbase.GetGulinDataDir(), PwshIntegrationDir, "gulinpwsh.ps1")
 }
 
 func GetLocalZshZDotDir() string {
-	return filepath.Join(wavebase.GetWaveDataDir(), ZshIntegrationDir)
+	return filepath.Join(gulinbase.GetGulinDataDir(), ZshIntegrationDir)
 }
 
-func HasWaveZshHistory() (bool, int64) {
+func HasGulinZshHistory() (bool, int64) {
 	zshDir := GetLocalZshZDotDir()
 	historyFile := filepath.Join(zshDir, ZshHistoryFileName)
 	fileInfo, err := os.Stat(historyFile)
@@ -342,34 +342,34 @@ func GetLocalWshBinaryPath(version string, goos string, goarch string) (string, 
 	if goos == "windows" {
 		ext = ".exe"
 	}
-	if !wavebase.SupportedWshBinaries[fmt.Sprintf("%s-%s", goos, goarch)] {
+	if !gulinbase.SupportedWshBinaries[fmt.Sprintf("%s-%s", goos, goarch)] {
 		return "", fmt.Errorf("unsupported wsh platform: %s-%s", goos, goarch)
 	}
 	baseName := fmt.Sprintf("wsh-%s-%s.%s%s", version, goos, goarch, ext)
-	return filepath.Join(wavebase.GetWaveAppBinPath(), baseName), nil
+	return filepath.Join(gulinbase.GetGulinAppBinPath(), baseName), nil
 }
 
 // absWshBinDir must be an absolute, expanded path (no ~ or $HOME, etc.)
 // it will be hard-quoted appropriately for the shell
-func InitRcFiles(waveHome string, absWshBinDir string) error {
+func InitRcFiles(gulinHome string, absWshBinDir string) error {
 	// ensure directories exist
-	zshDir := filepath.Join(waveHome, ZshIntegrationDir)
-	err := wavebase.CacheEnsureDir(zshDir, ZshIntegrationDir, 0755, ZshIntegrationDir)
+	zshDir := filepath.Join(gulinHome, ZshIntegrationDir)
+	err := gulinbase.CacheEnsureDir(zshDir, ZshIntegrationDir, 0755, ZshIntegrationDir)
 	if err != nil {
 		return err
 	}
-	bashDir := filepath.Join(waveHome, BashIntegrationDir)
-	err = wavebase.CacheEnsureDir(bashDir, BashIntegrationDir, 0755, BashIntegrationDir)
+	bashDir := filepath.Join(gulinHome, BashIntegrationDir)
+	err = gulinbase.CacheEnsureDir(bashDir, BashIntegrationDir, 0755, BashIntegrationDir)
 	if err != nil {
 		return err
 	}
-	fishDir := filepath.Join(waveHome, FishIntegrationDir)
-	err = wavebase.CacheEnsureDir(fishDir, FishIntegrationDir, 0755, FishIntegrationDir)
+	fishDir := filepath.Join(gulinHome, FishIntegrationDir)
+	err = gulinbase.CacheEnsureDir(fishDir, FishIntegrationDir, 0755, FishIntegrationDir)
 	if err != nil {
 		return err
 	}
-	pwshDir := filepath.Join(waveHome, PwshIntegrationDir)
-	err = wavebase.CacheEnsureDir(pwshDir, PwshIntegrationDir, 0755, PwshIntegrationDir)
+	pwshDir := filepath.Join(gulinHome, PwshIntegrationDir)
+	err = gulinbase.CacheEnsureDir(pwshDir, PwshIntegrationDir, 0755, PwshIntegrationDir)
 	if err != nil {
 		return err
 	}
@@ -411,13 +411,13 @@ func InitRcFiles(waveHome string, absWshBinDir string) error {
 	if err != nil {
 		return fmt.Errorf("error writing bash-integration bash_preexec.sh: %v", err)
 	}
-	err = utilfn.WriteTemplateToFile(filepath.Join(fishDir, "wave.fish"), FishStartup_Wavefish, params)
+	err = utilfn.WriteTemplateToFile(filepath.Join(fishDir, "gulin.fish"), FishStartup_Gulinfish, params)
 	if err != nil {
-		return fmt.Errorf("error writing fish-integration wave.fish: %v", err)
+		return fmt.Errorf("error writing fish-integration gulin.fish: %v", err)
 	}
-	err = utilfn.WriteTemplateToFile(filepath.Join(pwshDir, "wavepwsh.ps1"), PwshStartup_wavepwsh, params)
+	err = utilfn.WriteTemplateToFile(filepath.Join(pwshDir, "gulinpwsh.ps1"), PwshStartup_gulinpwsh, params)
 	if err != nil {
-		return fmt.Errorf("error writing pwsh-integration wavepwsh.ps1: %v", err)
+		return fmt.Errorf("error writing pwsh-integration gulinpwsh.ps1: %v", err)
 	}
 
 	return nil
@@ -425,20 +425,20 @@ func InitRcFiles(waveHome string, absWshBinDir string) error {
 
 func initCustomShellStartupFilesInternal() error {
 	log.Printf("initializing wsh and shell startup files\n")
-	waveDataHome := wavebase.GetWaveDataDir()
-	binDir := filepath.Join(waveDataHome, WaveHomeBinDir)
-	err := InitRcFiles(waveDataHome, binDir)
+	gulinDataHome := gulinbase.GetGulinDataDir()
+	binDir := filepath.Join(gulinDataHome, GulinHomeBinDir)
+	err := InitRcFiles(gulinDataHome, binDir)
 	if err != nil {
 		return err
 	}
 
-	err = wavebase.CacheEnsureDir(binDir, WaveHomeBinDir, 0755, WaveHomeBinDir)
+	err = gulinbase.CacheEnsureDir(binDir, GulinHomeBinDir, 0755, GulinHomeBinDir)
 	if err != nil {
 		return err
 	}
 
 	// copy the correct binary to bin
-	wshFullPath, err := GetLocalWshBinaryPath(wavebase.WaveVersion, runtime.GOOS, runtime.GOARCH)
+	wshFullPath, err := GetLocalWshBinaryPath(gulinbase.GulinVersion, runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		log.Printf("error (non-fatal), could not resolve wsh binary path: %v\n", err)
 	}
@@ -545,28 +545,28 @@ func getShellVersion(shellPath string, shellType string) (string, error) {
 	return matches[1], nil
 }
 
-func FixupWaveZshHistory() error {
+func FixupGulinZshHistory() error {
 	if runtime.GOOS != "darwin" {
 		return nil
 	}
 
-	hasHistory, size := HasWaveZshHistory()
+	hasHistory, size := HasGulinZshHistory()
 	if !hasHistory {
 		return nil
 	}
 
 	zshDir := GetLocalZshZDotDir()
-	waveHistFile := filepath.Join(zshDir, ZshHistoryFileName)
+	gulinHistFile := filepath.Join(zshDir, ZshHistoryFileName)
 
 	if size == 0 {
-		err := os.Remove(waveHistFile)
+		err := os.Remove(gulinHistFile)
 		if err != nil {
-			log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
+			log.Printf("error removing gulin zsh history file %s: %v\n", gulinHistFile, err)
 		}
 		return nil
 	}
 
-	log.Printf("merging wave zsh history %s into ~/.zsh_history\n", waveHistFile)
+	log.Printf("merging gulin zsh history %s into ~/.zsh_history\n", gulinHistFile)
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -584,7 +584,7 @@ func FixupWaveZshHistory() error {
 		hasExtendedStr = "true"
 	}
 
-	quotedWaveHistFile := utilfn.ShellQuote(waveHistFile, true, -1)
+	quotedGulinHistFile := utilfn.ShellQuote(gulinHistFile, true, -1)
 
 	script := fmt.Sprintf(`
 		HISTFILE=~/.zsh_history
@@ -595,7 +595,7 @@ func FixupWaveZshHistory() error {
 		fc -RI
 		fc -RI %s
 		fc -W
-	`, hasExtendedStr, quotedWaveHistFile)
+	`, hasExtendedStr, quotedGulinHistFile)
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
@@ -610,11 +610,11 @@ func FixupWaveZshHistory() error {
 		return fmt.Errorf("error executing zsh history fixup script: %w, output: %s", err, string(output))
 	}
 
-	err = os.Remove(waveHistFile)
+	err = os.Remove(gulinHistFile)
 	if err != nil {
-		log.Printf("error removing wave zsh history file %s: %v\n", waveHistFile, err)
+		log.Printf("error removing gulin zsh history file %s: %v\n", gulinHistFile, err)
 	}
-	log.Printf("successfully merged wave zsh history %s into ~/.zsh_history\n", waveHistFile)
+	log.Printf("successfully merged gulin zsh history %s into ~/.zsh_history\n", gulinHistFile)
 
 	return nil
 }

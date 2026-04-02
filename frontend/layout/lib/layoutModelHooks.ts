@@ -38,7 +38,7 @@ function getLayoutModelForTab(tabAtom: Atom<Tab>): LayoutModel {
 
 function getLayoutModelForTabById(tabId: string) {
     const tabOref = WOS.makeORef("tab", tabId);
-    const tabAtom = WOS.getWaveObjectAtom<Tab>(tabOref);
+    const tabAtom = WOS.getGulinObjectAtom<Tab>(tabOref);
     return getLayoutModelForTab(tabAtom);
 }
 

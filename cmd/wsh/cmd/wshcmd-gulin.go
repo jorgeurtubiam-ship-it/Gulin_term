@@ -10,9 +10,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 var gulinCmd = &cobra.Command{
@@ -35,7 +35,7 @@ func gulinRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	tabId := getTabIdFromEnv()
 	if tabId == "" {
-		return fmt.Errorf("WAVETERM_TABID environment variable not set")
+		return fmt.Errorf("GULIN_TABID environment variable not set")
 	}
 	route := wshutil.MakeTabRouteId(tabId)
 	const rpcTimeout = 30000
@@ -70,7 +70,7 @@ func gulinRun(cmd *cobra.Command, args []string) (rtnErr error) {
 				Size:   len(data),
 				Data64: base64.StdEncoding.EncodeToString(data),
 			}
-			wshclient.WaveAIAddContextCommand(RpcClient, wshrpc.CommandWaveAIAddContextData{
+			wshclient.GulinAIAddContextCommand(RpcClient, wshrpc.CommandGulinAIAddContextData{
 				Files: []wshrpc.AIAttachedFile{attachedFile},
 			}, &wshrpc.RpcOpts{Route: route, Timeout: rpcTimeout})
 		}
@@ -88,17 +88,17 @@ func gulinRun(cmd *cobra.Command, args []string) (rtnErr error) {
 			Size:   len(data),
 			Data64: base64.StdEncoding.EncodeToString(data),
 		}
-		wshclient.WaveAIAddContextCommand(RpcClient, wshrpc.CommandWaveAIAddContextData{
+		wshclient.GulinAIAddContextCommand(RpcClient, wshrpc.CommandGulinAIAddContextData{
 			Files: []wshrpc.AIAttachedFile{attachedFile},
 		}, &wshrpc.RpcOpts{Route: route, Timeout: rpcTimeout})
 	}
 
 	// 3. Send Message and Submit
-	finalContext := wshrpc.CommandWaveAIAddContextData{
+	finalContext := wshrpc.CommandGulinAIAddContextData{
 		Text:   message,
 		Submit: true,
 	}
-	return wshclient.WaveAIAddContextCommand(RpcClient, finalContext, &wshrpc.RpcOpts{
+	return wshclient.GulinAIAddContextCommand(RpcClient, finalContext, &wshrpc.RpcOpts{
 		Route:   route,
 		Timeout: rpcTimeout,
 	})

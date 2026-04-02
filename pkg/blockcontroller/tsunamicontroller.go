@@ -15,16 +15,16 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/wavetermdev/waveterm/pkg/tsunamiutil"
-	"github.com/wavetermdev/waveterm/pkg/utilds"
-	"github.com/wavetermdev/waveterm/pkg/waveappstore"
-	"github.com/wavetermdev/waveterm/pkg/waveapputil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
-	"github.com/wavetermdev/waveterm/tsunami/build"
+	"github.com/gulindev/gulin/pkg/tsunamiutil"
+	"github.com/gulindev/gulin/pkg/utilds"
+	"github.com/gulindev/gulin/pkg/gulinappstore"
+	"github.com/gulindev/gulin/pkg/gulinapputil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wstore"
+	"github.com/gulindev/gulin/tsunami/build"
 )
 
 type TsunamiAppProc struct {
@@ -50,12 +50,12 @@ type TsunamiController struct {
 }
 
 func (c *TsunamiController) setManifestMetadata(appId string) {
-	manifest, err := waveappstore.ReadAppManifest(appId)
+	manifest, err := gulinappstore.ReadAppManifest(appId)
 	if err != nil {
 		return
 	}
 
-	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+	blockRef := gulinobj.MakeORef(gulinobj.OType_Block, c.blockId)
 	rtInfo := make(map[string]any)
 	rtInfo["tsunami:appmeta"] = manifest.AppMeta
 	if manifest.ConfigSchema != nil || manifest.DataSchema != nil {
@@ -69,15 +69,15 @@ func (c *TsunamiController) setManifestMetadata(appId string) {
 		rtInfo["tsunami:schemas"] = schemas
 	}
 	wstore.SetRTInfo(blockRef, rtInfo)
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event:  wps.Event_TsunamiUpdateMeta,
-		Scopes: []string{waveobj.MakeORef(waveobj.OType_Block, c.blockId).String()},
+		Scopes: []string{gulinobj.MakeORef(gulinobj.OType_Block, c.blockId).String()},
 		Data:   manifest.AppMeta,
 	})
 }
 
 func (c *TsunamiController) clearSchemas() {
-	blockRef := waveobj.MakeORef(waveobj.OType_Block, c.blockId)
+	blockRef := gulinobj.MakeORef(gulinobj.OType_Block, c.blockId)
 	wstore.SetRTInfo(blockRef, map[string]any{
 		"tsunami:schemas": nil,
 	})
@@ -111,35 +111,35 @@ func isBuildCacheUpToDate(appPath string) (bool, error) {
 	return !cacheModTime.Before(appModTime), nil
 }
 
-func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMapType, rtOpts *waveobj.RuntimeOpts, force bool) error {
+func (c *TsunamiController) Start(ctx context.Context, blockMeta gulinobj.MetaMapType, rtOpts *gulinobj.RuntimeOpts, force bool) error {
 	log.Printf("TsunamiController.Start called for block %s", c.blockId)
 	c.runLock.Lock()
 	defer c.runLock.Unlock()
 
-	scaffoldPath := waveapputil.GetTsunamiScaffoldPath()
+	scaffoldPath := gulinapputil.GetTsunamiScaffoldPath()
 	settings := wconfig.GetWatcher().GetFullConfig().Settings
 	sdkReplacePath := settings.TsunamiSdkReplacePath
 	sdkVersion := settings.TsunamiSdkVersion
 	if sdkVersion == "" {
-		sdkVersion = waveapputil.DefaultTsunamiSdkVersion
+		sdkVersion = gulinapputil.DefaultTsunamiSdkVersion
 	}
 	goPath := settings.TsunamiGoPath
 
-	appPath := blockMeta.GetString(waveobj.MetaKey_TsunamiAppPath, "")
-	appId := blockMeta.GetString(waveobj.MetaKey_TsunamiAppId, "")
+	appPath := blockMeta.GetString(gulinobj.MetaKey_TsunamiAppPath, "")
+	appId := blockMeta.GetString(gulinobj.MetaKey_TsunamiAppId, "")
 
 	if appPath == "" {
 		if appId == "" {
 			return fmt.Errorf("tsunami:apppath or tsunami:appid is required")
 		}
 		var err error
-		appPath, err = waveappstore.GetAppDir(appId)
+		appPath, err = gulinappstore.GetAppDir(appId)
 		if err != nil {
 			return fmt.Errorf("failed to get app directory from tsunami:appid: %w", err)
 		}
 	} else {
 		var err error
-		appPath, err = wavebase.ExpandHomeDir(appPath)
+		appPath, err = gulinbase.ExpandHomeDir(appPath)
 		if err != nil {
 			return fmt.Errorf("tsunami:apppath invalid: %w", err)
 		}
@@ -166,7 +166,7 @@ func (c *TsunamiController) Start(ctx context.Context, blockMeta waveobj.MetaMap
 	}
 
 	if !upToDate || force {
-		nodePath := wavebase.GetWaveAppElectronExecPath()
+		nodePath := gulinbase.GetGulinAppElectronExecPath()
 		if nodePath == "" {
 			return fmt.Errorf("electron executable path not set")
 		}
@@ -292,16 +292,16 @@ func (c *TsunamiController) SendInput(input *BlockInputUnion) error {
 	return fmt.Errorf("tsunami controller send input not implemented")
 }
 
-func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string, blockMeta waveobj.MetaMapType) (*TsunamiAppProc, error) {
+func runTsunamiAppBinary(ctx context.Context, appBinPath string, appPath string, blockMeta gulinobj.MetaMapType) (*TsunamiAppProc, error) {
 	cmd := exec.Command(appBinPath)
 	cmd.Env = append(os.Environ(), "TSUNAMI_CLOSEONSTDIN=1")
 
-	if wavebase.IsDevMode() {
+	if gulinbase.IsDevMode() {
 		cmd.Env = append(cmd.Env, "TSUNAMI_CORS="+tsunamiutil.DevModeCorsOrigins)
 	}
 
 	// Add TsunamiEnv variables if configured
-	tsunamiEnv := blockMeta.GetMap(waveobj.MetaKey_TsunamiEnv)
+	tsunamiEnv := blockMeta.GetMap(gulinobj.MetaKey_TsunamiEnv)
 	for key, value := range tsunamiEnv {
 		if strValue, ok := value.(string); ok {
 			cmd.Env = append(cmd.Env, key+"="+strValue)
@@ -419,11 +419,11 @@ func MakeTsunamiController(tabId string, blockId string, connName string) Contro
 func (c *TsunamiController) sendStatusUpdate() {
 	rtStatus := c.GetRuntimeStatus()
 	log.Printf("sending blockcontroller update %#v\n", rtStatus)
-	wps.Broker.Publish(wps.WaveEvent{
+	wps.Broker.Publish(wps.GulinEvent{
 		Event: wps.Event_ControllerStatus,
 		Scopes: []string{
-			waveobj.MakeORef(waveobj.OType_Tab, c.tabId).String(),
-			waveobj.MakeORef(waveobj.OType_Block, c.blockId).String(),
+			gulinobj.MakeORef(gulinobj.OType_Tab, c.tabId).String(),
+			gulinobj.MakeORef(gulinobj.OType_Block, c.blockId).String(),
 		},
 		Data: rtStatus,
 	})

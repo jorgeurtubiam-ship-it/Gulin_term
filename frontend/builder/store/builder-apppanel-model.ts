@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { globalStore } from "@/app/store/jotaiStore";
-import { waveEventSubscribeSingle } from "@/app/store/wps";
+import { gulinEventSubscribeSingle } from "@/app/store/wps";
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { atoms, getApi, WOS } from "@/store/global";
@@ -79,7 +79,7 @@ export class BuilderAppPanelModel {
             this.statusUnsubFn();
         }
 
-        this.statusUnsubFn = waveEventSubscribeSingle({
+        this.statusUnsubFn = gulinEventSubscribeSingle({
             eventType: "builderstatus",
             scope: WOS.makeORef("builder", builderId),
             handler: (event) => {
@@ -105,8 +105,8 @@ export class BuilderAppPanelModel {
         await this.loadAppFile(appId);
         await this.loadEnvVars(builderId);
 
-        this.appGoUpdateUnsubFn = waveEventSubscribeSingle({
-            eventType: "waveapp:appgoupdated",
+        this.appGoUpdateUnsubFn = gulinEventSubscribeSingle({
+            eventType: "gulinapp:appgoupdated",
             scope: appId,
             handler: () => {
                 this.loadAppFile(appId);

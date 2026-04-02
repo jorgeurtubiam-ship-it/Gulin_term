@@ -198,17 +198,17 @@ class RpcApiType {
     }
 
     // command "eventpublish" [call]
-    EventPublishCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
+    EventPublishCommand(client: WshClient, data: GulinEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventpublish", data, opts);
     }
 
     // command "eventreadhistory" [call]
-    EventReadHistoryCommand(client: WshClient, data: CommandEventReadHistoryData, opts?: RpcOpts): Promise<WaveEvent[]> {
+    EventReadHistoryCommand(client: WshClient, data: CommandEventReadHistoryData, opts?: RpcOpts): Promise<GulinEvent[]> {
         return client.wshRpcCall("eventreadhistory", data, opts);
     }
 
     // command "eventrecv" [call]
-    EventRecvCommand(client: WshClient, data: WaveEvent, opts?: RpcOpts): Promise<void> {
+    EventRecvCommand(client: WshClient, data: GulinEvent, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("eventrecv", data, opts);
     }
 
@@ -342,6 +342,21 @@ class RpcApiType {
         return client.wshRpcCall("getfullconfig", null, opts);
     }
 
+    // command "getgulinaichat" [call]
+    GetGulinAIChatCommand(client: WshClient, data: CommandGetGulinAIChatData, opts?: RpcOpts): Promise<UIChat> {
+        return client.wshRpcCall("getgulinaichat", data, opts);
+    }
+
+    // command "getgulinaimodeconfig" [call]
+    GetGulinAIModeConfigCommand(client: WshClient, opts?: RpcOpts): Promise<AIModeConfigUpdate> {
+        return client.wshRpcCall("getgulinaimodeconfig", null, opts);
+    }
+
+    // command "getgulinairatelimit" [call]
+    GetGulinAIRateLimitCommand(client: WshClient, opts?: RpcOpts): Promise<RateLimitInfo> {
+        return client.wshRpcCall("getgulinairatelimit", null, opts);
+    }
+
     // command "getjwtpublickey" [call]
     GetJwtPublicKeyCommand(client: WshClient, opts?: RpcOpts): Promise<string> {
         return client.wshRpcCall("getjwtpublickey", null, opts);
@@ -392,19 +407,59 @@ class RpcApiType {
         return client.wshRpcCall("getvar", data, opts);
     }
 
-    // command "getwaveaichat" [call]
-    GetWaveAIChatCommand(client: WshClient, data: CommandGetWaveAIChatData, opts?: RpcOpts): Promise<UIChat> {
-        return client.wshRpcCall("getwaveaichat", data, opts);
+    // command "gulinaiaddcontext" [call]
+    GulinAIAddContextCommand(client: WshClient, data: CommandGulinAIAddContextData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("gulinaiaddcontext", data, opts);
     }
 
-    // command "getwaveaimodeconfig" [call]
-    GetWaveAIModeConfigCommand(client: WshClient, opts?: RpcOpts): Promise<AIModeConfigUpdate> {
-        return client.wshRpcCall("getwaveaimodeconfig", null, opts);
+    // command "gulinaienabletelemetry" [call]
+    GulinAIEnableTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("gulinaienabletelemetry", null, opts);
     }
 
-    // command "getwaveairatelimit" [call]
-    GetWaveAIRateLimitCommand(client: WshClient, opts?: RpcOpts): Promise<RateLimitInfo> {
-        return client.wshRpcCall("getwaveairatelimit", null, opts);
+    // command "gulinaigettooldiff" [call]
+    GulinAIGetToolDiffCommand(client: WshClient, data: CommandGulinAIGetToolDiffData, opts?: RpcOpts): Promise<CommandGulinAIGetToolDiffRtnData> {
+        return client.wshRpcCall("gulinaigettooldiff", data, opts);
+    }
+
+    // command "gulinaitoolapprove" [call]
+    GulinAIToolApproveCommand(client: WshClient, data: CommandGulinAIToolApproveData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("gulinaitoolapprove", data, opts);
+    }
+
+    // command "gulinbridgecreatetoken" [call]
+    GulinBridgeCreateTokenCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<string> {
+        return client.wshRpcCall("gulinbridgecreatetoken", data, opts);
+    }
+
+    // command "gulinbridgelogin" [call]
+    GulinBridgeLoginCommand(client: WshClient, data: CommandGulinBridgeLoginData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("gulinbridgelogin", data, opts);
+    }
+
+    // command "gulinbridgelogout" [call]
+    GulinBridgeLogoutCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("gulinbridgelogout", null, opts);
+    }
+
+    // command "gulinbridgeregister" [call]
+    GulinBridgeRegisterCommand(client: WshClient, data: CommandGulinBridgeRegisterData, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("gulinbridgeregister", data, opts);
+    }
+
+    // command "gulinbridgesyncmodels" [call]
+    GulinBridgeSyncModelsCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
+        return client.wshRpcCall("gulinbridgesyncmodels", null, opts);
+    }
+
+    // command "gulinfilereadstream" [call]
+    GulinFileReadStreamCommand(client: WshClient, data: CommandGulinFileReadStreamData, opts?: RpcOpts): Promise<GulinFileInfo> {
+        return client.wshRpcCall("gulinfilereadstream", data, opts);
+    }
+
+    // command "gulininfo" [call]
+    GulinInfoCommand(client: WshClient, opts?: RpcOpts): Promise<GulinInfoData> {
+        return client.wshRpcCall("gulininfo", null, opts);
     }
 
     // command "jobcmdexited" [call]
@@ -513,7 +568,7 @@ class RpcApiType {
     }
 
     // command "notify" [call]
-    NotifyCommand(client: WshClient, data: WaveNotificationOptions, opts?: RpcOpts): Promise<void> {
+    NotifyCommand(client: WshClient, data: GulinNotificationOptions, opts?: RpcOpts): Promise<void> {
         return client.wshRpcCall("notify", data, opts);
     }
 
@@ -732,14 +787,14 @@ class RpcApiType {
         return client.wshRpcCall("streamdataack", data, opts);
     }
 
+    // command "streamgulinai" [responsestream]
+	StreamGulinAiCommand(client: WshClient, data: GulinAIStreamRequest, opts?: RpcOpts): AsyncGenerator<GulinAIPacketType, void, boolean> {
+        return client.wshRpcStream("streamgulinai", data, opts);
+    }
+
     // command "streamtest" [responsestream]
 	StreamTestCommand(client: WshClient, opts?: RpcOpts): AsyncGenerator<number, void, boolean> {
         return client.wshRpcStream("streamtest", null, opts);
-    }
-
-    // command "streamwaveai" [responsestream]
-	StreamWaveAiCommand(client: WshClient, data: WaveAIStreamRequest, opts?: RpcOpts): AsyncGenerator<WaveAIPacketType, void, boolean> {
-        return client.wshRpcStream("streamwaveai", data, opts);
     }
 
     // command "termgetscrollbacklines" [call]
@@ -775,36 +830,6 @@ class RpcApiType {
     // command "waitforroute" [call]
     WaitForRouteCommand(client: WshClient, data: CommandWaitForRouteData, opts?: RpcOpts): Promise<boolean> {
         return client.wshRpcCall("waitforroute", data, opts);
-    }
-
-    // command "waveaiaddcontext" [call]
-    WaveAIAddContextCommand(client: WshClient, data: CommandWaveAIAddContextData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("waveaiaddcontext", data, opts);
-    }
-
-    // command "waveaienabletelemetry" [call]
-    WaveAIEnableTelemetryCommand(client: WshClient, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("waveaienabletelemetry", null, opts);
-    }
-
-    // command "waveaigettooldiff" [call]
-    WaveAIGetToolDiffCommand(client: WshClient, data: CommandWaveAIGetToolDiffData, opts?: RpcOpts): Promise<CommandWaveAIGetToolDiffRtnData> {
-        return client.wshRpcCall("waveaigettooldiff", data, opts);
-    }
-
-    // command "waveaitoolapprove" [call]
-    WaveAIToolApproveCommand(client: WshClient, data: CommandWaveAIToolApproveData, opts?: RpcOpts): Promise<void> {
-        return client.wshRpcCall("waveaitoolapprove", data, opts);
-    }
-
-    // command "wavefilereadstream" [call]
-    WaveFileReadStreamCommand(client: WshClient, data: CommandWaveFileReadStreamData, opts?: RpcOpts): Promise<WaveFileInfo> {
-        return client.wshRpcCall("wavefilereadstream", data, opts);
-    }
-
-    // command "waveinfo" [call]
-    WaveInfoCommand(client: WshClient, opts?: RpcOpts): Promise<WaveInfoData> {
-        return client.wshRpcCall("waveinfo", null, opts);
     }
 
     // command "webclick" [call]

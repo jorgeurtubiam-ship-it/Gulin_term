@@ -13,14 +13,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/util/migrateutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/util/migrateutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sawka/txwrap"
 
-	dbfs "github.com/wavetermdev/waveterm/db"
+	dbfs "github.com/gulindev/gulin/db"
 )
 
 const FilestoreDBName = "filestore.db"
@@ -50,8 +50,8 @@ func InitFilestore() error {
 }
 
 func GetDBName() string {
-	waveHome := wavebase.GetWaveDataDir()
-	return filepath.Join(waveHome, wavebase.WaveDBDir, FilestoreDBName)
+	gulinHome := gulinbase.GetGulinDataDir()
+	return filepath.Join(gulinHome, gulinbase.GulinDBDir, FilestoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {

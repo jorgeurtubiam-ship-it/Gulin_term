@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/ijson"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/ijson"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 func initDb(t *testing.T) {
@@ -141,7 +141,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func containsFile(arr []*WaveFile, name string) bool {
+func containsFile(arr []*GulinFile, name string) bool {
 	for _, f := range arr {
 		if f.Name == name {
 			return true
@@ -549,7 +549,7 @@ func TestComputePartMap(t *testing.T) {
 	defer func() {
 		partDataSize = DefaultPartDataSize
 	}()
-	file := &WaveFile{}
+	file := &GulinFile{}
 	m := file.computePartMap(0, 250)
 	testIntMapsEq(t, "map1", m, map[int]int{0: 100, 1: 100, 2: 50})
 	m = file.computePartMap(110, 40)
@@ -563,7 +563,7 @@ func TestComputePartMap(t *testing.T) {
 	testIntMapsEq(t, "map5", m, map[int]int{8: 80, 9: 100, 10: 100, 11: 60})
 
 	// now test circular
-	file = &WaveFile{Opts: wshrpc.FileOpts{Circular: true, MaxSize: 1000}}
+	file = &GulinFile{Opts: wshrpc.FileOpts{Circular: true, MaxSize: 1000}}
 	m = file.computePartMap(10, 250)
 	testIntMapsEq(t, "map6", m, map[int]int{0: 90, 1: 100, 2: 60})
 	m = file.computePartMap(990, 40)

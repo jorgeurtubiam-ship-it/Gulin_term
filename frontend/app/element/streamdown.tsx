@@ -197,7 +197,7 @@ function Collapsible({ title, children, defaultOpen = false }) {
     );
 }
 
-interface WaveStreamdownProps {
+interface GulinStreamdownProps {
     text: string;
     parseIncompleteMarkdown?: boolean;
     className?: string;
@@ -205,13 +205,13 @@ interface WaveStreamdownProps {
     codeBlockMaxWidthAtom?: Atom<number>;
 }
 
-export const WaveStreamdown = ({
+export const GulinStreamdown = ({
     text,
     parseIncompleteMarkdown,
     className,
     onClickExecute,
     codeBlockMaxWidthAtom,
-}: WaveStreamdownProps) => {
+}: GulinStreamdownProps) => {
     const components = useMemo(
         () => ({
             code: Code,
@@ -305,7 +305,7 @@ export const WaveStreamdown = ({
         <Streamdown
             parseIncompleteMarkdown={parseIncompleteMarkdown}
             className={cn(
-                "wave-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0 space-y-2",
+                "gulin-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0 space-y-2",
                 className
             )}
             shikiTheme={[ShikiTheme, ShikiTheme]}

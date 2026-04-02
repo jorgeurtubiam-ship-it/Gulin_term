@@ -15,13 +15,13 @@ class BlockServiceType {
     GetControllerStatus(arg2: string): Promise<BlockControllerRuntimeStatus> {
         return WOS.callBackendService("block", "GetControllerStatus", Array.from(arguments))
     }
+    SaveGulinAiData(arg2: string, arg3: GulinAIPromptMessageType[]): Promise<void> {
+        return WOS.callBackendService("block", "SaveGulinAiData", Array.from(arguments))
+    }
 
     // save the terminal state to a blockfile
     SaveTerminalState(blockId: string, state: string, stateType: string, ptyOffset: number, termSize: TermSize): Promise<void> {
         return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
-    }
-    SaveWaveAiData(arg2: string, arg3: WaveAIPromptMessageType[]): Promise<void> {
-        return WOS.callBackendService("block", "SaveWaveAiData", Array.from(arguments))
     }
 }
 
@@ -64,18 +64,18 @@ class ObjectServiceType {
         return WOS.callBackendService("object", "DeleteBlock", Array.from(arguments))
     }
 
-    // get wave object by oref
-    GetObject(oref: string): Promise<WaveObj> {
+    // get gulin object by oref
+    GetObject(oref: string): Promise<GulinObj> {
         return WOS.callBackendService("object", "GetObject", Array.from(arguments))
     }
 
     // @returns objects
-    GetObjects(orefs: string[]): Promise<WaveObj[]> {
+    GetObjects(orefs: string[]): Promise<GulinObj[]> {
         return WOS.callBackendService("object", "GetObjects", Array.from(arguments))
     }
 
     // @returns object updates
-    UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<void> {
+    UpdateObject(gulinObj: GulinObj, returnUpdates: boolean): Promise<void> {
         return WOS.callBackendService("object", "UpdateObject", Array.from(arguments))
     }
 
@@ -106,10 +106,10 @@ class WindowServiceType {
     CloseWindow(windowId: string, fromElectron: boolean): Promise<void> {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
-    CreateWindow(winSize: WinSize, workspaceId: string): Promise<WaveWindow> {
+    CreateWindow(winSize: WinSize, workspaceId: string): Promise<GulinWindow> {
         return WOS.callBackendService("window", "CreateWindow", Array.from(arguments))
     }
-    GetWindow(windowId: string): Promise<WaveWindow> {
+    GetWindow(windowId: string): Promise<GulinWindow> {
         return WOS.callBackendService("window", "GetWindow", Array.from(arguments))
     }
 

@@ -115,7 +115,7 @@ func CopyAndAddToEnvMap(envMap map[string]string, key string, val string) map[st
 func PruneInitialEnv(envMap map[string]string) map[string]string {
 	pruned := make(map[string]string)
 	for key, value := range envMap {
-		if strings.HasPrefix(key, "WAVETERM_") || strings.HasPrefix(key, "BASH_FUNC_") {
+		if strings.HasPrefix(key, "GULIN_") || strings.HasPrefix(key, "BASH_FUNC_") {
 			continue
 		}
 		if key == "XDG_SESSION_ID" || key == "SHLVL" || key == "S_COLORS" ||

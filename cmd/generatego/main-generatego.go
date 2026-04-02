@@ -9,29 +9,29 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/pkg/gogen"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/gogen"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 const WshClientFileName = "pkg/wshrpc/wshclient/wshclient.go"
-const WaveObjMetaConstsFileName = "pkg/waveobj/metaconsts.go"
+const GulinObjMetaConstsFileName = "pkg/gulinobj/metaconsts.go"
 const SettingsMetaConstsFileName = "pkg/wconfig/metaconsts.go"
 
 func GenerateWshClient() error {
 	fmt.Fprintf(os.Stderr, "generating wshclient file to %s\n", WshClientFileName)
 	var buf strings.Builder
 	gogen.GenerateBoilerplate(&buf, "wshclient", []string{
-		"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata",
-		"github.com/wavetermdev/waveterm/pkg/wshutil",
-		"github.com/wavetermdev/waveterm/pkg/wshrpc",
-		"github.com/wavetermdev/waveterm/pkg/wconfig",
-		"github.com/wavetermdev/waveterm/pkg/waveobj",
-		"github.com/wavetermdev/waveterm/pkg/wps",
-		"github.com/wavetermdev/waveterm/pkg/vdom",
-		"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes",
+		"github.com/gulindev/gulin/pkg/telemetry/telemetrydata",
+		"github.com/gulindev/gulin/pkg/wshutil",
+		"github.com/gulindev/gulin/pkg/wshrpc",
+		"github.com/gulindev/gulin/pkg/wconfig",
+		"github.com/gulindev/gulin/pkg/gulinobj",
+		"github.com/gulindev/gulin/pkg/wps",
+		"github.com/gulindev/gulin/pkg/vdom",
+		"github.com/gulindev/gulin/pkg/aiusechat/uctypes",
 	})
 	wshDeclMap := wshrpc.GenerateWshCommandDeclMap()
 	for _, key := range utilfn.GetOrderedMapKeys(wshDeclMap) {
@@ -52,15 +52,15 @@ func GenerateWshClient() error {
 	return err
 }
 
-func GenerateWaveObjMetaConsts() error {
-	fmt.Fprintf(os.Stderr, "generating waveobj meta consts file to %s\n", WaveObjMetaConstsFileName)
+func GenerateGulinObjMetaConsts() error {
+	fmt.Fprintf(os.Stderr, "generating gulinobj meta consts file to %s\n", GulinObjMetaConstsFileName)
 	var buf strings.Builder
-	gogen.GenerateBoilerplate(&buf, "waveobj", []string{})
-	gogen.GenerateMetaMapConsts(&buf, "MetaKey_", reflect.TypeOf(waveobj.MetaTSType{}), false)
+	gogen.GenerateBoilerplate(&buf, "gulinobj", []string{})
+	gogen.GenerateMetaMapConsts(&buf, "MetaKey_", reflect.TypeOf(gulinobj.MetaTSType{}), false)
 	buf.WriteString("\n")
-	written, err := utilfn.WriteFileIfDifferent(WaveObjMetaConstsFileName, []byte(buf.String()))
+	written, err := utilfn.WriteFileIfDifferent(GulinObjMetaConstsFileName, []byte(buf.String()))
 	if !written {
-		fmt.Fprintf(os.Stderr, "no changes to %s\n", WaveObjMetaConstsFileName)
+		fmt.Fprintf(os.Stderr, "no changes to %s\n", GulinObjMetaConstsFileName)
 	}
 	return err
 }
@@ -84,9 +84,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error generating wshclient: %v\n", err)
 		return
 	}
-	err = GenerateWaveObjMetaConsts()
+	err = GenerateGulinObjMetaConsts()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error generating waveobj meta consts: %v\n", err)
+		fmt.Fprintf(os.Stderr, "error generating gulinobj meta consts: %v\n", err)
 		return
 	}
 	err = GenerateSettingsMetaConsts()

@@ -24,7 +24,7 @@ function isTermViewModel(viewModel: ViewModel): viewModel is TermViewModel {
 }
 
 function handleLearnMore() {
-    getApi().openExternal("https://docs.waveterm.dev/durable-sessions");
+    getApi().openExternal("https://docs.gulin.dev/durable-sessions");
 }
 
 function LearnMoreButton() {
@@ -55,7 +55,7 @@ function StandardSessionContent({ viewModel, onClose }: StandardSessionContentPr
             </div>
             <div className="text-xs text-secondary leading-relaxed">
                 Standard SSH sessions end when the connection drops. Durable sessions keep your shell state, running
-                programs, and history alive through network changes, computer sleep, and Wave restarts.
+                programs, and history alive through network changes, computer sleep, and Gulin restarts.
             </div>
             <button
                 className="bg-zinc-700 text-foreground rounded px-3 py-1.5 text-xs font-medium hover:bg-zinc-600 transition-colors cursor-pointer flex items-center justify-center gap-2 mt-1"
@@ -101,7 +101,7 @@ function DurableDetachedContent({ onClose }: DurableDetachedContentProps) {
                 Durable Session (Detached)
             </div>
             <div className="text-xs text-secondary leading-relaxed">
-                Connection lost, but your session is still running on the remote server. Wave will automatically
+                Connection lost, but your session is still running on the remote server. Gulin will automatically
                 reconnect when the connection is restored.
             </div>
             <LearnMoreButton />
@@ -333,7 +333,7 @@ export function DurableSessionFlyover({
     placement = "bottom",
     divClassName,
 }: DurableSessionFlyoverProps) {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = WOS.useGulinObjectValue<Block>(WOS.makeORef("block", blockId));
     const termDurableStatus = util.useAtomValueSafe(viewModel?.termDurableStatus);
     const termConfigedDurable = util.useAtomValueSafe(viewModel?.termConfigedDurable);
     const connName = blockData?.meta?.connection;

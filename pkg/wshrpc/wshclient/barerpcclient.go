@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 type WshServer struct{}
@@ -19,22 +19,22 @@ func (*WshServer) WshServerImpl() {}
 
 var WshServerImpl = WshServer{}
 
-var waveSrvClient_Singleton *wshutil.WshRpc
-var waveSrvClient_Once = &sync.Once{}
-var waveSrvClient_RouteId string
+var gulinSrvClient_Singleton *wshutil.WshRpc
+var gulinSrvClient_Once = &sync.Once{}
+var gulinSrvClient_RouteId string
 
 func GetBareRpcClient() *wshutil.WshRpc {
-	waveSrvClient_Once.Do(func() {
-		waveSrvClient_Singleton = wshutil.MakeWshRpc(wshrpc.RpcContext{}, &WshServerImpl, "bare-client")
-		waveSrvClient_RouteId = fmt.Sprintf("bare:%s", uuid.New().String())
+	gulinSrvClient_Once.Do(func() {
+		gulinSrvClient_Singleton = wshutil.MakeWshRpc(wshrpc.RpcContext{}, &WshServerImpl, "bare-client")
+		gulinSrvClient_RouteId = fmt.Sprintf("bare:%s", uuid.New().String())
 		// we can safely ignore the error from RegisterTrustedLeaf since the route is valid
-		wshutil.DefaultRouter.RegisterTrustedLeaf(waveSrvClient_Singleton, waveSrvClient_RouteId)
+		wshutil.DefaultRouter.RegisterTrustedLeaf(gulinSrvClient_Singleton, gulinSrvClient_RouteId)
 		wps.Broker.SetClient(wshutil.DefaultRouter)
 	})
-	return waveSrvClient_Singleton
+	return gulinSrvClient_Singleton
 }
 
 func GetBareRpcClientRouteId() string {
 	GetBareRpcClient()
-	return waveSrvClient_RouteId
+	return gulinSrvClient_RouteId
 }

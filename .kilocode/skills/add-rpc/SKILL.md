@@ -1,13 +1,13 @@
 ---
 name: add-rpc
-description: Guide for adding new RPC calls to Wave Terminal. Use when implementing new RPC commands, adding server-client communication methods, or extending the RPC interface with new functionality.
+description: Guide for adding new RPC calls to Gulin Terminal. Use when implementing new RPC commands, adding server-client communication methods, or extending the RPC interface with new functionality.
 ---
 
 # Adding RPC Calls Guide
 
 ## Overview
 
-Wave Terminal uses a WebSocket-based RPC (Remote Procedure Call) system for communication between different components. The RPC system allows the frontend, backend, electron main process, remote servers, and terminal blocks to communicate with each other through well-defined commands.
+Gulin Terminal uses a WebSocket-based RPC (Remote Procedure Call) system for communication between different components. The RPC system allows the frontend, backend, electron main process, remote servers, and terminal blocks to communicate with each other through well-defined commands.
 
 This guide covers how to add a new RPC command to the system.
 
@@ -22,7 +22,7 @@ This guide covers how to add a new RPC command to the system.
 
 ## RPC Command Structure
 
-RPC commands in Wave Terminal follow these conventions:
+RPC commands in Gulin Terminal follow these conventions:
 
 - **Method names** must end with `Command`
 - **First parameter** must be `context.Context`
@@ -221,7 +221,7 @@ async handle_yournew(rh: RpcResponseHelper, data: CommandYourNewData): Promise<Y
 - Reading terminal-specific state
 - Interacting with xterm.js
 
-## Complete Example: Adding GetWaveInfo Command
+## Complete Example: Adding GetGulinInfo Command
 
 ### 1. Define Interface
 
@@ -230,10 +230,10 @@ In `pkg/wshrpc/wshrpctypes.go`:
 ```go
 type WshRpcInterface interface {
     // ... other commands ...
-    WaveInfoCommand(ctx context.Context) (*WaveInfoData, error)
+    GulinInfoCommand(ctx context.Context) (*GulinInfoData, error)
 }
 
-type WaveInfoData struct {
+type GulinInfoData struct {
     Version      string            `json:"version"`
     BuildTime    string            `json:"buildtime"`
     ConfigPath   string            `json:"configpath"`
@@ -252,12 +252,12 @@ task generate
 In `pkg/wshrpc/wshserver/wshserver.go`:
 
 ```go
-func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData, error) {
-    return &wshrpc.WaveInfoData{
-        Version:    wavebase.WaveVersion,
-        BuildTime:  wavebase.BuildTime,
-        ConfigPath: wavebase.GetConfigDir(),
-        DataPath:   wavebase.GetWaveDataDir(),
+func (ws *WshServer) GulinInfoCommand(ctx context.Context) (*wshrpc.GulinInfoData, error) {
+    return &wshrpc.GulinInfoData{
+        Version:    gulinbase.GulinVersion,
+        BuildTime:  gulinbase.BuildTime,
+        ConfigPath: gulinbase.GetConfigDir(),
+        DataPath:   gulinbase.GetGulinDataDir(),
     }, nil
 }
 ```
@@ -268,8 +268,8 @@ func (ws *WshServer) WaveInfoCommand(ctx context.Context) (*wshrpc.WaveInfoData,
 import { RpcApi } from "@/app/store/wshclientapi";
 
 // Call the RPC
-const info = await RpcApi.WaveInfoCommand(TabRpcClient);
-console.log("Wave Version:", info.version);
+const info = await RpcApi.GulinInfoCommand(TabRpcClient);
+console.log("Gulin Version:", info.version);
 ```
 
 ## Streaming Commands
@@ -367,7 +367,7 @@ func (ws *WshServer) GetSomethingCommand(ctx context.Context, id string) (*Somet
 
 ```go
 func (ws *WshServer) UpdateSomethingCommand(ctx context.Context, data wshrpc.CommandUpdateData) error {
-    ctx = waveobj.ContextWithUpdates(ctx)
+    ctx = gulinobj.ContextWithUpdates(ctx)
     
     // Make changes
     err := wstore.UpdateObject(ctx, data.ORef, data.Updates)
@@ -376,7 +376,7 @@ func (ws *WshServer) UpdateSomethingCommand(ctx context.Context, data wshrpc.Com
     }
     
     // Broadcast updates
-    updates := waveobj.ContextGetUpdatesRtn(ctx)
+    updates := gulinobj.ContextGetUpdatesRtn(ctx)
     wps.Broker.SendUpdateEvents(updates)
     
     return nil
@@ -395,7 +395,7 @@ func (ws *WshServer) DoActionCommand(ctx context.Context, data wshrpc.CommandAct
     
     // Publish event about the action
     go func() {
-        wps.Broker.Publish(wps.WaveEvent{
+        wps.Broker.Publish(wps.GulinEvent{
             Event: wps.Event_ActionComplete,
             Data:  result,
         })

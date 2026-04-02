@@ -1,6 +1,6 @@
-# 💻 Guía de Instalación y Despliegue de Gulin IA (Wave Terminal)
+# 💻 Guía de Instalación y Despliegue de Gulin IA (Gulin Terminal)
 
-Este documento detalla los pasos necesarios para instalar, compilar y ejecutar tu propia instancia de **Gulin IA** basándose en el repositorio modificado de Wave Terminal. 
+Este documento detalla los pasos necesarios para instalar, compilar y ejecutar tu propia instancia de **Gulin IA** basándose en el repositorio modificado de Gulin Terminal. 
 
 ¡Sigue estos pasos para levantar el entorno de desarrollo y probar el asistente!
 
@@ -24,11 +24,11 @@ Antes de empezar, asegúrate de tener instalado el siguiente software en tu máq
 
 ## 🚀 2. Construcción del Proyecto (Primer Paso)
 
-Una vez que tengas el repositorio clonado o extraído de tu archivo `.tar.gz`, abre una terminal, navega a la carpeta principal (`waveterm-gulin/`) y ejecuta el comando de preparación general:
+Una vez que tengas el repositorio clonado o extraído de tu archivo `.tar.gz`, abre una terminal, navega a la carpeta principal (`gulin-gulin/`) y ejecuta el comando de preparación general:
 
 ```bash
 # Entrar a la carpeta
-cd waveterm
+cd gulin
 
 # Instalar dependencias globales y del frontend (React)
 npm install
@@ -49,7 +49,7 @@ Para lanzar Gulin en tu pantalla y comenzar a interactuar, corre el comando prin
 task dev
 ```
 
-Esto levantará el servidor local, los procesos *Electron* y te abrirá la ventana gráfica de Wave Terminal con Gulin integrado en el panel izquierdo. 
+Esto levantará el servidor local, los procesos *Electron* y te abrirá la ventana gráfica de Gulin Terminal con Gulin integrado en el panel izquierdo. 
 
 *Para detener la aplicación, presiona `Ctrl + C` en la terminal donde corriste el comando.*
 
@@ -73,7 +73,7 @@ A lo largo de este proyecto, se redactó una Guía Técnica y Comercial para el 
 
 ## ⚙️ 5. Configuración del LLM (Ollama o APIs en la nube)
 
-Para que el asistente de Gulin *hable*, necesitas elegir un motor (Provider) en la configuración de la interfaz gráfica una vez que abra Wave Terminal:
+Para que el asistente de Gulin *hable*, necesitas elegir un motor (Provider) en la configuración de la interfaz gráfica una vez que abra Gulin Terminal:
 
 ### Para usar modelos Locales (Gratis y Privada):
 1. Asegúrate de tener Ollama abierto en tu computadora.

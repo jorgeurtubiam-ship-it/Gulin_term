@@ -2,7 +2,7 @@
 
 ## Step-by-step guide
 
-1. Go to the [Actions tab](https://github.com/wavetermdev/waveterm/actions) and select "Bump Version" from the left sidebar.
+1. Go to the [Actions tab](https://github.com/gulindev/gulin/actions) and select "Bump Version" from the left sidebar.
 2. Click on "Run workflow".
    - You will see two options:
      - "SemVer Bump": This defaults to `none`. Adjust this if you want to increment the version number according to semantic versioning rules (`patch`, `minor`, `major`).
@@ -11,7 +11,7 @@
      - If you are creating a new prerelease following an official release, you would set "SemVer Bump" to to the expected version bump (`patch`, `minor`, or `major`) and "Is Prerelease" to `true`.
      - If you are bumping an existing prerelease to a new prerelease under the same version, you would set "SemVer Bump" to `none` and "Is Prerelease" to `true`.
      - If you are promoting a prerelease version to an official release, you would set "SemVer Bump" to `none` and "Is Prerelease" to `false`.
-3. After "Bump Version" a "Build Helper" run will kick off automatically for the new version. When this completes, it will generate a [draft GitHub Release](https://github.com/wavetermdev/waveterm/releases) with all the built artifacts.
+3. After "Bump Version" a "Build Helper" run will kick off automatically for the new version. When this completes, it will generate a [draft GitHub Release](https://github.com/gulindev/gulin/releases) with all the built artifacts.
 4. Review the artifacts in the release and test them locally.
 5. When you are confident that the build is good, edit the GitHub Release to add a changelog and release summary and publish the release.
 6. The new version will be published to our release feed automatically when the GitHub Release is published. If the build is a prerelease, it will only release to users subscribed to the `beta` channel. If it is a general release, it will be released to all users.
@@ -22,7 +22,7 @@
 
 All releases start by first bumping the package version and creating a new Git tag. We have a workflow set up to automate this.
 
-To run it, trigger a new run of the [Bump Version workflow](https://github.com/wavetermdev/waveterm/actions/workflows/bump-version.yml). When triggering the run, you will be prompted to select a version bump type, either `none`, `patch`, `minor`, or `major`, and whether the version is prerelease or not. This determines how much the version number is incremented.
+To run it, trigger a new run of the [Bump Version workflow](https://github.com/gulindev/gulin/actions/workflows/bump-version.yml). When triggering the run, you will be prompted to select a version bump type, either `none`, `patch`, `minor`, or `major`, and whether the version is prerelease or not. This determines how much the version number is incremented.
 
 See [`version.cjs`](./version.cjs) for more details on how this works.
 
@@ -30,17 +30,17 @@ Once the tag has been created, a new [Build Helper](#build-helper-workflow) run 
 
 ### Build Helper workflow
 
-Our release builds are managed by the [Build Helper workflow](https://github.com/wavetermdev/waveterm/actions/workflows/build-helper.yml).
+Our release builds are managed by the [Build Helper workflow](https://github.com/gulindev/gulin/actions/workflows/build-helper.yml).
 
-Under the hood, this will call the `package` task in [`Taskfile.yml`](./Taskfile.yml), which will build the `wavesrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](./electron-builder.config.cjs).
+Under the hood, this will call the `package` task in [`Taskfile.yml`](./Taskfile.yml), which will build the `gulinsrv` and `wsh` binaries, then the frontend and Electron codebases using Vite, then it will call `electron-builder` to generate the distributable app packages. The configuration for `electron-builder` is defined in [`electron-builder.config.cjs`](./electron-builder.config.cjs).
 
 This will also sign and notarize the macOS app packages and sign the Windows packages.
 
-Once a build is complete, the artifacts will be placed in `s3://waveterm-github-artifacts/staging-w2/<version>`. A new draft release will be created on GitHub and the artifacts will be uploaded there too.
+Once a build is complete, the artifacts will be placed in `s3://gulin-github-artifacts/staging-w2/<version>`. A new draft release will be created on GitHub and the artifacts will be uploaded there too.
 
 ### Testing new releases
 
-The [Build Helper workflow](https://github.com/wavetermdev/waveterm/actions/workflows/build-helper.yml). creates a draft release on GitHub once it completes. You can find this on the [Releases page](https://github.com/wavetermdev/waveterm/releases) of the repo. You can use this to download the build artifacts for testing.
+The [Build Helper workflow](https://github.com/gulindev/gulin/actions/workflows/build-helper.yml). creates a draft release on GitHub once it completes. You can find this on the [Releases page](https://github.com/gulindev/gulin/releases) of the repo. You can use this to download the build artifacts for testing.
 
 You can also use the `artifacts:download` task in the [`Taskfile.yml`](./Taskfile.yml) to download all the artifacts for a build. You will need to configure an AWS CLI profile with write permissions for the S3 buckets in order for the script to work. You should invoke the tasks as follows:
 
@@ -50,7 +50,7 @@ task artifacts:download:<version> -- --profile <aws-profile>
 
 ### Publishing a release
 
-Once you have validated that the new release is ready, navigate to the [Releases page](https://github.com/wavetermdev/waveterm/releases) and click on the draft release for the version that is ready. Click the pencil button in the top right corner to edit the draft. Use this opportunity to adjust the release notes as needed. When you are ready to publish, scroll all the way to the bottom of the release editor and click Publish. This will kick off the [Publish Release workflow](https://github.com/wavetermdev/waveterm/actions/workflows/publish-release.yml), at which point all further tasks are automated and hands-off.
+Once you have validated that the new release is ready, navigate to the [Releases page](https://github.com/gulindev/gulin/releases) and click on the draft release for the version that is ready. Click the pencil button in the top right corner to edit the draft. Use this opportunity to adjust the release notes as needed. When you are ready to publish, scroll all the way to the bottom of the release editor and click Publish. This will kick off the [Publish Release workflow](https://github.com/gulindev/gulin/actions/workflows/publish-release.yml), at which point all further tasks are automated and hands-off.
 
 ### Automatic updates
 
@@ -60,7 +60,7 @@ With each release, YAML files will be produced that point to the newest release 
 
 #### Update channels
 
-We utilize update channels to roll out beta and stable releases. These are determined based on the package versioning [described above](#bump-version-workflow). Users can select their update channel using the `autoupdate:channel` setting in Wave. See [here](https://www.electron.build/tutorials/release-using-channels.html) for more information.
+We utilize update channels to roll out beta and stable releases. These are determined based on the package versioning [described above](#bump-version-workflow). Users can select their update channel using the `autoupdate:channel` setting in Gulin. See [here](https://www.electron.build/tutorials/release-using-channels.html) for more information.
 
 ### Package Managers
 
@@ -68,19 +68,19 @@ We currently publish to Homebrew (macOS), WinGet (Windows), Chocolatey (Windows)
 
 #### Homebrew
 
-Homebrew maintains an Autobump bot that regularly checks our release feed for new general releases and updates our Cask automatically. You can find the configuration for our cask [here](https://github.com/Homebrew/homebrew-cask/blob/master/Casks/w/wave.rb). We added ourselves to [this list](https://github.com/Homebrew/homebrew-cask/blob/master/.github/autobump.txt) to indicate that we want the bot to autobump us.
+Homebrew maintains an Autobump bot that regularly checks our release feed for new general releases and updates our Cask automatically. You can find the configuration for our cask [here](https://github.com/Homebrew/homebrew-cask/blob/master/Casks/w/gulin.rb). We added ourselves to [this list](https://github.com/Homebrew/homebrew-cask/blob/master/.github/autobump.txt) to indicate that we want the bot to autobump us.
 
 #### WinGet
 
-WinGet uses PRs to manage version bumps for packages. They ship a tool called [`wingetcreate`](https://github.com/microsoft/winget-create) which automates most of this process. We run this tool in our [Publish Release workflow](https://github.com/wavetermdev/waveterm/actions/workflows/publish-release.yml) for all general releases. This publishes a PR to their repository using our [Wave Release Bot](https://github.com/wave-releaser) service account. They usually pick up these changes within a day.
+WinGet uses PRs to manage version bumps for packages. They ship a tool called [`wingetcreate`](https://github.com/microsoft/winget-create) which automates most of this process. We run this tool in our [Publish Release workflow](https://github.com/gulindev/gulin/actions/workflows/publish-release.yml) for all general releases. This publishes a PR to their repository using our [Gulin Release Bot](https://github.com/gulin-releaser) service account. They usually pick up these changes within a day.
 
 #### Chocolatey
 
-Chocolatey maintains a [PowerShell module](https://github.com/chocolatey-community/chocolatey-au) for publishing releases to their system. We have a separate repository which contains this script and the workflow to run it: [wavetermdev/chocolatey](https://github.com/wavetermdev/chocolatey). This workflow gets run once a day. It checks whether there are new changes, validates the SHA and that the package can install, and then pushes the new version to Chocolatey. It then commits the updated package spec back to our repository. They usually take up to two weeks to accept our updates.
+Chocolatey maintains a [PowerShell module](https://github.com/chocolatey-community/chocolatey-au) for publishing releases to their system. We have a separate repository which contains this script and the workflow to run it: [gulindev/chocolatey](https://github.com/wavetermdev/chocolatey). This workflow gets run once a day. It checks whether there are new changes, validates the SHA and that the package can install, and then pushes the new version to Chocolatey. It then commits the updated package spec back to our repository. They usually take up to two weeks to accept our updates.
 
 #### Snap
 
-Snap maintains [snapcraft](https://snapcraft.io/docs/snapcraft) to build and publish Snaps to the Snap Store. We run this tool in our [Publish Release workflow](https://github.com/wavetermdev/waveterm/actions/workflows/publish-release.yml) workflow for all beta and general releases. Beta releases publish only to the `beta` channel, while general releases publish to both `beta` and `stable`. These changes are picked up immediately.
+Snap maintains [snapcraft](https://snapcraft.io/docs/snapcraft) to build and publish Snaps to the Snap Store. We run this tool in our [Publish Release workflow](https://github.com/gulindev/gulin/actions/workflows/publish-release.yml) workflow for all beta and general releases. Beta releases publish only to the `beta` channel, while general releases publish to both `beta` and `stable`. These changes are picked up immediately.
 
 ### `electron-build` configuration
 

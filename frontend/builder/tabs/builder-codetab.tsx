@@ -44,8 +44,8 @@ const BuilderCodeTab = memo(() => {
         }
     };
 
-    const handleKeyDown = keyutil.keydownWrapper((waveEvent: WaveKeyboardEvent) => {
-        if (keyutil.checkKeyPressed(waveEvent, "Cmd:s")) {
+    const handleKeyDown = keyutil.keydownWrapper((gulinEvent: GulinKeyboardEvent) => {
+        if (keyutil.checkKeyPressed(gulinEvent, "Cmd:s")) {
             handleSave();
             return true;
         }

@@ -1,6 +1,6 @@
-# Building Wave Terminal
+# Building Gulin Term
 
-These instructions are for setting up dependencies and building Wave Terminal from source on macOS, Linux, and Windows.
+These instructions are for setting up dependencies and building Gulin Term from source on macOS, Linux, and Windows.
 
 ## Prerequisites
 
@@ -76,13 +76,13 @@ We now use `npm`, so you can just run an `npm install` to install node dependenc
 ## Clone the Repo
 
 ```sh
-git clone git@github.com:wavetermdev/waveterm.git
+git clone git@github.com:gulindev/gulin.git
 ```
 
 or
 
 ```sh
-git clone https://github.com/wavetermdev/waveterm.git
+git clone https://github.com/gulindev/gulin.git
 ```
 
 ## Install code dependencies
@@ -135,4 +135,4 @@ You can use the regular Chrome DevTools to debug the frontend application. You c
 
 ### Backend logs
 
-Backend logs for the development version of Wave can be found at `~/.waveterm-dev/waveapp.log`. Both the NodeJS backend from Electron and the main Go backend will log here.
+Backend logs for the development version of Gulin can be found at `~/.gulin-dev/gulinapp.log`. Both the NodeJS backend from Electron and the main Go backend will log here.

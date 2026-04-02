@@ -4,8 +4,8 @@
         "display:order": -1,
         "ai:*": true
     },
-    "ai@wave": {
-        "display:name": "Wave Proxy - gpt-5-mini",
+    "ai@gulin": {
+        "display:name": "Gulin Proxy - gpt-5-mini",
         "display:order": 0,
         "ai:*": true,
         "ai:apitype": "",

@@ -4,7 +4,7 @@
 import { RpcApi } from "@/app/store/wshclientapi";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { getWebServerEndpoint } from "@/util/endpoints";
-import { formatRemoteUri } from "@/util/waveutil";
+import { formatRemoteUri } from "@/util/gulinutil";
 import parseSrcSet from "parse-srcset";
 
 export type MarkdownContentBlockType = {
@@ -36,7 +36,7 @@ function parseOptions(str: string): Record<string, any> {
     }
 }
 
-function makeMarkdownWaveBlockKey(block: MarkdownContentBlockType): string {
+function makeMarkdownGulinBlockKey(block: MarkdownContentBlockType): string {
     return `${block.type}[${block.id}]`;
 }
 
@@ -114,7 +114,7 @@ export function transformBlocks(content: string): { content: string; blocks: Map
             }
 
             // Found matching end - store block and add placeholder
-            const key = makeMarkdownWaveBlockKey(currentBlock);
+            const key = makeMarkdownGulinBlockKey(currentBlock);
             blocks.set(key, {
                 type: currentBlock.type,
                 id: currentBlock.id,
@@ -138,7 +138,7 @@ export function transformBlocks(content: string): { content: string; blocks: Map
 
     // Handle unclosed block - add what we have so far
     if (currentBlock) {
-        const key = makeMarkdownWaveBlockKey(currentBlock);
+        const key = makeMarkdownGulinBlockKey(currentBlock);
         blocks.set(key, {
             type: currentBlock.type,
             id: currentBlock.id,
@@ -165,7 +165,7 @@ export const resolveRemoteFile = async (filepath: string, resolveOpts: MarkdownR
         // console.log("markdown resolve", resolveOpts, filepath, "=>", baseDirUri, remoteUri);
         const usp = new URLSearchParams();
         usp.set("path", remoteUri);
-        return getWebServerEndpoint() + "/wave/stream-file?" + usp.toString();
+        return getWebServerEndpoint() + "/gulin/stream-file?" + usp.toString();
     } catch (err) {
         console.warn("Failed to resolve remote file:", filepath, err);
         return null;

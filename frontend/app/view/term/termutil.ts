@@ -86,7 +86,7 @@ export async function createTempFileFromBlob(blob: Blob): Promise<string> {
     // Generate unique filename with timestamp and random component
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
-    const filename = `waveterm_paste_${timestamp}_${random}.${ext}`;
+    const filename = `gulin_paste_${timestamp}_${random}.${ext}`;
 
     const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
         const reader = new FileReader();

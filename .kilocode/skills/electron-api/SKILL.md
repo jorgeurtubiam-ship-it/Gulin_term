@@ -1,6 +1,6 @@
 ---
 name: electron-api
-description: Guide for adding new Electron APIs to Wave Terminal. Use when implementing new frontend-to-electron communications via preload/IPC.
+description: Guide for adding new Electron APIs to Gulin Terminal. Use when implementing new frontend-to-electron communications via preload/IPC.
 ---
 
 # Adding Electron APIs
@@ -47,7 +47,7 @@ In [`emain/emain-ipc.ts`](emain/emain-ipc.ts):
 
 ```typescript
 electron.ipcMain.handle("capture-screenshot", async (event, rect) => {
-    const tabView = getWaveTabViewByWebContentsId(event.sender.id);
+    const tabView = getGulinTabViewByWebContentsId(event.sender.id);
     if (!tabView) throw new Error("No tab view found");
     const image = await tabView.webContents.capturePage(rect);
     return `data:image/png;base64,${image.toPNG().toString("base64")}`;

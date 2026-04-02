@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/util/envutil"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/util/envutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var runCmd = &cobra.Command{
@@ -105,45 +105,45 @@ func runRun(cmd *cobra.Command, args []string) (rtnErr error) {
 	// Convert to null-terminated format
 	envContent := envutil.MapToEnv(envMap)
 	createMeta := map[string]any{
-		waveobj.MetaKey_View:            "term",
-		waveobj.MetaKey_CmdCwd:          cwd,
-		waveobj.MetaKey_Controller:      "cmd",
-		waveobj.MetaKey_CmdClearOnStart: true,
+		gulinobj.MetaKey_View:            "term",
+		gulinobj.MetaKey_CmdCwd:          cwd,
+		gulinobj.MetaKey_Controller:      "cmd",
+		gulinobj.MetaKey_CmdClearOnStart: true,
 	}
-	createMeta[waveobj.MetaKey_Cmd] = shellCmd
-	createMeta[waveobj.MetaKey_CmdArgs] = cmdArgs
-	createMeta[waveobj.MetaKey_CmdShell] = useShell
+	createMeta[gulinobj.MetaKey_Cmd] = shellCmd
+	createMeta[gulinobj.MetaKey_CmdArgs] = cmdArgs
+	createMeta[gulinobj.MetaKey_CmdShell] = useShell
 	if paused {
-		createMeta[waveobj.MetaKey_CmdRunOnStart] = false
+		createMeta[gulinobj.MetaKey_CmdRunOnStart] = false
 	} else {
-		createMeta[waveobj.MetaKey_CmdRunOnce] = true
-		createMeta[waveobj.MetaKey_CmdRunOnStart] = true
+		createMeta[gulinobj.MetaKey_CmdRunOnce] = true
+		createMeta[gulinobj.MetaKey_CmdRunOnStart] = true
 	}
 	if forceExit {
-		createMeta[waveobj.MetaKey_CmdCloseOnExitForce] = true
+		createMeta[gulinobj.MetaKey_CmdCloseOnExitForce] = true
 	} else if exit {
-		createMeta[waveobj.MetaKey_CmdCloseOnExit] = true
+		createMeta[gulinobj.MetaKey_CmdCloseOnExit] = true
 	}
-	createMeta[waveobj.MetaKey_CmdCloseOnExitDelay] = float64(delayMs)
+	createMeta[gulinobj.MetaKey_CmdCloseOnExitDelay] = float64(delayMs)
 	if appendOutput {
-		createMeta[waveobj.MetaKey_CmdClearOnStart] = false
+		createMeta[gulinobj.MetaKey_CmdClearOnStart] = false
 	}
 
 	if RpcContext.Conn != "" {
-		createMeta[waveobj.MetaKey_Connection] = RpcContext.Conn
+		createMeta[gulinobj.MetaKey_Connection] = RpcContext.Conn
 	}
 
 	tabId := getTabIdFromEnv()
 	if tabId == "" {
-		return fmt.Errorf("no WAVETERM_TABID env var set")
+		return fmt.Errorf("no GULIN_TABID env var set")
 	}
 
 	createBlockData := wshrpc.CommandCreateBlockData{
 		TabId: tabId,
-		BlockDef: &waveobj.BlockDef{
+		BlockDef: &gulinobj.BlockDef{
 			Meta: createMeta,
-			Files: map[string]*waveobj.FileDef{
-				wavebase.BlockFile_Env: {
+			Files: map[string]*gulinobj.FileDef{
+				gulinbase.BlockFile_Env: {
 					Content: envContent,
 				},
 			},

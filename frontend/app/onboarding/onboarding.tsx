@@ -62,7 +62,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                 <div className={`${isCompact ? "" : "mb-2.5"} flex justify-center`}>
                     <Logo />
                 </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave Terminal</div>
+                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Gulin Terminal</div>
             </header>
             <OverlayScrollbarsComponent
                 className="flex-1 overflow-y-auto min-h-0"
@@ -73,7 +73,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                         <div>
                             <a
                                 target="_blank"
-                                href="https://github.com/wavetermdev/waveterm?ref=install"
+                                href="https://github.com/gulindev/gulin?ref=install"
                                 rel="noopener"
                                 className="text-accent"
                             >
@@ -87,11 +87,11 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 users. Please show your support by giving us a star on{" "}
                                 <a
                                     target="_blank"
-                                    href="https://github.com/wavetermdev/waveterm?ref=install"
+                                    href="https://github.com/gulindev/gulin?ref=install"
                                     rel="noopener"
                                     className="text-accent"
                                 >
-                                    Github&nbsp;(wavetermdev/waveterm)
+                                    Github&nbsp;(gulindev/gulin)
                                 </a>
                             </div>
                         </div>
@@ -119,7 +119,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                     rel="noopener"
                                     className="text-accent"
                                 >
-                                    Join the Wave&nbsp;Discord&nbsp;Channel
+                                    Join the Gulin&nbsp;Discord&nbsp;Channel
                                 </a>
                             </div>
                         </div>
@@ -135,7 +135,7 @@ const InitPage = ({ isCompact }: { isCompact: boolean }) => {
                                 <a
                                     className="text-secondary! hover:underline!"
                                     target="_blank"
-                                    href="https://waveterm.dev/privacy"
+                                    href="https://gulin.dev/privacy"
                                     rel="noopener"
                                 >
                                     Privacy Policy
@@ -174,7 +174,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
         });
-        window.open("https://github.com/wavetermdev/waveterm?ref=not", "_blank");
+        window.open("https://github.com/gulindev/gulin?ref=not", "_blank");
         setPageName("features");
     };
 
@@ -203,7 +203,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
                     <div className="text-center text-secondary leading-relaxed max-w-md">
                         <p className="mb-4">No problem, we respect your privacy.</p>
                         <p className="mb-4">
-                            But, without usage data, we're flying blind. A GitHub star helps us know Wave is useful and
+                            But, without usage data, we're flying blind. A GitHub star helps us know Gulin is useful and
                             worth maintaining.
                         </p>
                     </div>

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 )
 
 const (
@@ -33,7 +33,7 @@ type VDomContextVal struct {
 type Atom struct {
 	Val    any
 	Dirty  bool
-	UsedBy map[string]bool // component waveid -> true
+	UsedBy map[string]bool // component gulinid -> true
 }
 
 type RootElem struct {
@@ -41,7 +41,7 @@ type RootElem struct {
 	Root            *ComponentImpl
 	RenderTs        int64
 	CFuncs          map[string]any
-	CompMap         map[string]*ComponentImpl // component waveid -> component
+	CompMap         map[string]*ComponentImpl // component gulinid -> component
 	EffectWorkQueue []*EffectWorkElem
 	NeedsRenderMap  map[string]bool
 	Atoms           map[string]*Atom
@@ -273,7 +273,7 @@ func (r *RootElem) render(elem *VDomElem, comp **ComponentImpl) {
 		return
 	}
 	if isBaseTag(elem.Tag) {
-		// simple vdom, fragment, wave element
+		// simple vdom, fragment, gulin element
 		r.renderSimple(elem, comp)
 		return
 	}
@@ -305,13 +305,13 @@ func (r *RootElem) unmount(comp **ComponentImpl) {
 			r.unmount(&child)
 		}
 	}
-	delete(r.CompMap, (*comp).WaveId)
+	delete(r.CompMap, (*comp).GulinId)
 	*comp = nil
 }
 
 func (r *RootElem) createComp(tag string, key string, comp **ComponentImpl) {
-	*comp = &ComponentImpl{WaveId: uuid.New().String(), Tag: tag, Key: key}
-	r.CompMap[(*comp).WaveId] = *comp
+	*comp = &ComponentImpl{GulinId: uuid.New().String(), Tag: tag, Key: key}
+	r.CompMap[(*comp).GulinId] = *comp
 }
 
 func (r *RootElem) renderText(text string, comp **ComponentImpl) {
@@ -439,13 +439,13 @@ func (r *RootElem) UpdateRef(updateRef VDomRefUpdate) {
 		log.Printf("invalid ref id: %s\n", refId)
 		return
 	}
-	waveId := split[0]
+	gulinId := split[0]
 	hookIdx, err := strconv.Atoi(split[1])
 	if err != nil {
 		log.Printf("invalid ref id (bad hook idx): %s\n", refId)
 		return
 	}
-	comp := r.CompMap[waveId]
+	comp := r.CompMap[gulinId]
 	if comp == nil {
 		return
 	}
@@ -462,7 +462,7 @@ func (r *RootElem) UpdateRef(updateRef VDomRefUpdate) {
 	}
 	ref.HasCurrent = updateRef.HasCurrent
 	ref.Position = updateRef.Position
-	r.AddRenderWork(waveId)
+	r.AddRenderWork(gulinId)
 }
 
 func (r *RootElem) QueueRefOp(op VDomRefOperation) {
@@ -495,7 +495,7 @@ func convertPropsToVDom(props map[string]any) map[string]any {
 }
 
 func convertBaseToVDom(c *ComponentImpl) *VDomElem {
-	elem := &VDomElem{WaveId: c.WaveId, Tag: c.Tag}
+	elem := &VDomElem{GulinId: c.GulinId, Tag: c.Tag}
 	if c.Elem != nil {
 		elem.Props = convertPropsToVDom(c.Elem.Props)
 	}
@@ -543,7 +543,7 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 			textId := fmt.Sprintf("text-%d", textCounter)
 			textCounter++
 			transferElems = append(transferElems, VDomTransferElem{
-				WaveId:   textId,
+				GulinId:   textId,
 				Tag:      elem.Tag,
 				Text:     elem.Text,
 				Props:    nil,
@@ -552,7 +552,7 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 			return textId
 		}
 
-		// Convert children to WaveId references, handling potential #text nodes
+		// Convert children to GulinId references, handling potential #text nodes
 		childrenIds := make([]string, len(elem.Children))
 		for i, child := range elem.Children {
 			childrenIds[i] = processElem(child) // Children are not roots
@@ -560,7 +560,7 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 
 		// Create the VDomTransferElem for the current element
 		transferElem := VDomTransferElem{
-			WaveId:   elem.WaveId,
+			GulinId:   elem.GulinId,
 			Tag:      elem.Tag,
 			Props:    elem.Props,
 			Children: childrenIds,
@@ -568,7 +568,7 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 		}
 		transferElems = append(transferElems, transferElem)
 
-		return elem.WaveId
+		return elem.GulinId
 	}
 
 	// Start processing each top-level element, marking them as roots
@@ -580,16 +580,16 @@ func ConvertElemsToTransferElems(elems []VDomElem) []VDomTransferElem {
 }
 
 func DedupTransferElems(elems []VDomTransferElem) []VDomTransferElem {
-	seen := make(map[string]int) // maps WaveId to its index in the result slice
+	seen := make(map[string]int) // maps GulinId to its index in the result slice
 	var result []VDomTransferElem
 
 	for _, elem := range elems {
-		if idx, exists := seen[elem.WaveId]; exists {
+		if idx, exists := seen[elem.GulinId]; exists {
 			// Overwrite the previous element with the latest one
 			result[idx] = elem
 		} else {
 			// Add new element and store its index
-			seen[elem.WaveId] = len(result)
+			seen[elem.GulinId] = len(result)
 			result = append(result, elem)
 		}
 	}
@@ -604,7 +604,7 @@ func (beUpdate *VDomBackendUpdate) CreateTransferElems() {
 			continue
 		}
 		vdomElems = append(vdomElems, *reUpdate.VDom)
-		beUpdate.RenderUpdates[idx].VDomWaveId = reUpdate.VDom.WaveId
+		beUpdate.RenderUpdates[idx].VDomGulinId = reUpdate.VDom.GulinId
 		beUpdate.RenderUpdates[idx].VDom = nil
 	}
 	transferElems := ConvertElemsToTransferElems(vdomElems)

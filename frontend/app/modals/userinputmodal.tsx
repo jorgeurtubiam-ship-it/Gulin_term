@@ -64,12 +64,12 @@ const UserInputModal = (userInputRequest: UserInputRequest) => {
     }, [handleSendConfirm, handleSendText, userInputRequest.responsetype]);
 
     const handleKeyDown = useCallback(
-        (waveEvent: WaveKeyboardEvent): boolean => {
-            if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+        (gulinEvent: GulinKeyboardEvent): boolean => {
+            if (keyutil.checkKeyPressed(gulinEvent, "Escape")) {
                 handleSendErrResponse();
                 return true;
             }
-            if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+            if (keyutil.checkKeyPressed(gulinEvent, "Enter")) {
                 handleSubmit();
                 return true;
             }

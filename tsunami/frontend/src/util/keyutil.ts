@@ -17,11 +17,11 @@ function getKeyUtilPlatform(): NodeJS.Platform {
 }
 
 function keydownWrapper(
-    fn: (waveEvent: VDomKeyboardEvent) => boolean
+    fn: (gulinEvent: VDomKeyboardEvent) => boolean
 ): (event: KeyboardEvent | React.KeyboardEvent) => void {
     return (event: KeyboardEvent | React.KeyboardEvent) => {
-        const waveEvent = adaptFromReactOrNativeKeyEvent(event);
-        const rtnVal = fn(waveEvent);
+        const gulinEvent = adaptFromReactOrNativeKeyEvent(event);
+        const rtnVal = fn(gulinEvent);
         if (rtnVal) {
             event.preventDefault();
             event.stopPropagation();
@@ -29,31 +29,31 @@ function keydownWrapper(
     };
 }
 
-function waveEventToKeyDesc(waveEvent: VDomKeyboardEvent): string {
+function gulinEventToKeyDesc(gulinEvent: VDomKeyboardEvent): string {
     let keyDesc: string[] = [];
-    if (waveEvent.cmd) {
+    if (gulinEvent.cmd) {
         keyDesc.push("Cmd");
     }
-    if (waveEvent.option) {
+    if (gulinEvent.option) {
         keyDesc.push("Option");
     }
-    if (waveEvent.meta) {
+    if (gulinEvent.meta) {
         keyDesc.push("Meta");
     }
-    if (waveEvent.control) {
+    if (gulinEvent.control) {
         keyDesc.push("Ctrl");
     }
-    if (waveEvent.shift) {
+    if (gulinEvent.shift) {
         keyDesc.push("Shift");
     }
-    if (waveEvent.key != null && waveEvent.key != "") {
-        if (waveEvent.key == " ") {
+    if (gulinEvent.key != null && gulinEvent.key != "") {
+        if (gulinEvent.key == " ") {
             keyDesc.push("Space");
         } else {
-            keyDesc.push(waveEvent.key);
+            keyDesc.push(gulinEvent.key);
         }
     } else {
-        keyDesc.push("c{" + waveEvent.code + "}");
+        keyDesc.push("c{" + gulinEvent.code + "}");
     }
     return keyDesc.join(":");
 }
@@ -338,5 +338,5 @@ export {
     keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,
-    waveEventToKeyDesc,
+    gulinEventToKeyDesc,
 };

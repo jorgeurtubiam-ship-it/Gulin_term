@@ -118,7 +118,7 @@ export const ConnStatusOverlay = React.memo(
         viewModel: ViewModel;
         changeConnModalAtom: jotai.PrimitiveAtom<boolean>;
     }) => {
-        const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
+        const [blockData] = WOS.useGulinObjectValue<Block>(WOS.makeORef("block", nodeModel.blockId));
         const [connModalOpen] = jotai.useAtom(changeConnModalAtom);
         const connName = blockData?.meta?.connection;
         const connStatus = jotai.useAtomValue(getConnStatusAtom(connName));

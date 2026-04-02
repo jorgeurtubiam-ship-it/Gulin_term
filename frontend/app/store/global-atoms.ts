@@ -3,7 +3,7 @@
 
 import { atom, Atom, PrimitiveAtom } from "jotai";
 import { globalStore } from "./jotaiStore";
-import { setWaveWindowType } from "./windowtype";
+import { setGulinWindowType } from "./windowtype";
 import * as WOS from "./wos";
 
 let atoms!: GlobalAtomsType;
@@ -16,7 +16,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const windowIdAtom = atom(initOpts.windowId) as PrimitiveAtom<string>;
     const builderIdAtom = atom(initOpts.builderId) as PrimitiveAtom<string>;
     const builderAppIdAtom = atom<string>(null) as PrimitiveAtom<string>;
-    setWaveWindowType(initOpts.builderId != null ? "builder" : "tab");
+    setGulinWindowType(initOpts.builderId != null ? "builder" : "tab");
     const uiContextAtom = atom((get) => {
         const uiContext: UIContext = {
             windowid: initOpts.windowId,
@@ -45,14 +45,14 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     }
 
     const workspaceAtom: Atom<Workspace> = atom((get) => {
-        const windowData = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", get(windowIdAtom)), get);
+        const windowData = WOS.getObjectValue<GulinWindow>(WOS.makeORef("window", get(windowIdAtom)), get);
         if (windowData == null) {
             return null;
         }
         return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
     });
     const fullConfigAtom = atom(null) as PrimitiveAtom<FullConfigType>;
-    const waveaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
+    const gulinaiModeConfigAtom = atom(null) as PrimitiveAtom<Record<string, AIModeConfigType>>;
     const settingsAtom = atom((get) => {
         return get(fullConfigAtom)?.settings ?? {};
     }) as Atom<SettingsType>;
@@ -62,7 +62,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
             return false;
         }
         for (const presetId in fullConfig.presets) {
-            if (presetId.startsWith("ai@") && presetId !== "ai@global" && presetId !== "ai@wave") {
+            if (presetId.startsWith("ai@") && presetId !== "ai@global" && presetId !== "ai@gulin") {
                 return true;
             }
         }
@@ -120,13 +120,13 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     const reinitVersion = atom(0);
     const rateLimitInfoAtom = atom(null) as PrimitiveAtom<RateLimitInfo>;
     atoms = {
-        // initialized in wave.ts (will not be null inside of application)
+        // initialized in gulin.ts (will not be null inside of application)
         builderId: builderIdAtom,
         builderAppId: builderAppIdAtom,
         uiContext: uiContextAtom,
         workspace: workspaceAtom,
         fullConfigAtom,
-        waveaiModeConfigAtom,
+        gulinaiModeConfigAtom,
         settingsAtom,
         hasCustomAIPresetsAtom,
         staticTabId: staticTabIdAtom,
@@ -139,7 +139,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         modalOpen,
         allConnStatus: allConnStatusAtom,
         reinitVersion,
-        waveAIRateLimitInfoAtom: rateLimitInfoAtom,
+        gulinAIRateLimitInfoAtom: rateLimitInfoAtom,
     } as GlobalAtomsType;
 }
 

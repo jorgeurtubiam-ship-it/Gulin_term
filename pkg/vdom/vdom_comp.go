@@ -13,7 +13,7 @@ type ChildKey struct {
 }
 
 type ComponentImpl struct {
-	WaveId  string
+	GulinId  string
 	Tag     string
 	Key     string
 	Elem    *VDomElem
@@ -25,7 +25,7 @@ type ComponentImpl struct {
 	// #text component
 	Text string
 
-	// base component -- vdom, wave elem, or #fragment
+	// base component -- vdom, gulin elem, or #fragment
 	Children []*ComponentImpl
 
 	// component -> component

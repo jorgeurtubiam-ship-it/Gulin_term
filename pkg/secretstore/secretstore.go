@@ -16,19 +16,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 const (
 	SecretsFileName   = "secrets.enc"
 	WriteDebounceMs   = 1000
-	EncryptionTimeout = 5000
+	EncryptionTimeout = 15000
 	InitRetryMs       = 1000
-	SecretNamePattern = `^[A-Za-z][A-Za-z0-9_]*$`
-	WriteTsKey        = "wave:writets"
+	SecretNamePattern = `^[A-Za-z][A-Za-z0-9_:]*$`
+	WriteTsKey        = "gulin:writets"
 )
 
 var lock sync.Mutex
@@ -76,7 +76,7 @@ func getLinuxStorageBackend() error {
 
 // must hold lock
 func readSecretsFromFile() (map[string]string, error) {
-	configDir := wavebase.GetWaveConfigDir()
+	configDir := gulinbase.GetGulinConfigDir()
 	secretsPath := filepath.Join(configDir, SecretsFileName)
 
 	encryptedData, err := os.ReadFile(secretsPath)
@@ -199,7 +199,7 @@ func writeSecretsToFile() error {
 		return fmt.Errorf("encryption timeout: %w", ctx.Err())
 	}
 
-	configDir := wavebase.GetWaveConfigDir()
+	configDir := gulinbase.GetGulinConfigDir()
 	secretsPath := filepath.Join(configDir, SecretsFileName)
 
 	if err := os.WriteFile(secretsPath, []byte(result.CipherText), 0600); err != nil {

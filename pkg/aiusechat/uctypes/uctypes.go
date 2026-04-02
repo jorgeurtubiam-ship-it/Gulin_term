@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-const DefaultAIEndpoint = "https://cfapi.waveterm.dev/api/waveai"
-const WaveAIEndpointEnvName = "WAVETERM_WAVEAI_ENDPOINT"
+const DefaultAIEndpoint = "https://cfapi.gulin.dev/api/gulinai"
+const GulinAIEndpointEnvName = "GULIN_GULINAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
 const DefaultOpenAIModel = "gpt-5-mini"
 const PremiumOpenAIModel = "gpt-5.1"
@@ -25,7 +25,7 @@ const (
 )
 
 const (
-	AIProvider_Wave        = "wave"
+	AIProvider_Gulin        = "gulin"
 	AIProvider_Google      = "google"
 	AIProvider_Groq        = "groq"
 	AIProvider_OpenRouter  = "openrouter"
@@ -35,6 +35,7 @@ const (
 	AIProvider_Azure       = "azure"
 	AIProvider_AzureLegacy = "azure-legacy"
 	AIProvider_Custom      = "custom"
+	AIProvider_GulinBridge  = "gulinbridge"
 )
 
 type UseChatRequest struct {
@@ -91,7 +92,7 @@ type UIMessagePart struct {
 	ProviderMetadata map[string]any `json:"providerMetadata,omitempty"`
 }
 
-// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.userfile
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts GulinUIDataTypes.userfile
 type UIMessageDataUserFile struct {
 	FileName   string `json:"filename,omitempty"`
 	Size       int    `json:"size,omitempty"`
@@ -113,7 +114,7 @@ type ToolDefinition struct {
 	ToolTextCallback func(context.Context, any) (string, error)                     `json:"-"`
 	ToolAnyCallback  func(context.Context, any, *UIMessageDataToolUse) (any, error) `json:"-"` // *UIMessageDataToolUse will NOT be nil
 	ToolCallDesc     func(any, any, *UIMessageDataToolUse) string                   `json:"-"` // passed input, output (may be nil), *UIMessageDataToolUse (may be nil)
-	ToolApproval     func(any, WaveChatOpts) string                                 `json:"-"`
+	ToolApproval     func(any, GulinChatOpts) string                                 `json:"-"`
 	ToolVerifyInput  func(any, *UIMessageDataToolUse) error                         `json:"-"` // *UIMessageDataToolUse will NOT be nil
 	ToolProgressDesc func(any) ([]string, error)                                    `json:"-"`
 }
@@ -151,7 +152,7 @@ func (td *ToolDefinition) HasRequiredCapabilities(capabilities []string) bool {
 }
 
 //------------------
-// Wave specific types, stop reasons, tool calls, config
+// Gulin specific types, stop reasons, tool calls, config
 // these are used internally to coordinate the calls/steps
 
 const (
@@ -165,9 +166,9 @@ const (
 )
 
 const (
-	AIModeQuick    = "waveai@quick"
-	AIModeBalanced = "waveai@balanced"
-	AIModeDeep     = "waveai@deep"
+	AIModeQuick    = "gulinai@quick"
+	AIModeBalanced = "gulinai@balanced"
+	AIModeDeep     = "gulinai@deep"
 )
 
 const (
@@ -201,7 +202,7 @@ type AIModeConfig struct {
 	Model              string   `json:"model"`
 	ThinkingLevel      string   `json:"thinkinglevel"`
 	BaseURL            string   `json:"baseurl,omitempty"`
-	WaveAICloud        bool     `json:"waveaicloud,omitempty"`
+	GulinAICloud        bool     `json:"gulinaicloud,omitempty"`
 	APIVersion         string   `json:"apiversion,omitempty"`
 	APIToken           string   `json:"apitoken,omitempty"`
 	APITokenSecretName string   `json:"apitokensecretname,omitempty"`
@@ -214,7 +215,7 @@ func (c *AIModeConfig) HasCapability(cap string) bool {
 	return slices.Contains(c.Capabilities, cap)
 }
 
-// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.tooluse
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts GulinUIDataTypes.tooluse
 type UIMessageDataToolUse struct {
 	ToolCallId          string `json:"toolcallid"`
 	ToolName            string `json:"toolname"`
@@ -232,7 +233,7 @@ func (d *UIMessageDataToolUse) IsApproved() bool {
 	return d.Approval == "" || d.Approval == ApprovalUserApproved || d.Approval == ApprovalAutoApproved
 }
 
-// when updating this struct, also modify frontend/app/aipanel/aitypes.ts WaveUIDataTypes.toolprogress
+// when updating this struct, also modify frontend/app/aipanel/aitypes.ts GulinUIDataTypes.toolprogress
 type UIMessageDataToolProgress struct {
 	ToolCallId  string   `json:"toolcallid"`
 	ToolName    string   `json:"toolname"`
@@ -253,28 +254,28 @@ const (
 	StopKindRateLimit        StopReasonKind = "rate_limit"
 )
 
-type WaveToolCall struct {
+type GulinToolCall struct {
 	ID          string                `json:"id"`                    // Anthropic tool_use.id
 	Name        string                `json:"name,omitempty"`        // tool name (if provided)
 	Input       any                   `json:"input,omitempty"`       // accumulated input JSON
 	ToolUseData *UIMessageDataToolUse `json:"toolusedata,omitempty"` // UI tool use data
 }
 
-type WaveStopReason struct {
+type GulinStopReason struct {
 	Kind      StopReasonKind `json:"kind"`
 	RawReason string         `json:"raw_reason,omitempty"`
-	ToolCalls []WaveToolCall `json:"tool_calls,omitempty"`
+	ToolCalls []GulinToolCall `json:"tool_calls,omitempty"`
 	ErrorType string         `json:"error_type,omitempty"`
 	ErrorText string         `json:"error_text,omitempty"`
 }
 
-// Wave Specific parameter used to signal to our step function that this is a continuation step, not an initial step
-type WaveContinueResponse struct {
+// Gulin Specific parameter used to signal to our step function that this is a continuation step, not an initial step
+type GulinContinueResponse struct {
 	Model            string         `json:"model,omitempty"`
 	ContinueFromKind StopReasonKind `json:"continue_from_kind"`
 }
 
-// Wave Specific AI opts for configuration
+// Gulin Specific AI opts for configuration
 type AIOptsType struct {
 	Provider      string   `json:"provider,omitempty"`
 	APIType       string   `json:"apitype,omitempty"`
@@ -289,15 +290,16 @@ type AIOptsType struct {
 	Verbosity     string   `json:"verbosity,omitempty"`     // Text verbosity level (OpenAI Responses API only, ignored by other backends)
 	AIMode        string   `json:"aimode,omitempty"`
 	Capabilities  []string `json:"capabilities,omitempty"`
-	WaveAIPremium bool     `json:"waveaipremium,omitempty"`
+	GulinAIPremium bool     `json:"gulinaipremium,omitempty"`
+	BridgeProvider string   `json:"bridgeprovider,omitempty"`
 }
 
-func (opts AIOptsType) IsWaveProxy() bool {
-	return opts.Provider == AIProvider_Wave
+func (opts AIOptsType) IsGulinProxy() bool {
+	return opts.Provider == AIProvider_Gulin
 }
 
 func (opts AIOptsType) IsPremiumModel() bool {
-	return opts.WaveAIPremium
+	return opts.GulinAIPremium
 }
 
 func (opts AIOptsType) HasCapability(cap string) bool {
@@ -365,7 +367,7 @@ const (
 	AIMessagePartTypeFile = "file"
 )
 
-// wave specific for POSTing a new message to a convo
+// gulin specific for POSTing a new message to a convo
 type AIMessage struct {
 	MessageId string          `json:"messageid"` // only for idempotency
 	Role      string          `json:"role"`      // "user" or "assistant"
@@ -540,7 +542,7 @@ func (m *UIMessage) GetContent() string {
 	return ""
 }
 
-type WaveChatOpts struct {
+type GulinChatOpts struct {
 	ChatId               string
 	ClientId             string
 	Config               AIOptsType
@@ -562,7 +564,7 @@ type WaveChatOpts struct {
 	PlatformInfo   string
 }
 
-func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
+func (opts *GulinChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
 	for _, tool := range opts.Tools {
 		if tool.Name == toolName {
 			return &tool
@@ -576,11 +578,11 @@ func (opts *WaveChatOpts) GetToolDefinition(toolName string) *ToolDefinition {
 	return nil
 }
 
-func (opts *WaveChatOpts) GetWaveRequestType() string {
+func (opts *GulinChatOpts) GetGulinRequestType() string {
 	if opts.BuilderId != "" {
-		return "waveapps-builder"
+		return "gulinapps-builder"
 	} else {
-		return "waveai"
+		return "gulinai"
 	}
 }
 
@@ -598,9 +600,9 @@ type RateLimitInfo struct {
 	Unknown    bool  `json:"unknown,omitempty"`
 }
 
-// ParseRateLimitHeader parses the X-Wave-RateLimit header
-// Format: X-Wave-RateLimit: req=<remaining>, reqlimit=<max_requests>, preq=<premium_remaining>, preqlimit=<max_premium>, reset=<expiration_epoch_seconds>
-// Example: X-Wave-RateLimit: req=180, reqlimit=200, preq=45, preqlimit=50, reset=1727818382
+// ParseRateLimitHeader parses the X-Gulin-RateLimit header
+// Format: X-Gulin-RateLimit: req=<remaining>, reqlimit=<max_requests>, preq=<premium_remaining>, preqlimit=<max_premium>, reset=<expiration_epoch_seconds>
+// Example: X-Gulin-RateLimit: req=180, reqlimit=200, preq=45, preqlimit=50, reset=1727818382
 // - req: remaining regular requests in the current window
 // - reqlimit: maximum regular requests allowed in the window
 // - preq: remaining premium requests in the current window

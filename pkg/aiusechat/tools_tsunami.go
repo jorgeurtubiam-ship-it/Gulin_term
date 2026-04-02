@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/blockcontroller"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
-func getTsunamiShortDesc(rtInfo *waveobj.ObjRTInfo) string {
+func getTsunamiShortDesc(rtInfo *gulinobj.ObjRTInfo) string {
 	if rtInfo == nil || rtInfo.TsunamiAppMeta == nil {
 		return ""
 	}
@@ -30,13 +30,13 @@ func getTsunamiShortDesc(rtInfo *waveobj.ObjRTInfo) string {
 	return ""
 }
 
-func handleTsunamiBlockDesc(block *waveobj.Block) string {
+func handleTsunamiBlockDesc(block *gulinobj.Block) string {
 	status := blockcontroller.GetBlockControllerRuntimeStatus(block.OID)
 	if status == nil || status.ShellProcStatus != blockcontroller.Status_Running {
 		return "tsunami framework widget that is currently not running"
 	}
 
-	blockORef := waveobj.MakeORef(waveobj.OType_Block, block.OID)
+	blockORef := gulinobj.MakeORef(gulinobj.OType_Block, block.OID)
 	rtInfo := wstore.GetRTInfo(blockORef)
 	if shortDesc := getTsunamiShortDesc(rtInfo); shortDesc != "" {
 		return fmt.Sprintf("tsunami widget - %s", shortDesc)
@@ -119,7 +119,7 @@ func makeTsunamiPostCallback(status *blockcontroller.BlockControllerRuntimeStatu
 	}
 }
 
-func GetTsunamiGetDataToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
+func GetTsunamiGetDataToolDefinition(block *gulinobj.Block, rtInfo *gulinobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
 	blockIdPrefix := block.OID[:8]
 	toolName := fmt.Sprintf("tsunami_getdata_%s", blockIdPrefix)
 
@@ -144,7 +144,7 @@ func GetTsunamiGetDataToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRT
 	}
 }
 
-func GetTsunamiGetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
+func GetTsunamiGetConfigToolDefinition(block *gulinobj.Block, rtInfo *gulinobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
 	blockIdPrefix := block.OID[:8]
 	toolName := fmt.Sprintf("tsunami_getconfig_%s", blockIdPrefix)
 
@@ -169,7 +169,7 @@ func GetTsunamiGetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.Obj
 	}
 }
 
-func GetTsunamiSetConfigToolDefinition(block *waveobj.Block, rtInfo *waveobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
+func GetTsunamiSetConfigToolDefinition(block *gulinobj.Block, rtInfo *gulinobj.ObjRTInfo, status *blockcontroller.BlockControllerRuntimeStatus) *uctypes.ToolDefinition {
 	blockIdPrefix := block.OID[:8]
 	toolName := fmt.Sprintf("tsunami_setconfig_%s", blockIdPrefix)
 

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
 const (
@@ -28,33 +28,33 @@ const (
 type PortableLayout []struct {
 	IndexArr []int             `json:"indexarr"`
 	Size     *uint             `json:"size,omitempty"`
-	BlockDef *waveobj.BlockDef `json:"blockdef"`
+	BlockDef *gulinobj.BlockDef `json:"blockdef"`
 	Focused  bool              `json:"focused"`
 }
 
 func GetStarterLayout() PortableLayout {
 	return PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
+		{IndexArr: []int{0}, BlockDef: &gulinobj.BlockDef{
+			Meta: gulinobj.MetaMapType{
+				gulinobj.MetaKey_View:       "term",
+				gulinobj.MetaKey_Controller: "shell",
 			},
 		}, Focused: true},
-		{IndexArr: []int{1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "sysinfo",
+		{IndexArr: []int{1}, BlockDef: &gulinobj.BlockDef{
+			Meta: gulinobj.MetaMapType{
+				gulinobj.MetaKey_View: "sysinfo",
 			},
 		}},
-		{IndexArr: []int{1, 1}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "web",
-				waveobj.MetaKey_Url:  "https://github.com/wavetermdev/waveterm",
+		{IndexArr: []int{1, 1}, BlockDef: &gulinobj.BlockDef{
+			Meta: gulinobj.MetaMapType{
+				gulinobj.MetaKey_View: "web",
+				gulinobj.MetaKey_Url:  "https://github.com/gulindev/gulin",
 			},
 		}},
-		{IndexArr: []int{1, 2}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View: "preview",
-				waveobj.MetaKey_File: "~",
+		{IndexArr: []int{1, 2}, BlockDef: &gulinobj.BlockDef{
+			Meta: gulinobj.MetaMapType{
+				gulinobj.MetaKey_View: "preview",
+				gulinobj.MetaKey_File: "~",
 			},
 		}},
 	}
@@ -62,25 +62,25 @@ func GetStarterLayout() PortableLayout {
 
 func GetNewTabLayout() PortableLayout {
 	return PortableLayout{
-		{IndexArr: []int{0}, BlockDef: &waveobj.BlockDef{
-			Meta: waveobj.MetaMapType{
-				waveobj.MetaKey_View:       "term",
-				waveobj.MetaKey_Controller: "shell",
+		{IndexArr: []int{0}, BlockDef: &gulinobj.BlockDef{
+			Meta: gulinobj.MetaMapType{
+				gulinobj.MetaKey_View:       "term",
+				gulinobj.MetaKey_Controller: "shell",
 			},
 		}, Focused: true},
 	}
 }
 
 func GetLayoutIdForTab(ctx context.Context, tabId string) (string, error) {
-	tabObj, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
+	tabObj, err := wstore.DBGet[*gulinobj.Tab](ctx, tabId)
 	if err != nil {
 		return "", fmt.Errorf("unable to get layout id for given tab id %s: %w", tabId, err)
 	}
 	return tabObj.LayoutState, nil
 }
 
-func QueueLayoutAction(ctx context.Context, layoutStateId string, actions ...waveobj.LayoutActionData) error {
-	layoutStateObj, err := wstore.DBGet[*waveobj.LayoutState](ctx, layoutStateId)
+func QueueLayoutAction(ctx context.Context, layoutStateId string, actions ...gulinobj.LayoutActionData) error {
+	layoutStateObj, err := wstore.DBGet[*gulinobj.LayoutState](ctx, layoutStateId)
 	if err != nil {
 		return fmt.Errorf("unable to get layout state for given id %s: %w", layoutStateId, err)
 	}
@@ -104,7 +104,7 @@ func QueueLayoutAction(ctx context.Context, layoutStateId string, actions ...wav
 	return nil
 }
 
-func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveobj.LayoutActionData) error {
+func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...gulinobj.LayoutActionData) error {
 	layoutStateId, err := GetLayoutIdForTab(ctx, tabId)
 	if err != nil {
 		return err
@@ -114,17 +114,17 @@ func QueueLayoutActionForTab(ctx context.Context, tabId string, actions ...waveo
 }
 
 func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayout, recordTelemetry bool) error {
-	actions := make([]waveobj.LayoutActionData, len(layout)+1)
-	actions[0] = waveobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
+	actions := make([]gulinobj.LayoutActionData, len(layout)+1)
+	actions[0] = gulinobj.LayoutActionData{ActionType: LayoutActionDataType_ClearTree}
 	for i := 0; i < len(layout); i++ {
 		layoutAction := layout[i]
 
-		blockData, err := CreateBlockWithTelemetry(ctx, tabId, layoutAction.BlockDef, &waveobj.RuntimeOpts{}, recordTelemetry)
+		blockData, err := CreateBlockWithTelemetry(ctx, tabId, layoutAction.BlockDef, &gulinobj.RuntimeOpts{}, recordTelemetry)
 		if err != nil {
 			return fmt.Errorf("unable to create block to apply portable layout to tab %s: %w", tabId, err)
 		}
 
-		actions[i+1] = waveobj.LayoutActionData{
+		actions[i+1] = gulinobj.LayoutActionData{
 			ActionType: LayoutActionDataType_InsertAtIndex,
 			BlockId:    blockData.OID,
 			IndexArr:   &layoutAction.IndexArr,
@@ -144,7 +144,7 @@ func ApplyPortableLayout(ctx context.Context, tabId string, layout PortableLayou
 func BootstrapStarterLayout(ctx context.Context) error {
 	ctx, cancelFn := context.WithTimeout(ctx, 2*time.Second)
 	defer cancelFn()
-	client, err := wstore.DBGetSingleton[*waveobj.Client](ctx)
+	client, err := wstore.DBGetSingleton[*gulinobj.Client](ctx)
 	if err != nil {
 		log.Printf("unable to find client: %v\n", err)
 		return fmt.Errorf("unable to find client: %w", err)
@@ -156,12 +156,12 @@ func BootstrapStarterLayout(ctx context.Context) error {
 
 	windowId := client.WindowIds[0]
 
-	window, err := wstore.DBMustGet[*waveobj.Window](ctx, windowId)
+	window, err := wstore.DBMustGet[*gulinobj.Window](ctx, windowId)
 	if err != nil {
 		return fmt.Errorf("error getting window: %w", err)
 	}
 
-	workspace, err := wstore.DBMustGet[*waveobj.Workspace](ctx, window.WorkspaceId)
+	workspace, err := wstore.DBMustGet[*gulinobj.Workspace](ctx, window.WorkspaceId)
 	if err != nil {
 		return fmt.Errorf("error getting workspace: %w", err)
 	}

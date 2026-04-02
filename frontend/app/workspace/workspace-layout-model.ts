@@ -1,7 +1,7 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WaveAIModel } from "@/app/aipanel/waveai-model";
+import { GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { globalStore } from "@/app/store/jotaiStore";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -13,7 +13,7 @@ import * as jotai from "jotai";
 import { debounce } from "lodash-es";
 import { ImperativePanelGroupHandle, ImperativePanelHandle } from "react-resizable-panels";
 
-const dlog = debug("wave:workspace");
+const dlog = debug("gulin:workspace");
 
 const AIPANEL_DEFAULTWIDTH = 300;
 const AIPANEL_DEFAULTWIDTHRATIO = 0.33;
@@ -53,7 +53,7 @@ class WorkspaceLayoutModel {
             try {
                 RpcApi.SetMetaCommand(TabRpcClient, {
                     oref: WOS.makeORef("tab", this.getTabId()),
-                    meta: { "waveai:panelwidth": width },
+                    meta: { "gulinai:panelwidth": width },
                 });
             } catch (e) {
                 console.warn("Failed to persist panel width:", e);
@@ -94,12 +94,12 @@ class WorkspaceLayoutModel {
 
     private getPanelOpenAtom(): jotai.Atom<boolean> {
         const tabORef = WOS.makeORef("tab", this.getTabId());
-        return getOrefMetaKeyAtom(tabORef, "waveai:panelopen");
+        return getOrefMetaKeyAtom(tabORef, "gulinai:panelopen");
     }
 
     private getPanelWidthAtom(): jotai.Atom<number> {
         const tabORef = WOS.makeORef("tab", this.getTabId());
-        return getOrefMetaKeyAtom(tabORef, "waveai:panelwidth");
+        return getOrefMetaKeyAtom(tabORef, "gulinai:panelwidth");
     }
 
     registerRefs(
@@ -228,13 +228,13 @@ class WorkspaceLayoutModel {
         const wasVisible = this.aiPanelVisible;
         this.aiPanelVisible = visible;
         if (visible && !wasVisible) {
-            recordTEvent("action:openwaveai");
+            recordTEvent("action:opengulinai");
         }
         globalStore.set(this.panelVisibleAtom, visible);
-        getApi().setWaveAIOpen(visible);
+        getApi().setGulinAIOpen(visible);
         RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("tab", this.getTabId()),
-            meta: { "waveai:panelopen": visible },
+            meta: { "gulinai:panelopen": visible },
         });
         this.enableTransitions(250);
         this.syncAIPanelRef();
@@ -242,7 +242,7 @@ class WorkspaceLayoutModel {
         if (visible) {
             if (!opts?.nofocus) {
                 this.focusTimeoutRef = setTimeout(() => {
-                    WaveAIModel.getInstance().focusInput();
+                    GulinAIModel.getInstance().focusInput();
                     this.focusTimeoutRef = null;
                 }, 350);
             }

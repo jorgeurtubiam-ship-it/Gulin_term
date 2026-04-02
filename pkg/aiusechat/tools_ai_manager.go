@@ -11,22 +11,22 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 )
 
 const GulinAPIEndpointsTable = "gulin_api_endpoints"
 
-func getWavetermDB() (*sql.DB, error) {
-	dataDir := wavebase.GetWaveDataDir()
-	dbPath := filepath.Join(dataDir, wavebase.WaveDBDir, "waveterm.db")
+func getGulintermDB() (*sql.DB, error) {
+	dataDir := gulinbase.GetGulinDataDir()
+	dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
 	return sql.Open("sqlite3", dbPath)
 }
 
-func WaveAIApiListHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("[API-MANAGER] WaveAIApiListHandler called\n")
+func GulinAIApiListHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("[API-MANAGER] GulinAIApiListHandler called\n")
 
-	db, err := getWavetermDB()
+	db, err := getGulintermDB()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to open db: %v", err), http.StatusInternalServerError)
 		return
@@ -53,8 +53,8 @@ func WaveAIApiListHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(endpoints)
 }
 
-func WaveAIApiRegisterHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("[API-MANAGER] WaveAIApiRegisterHandler called: %s\n", r.Method)
+func GulinAIApiRegisterHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("[API-MANAGER] GulinAIApiRegisterHandler called: %s\n", r.Method)
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -73,7 +73,7 @@ func WaveAIApiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db, err := getWavetermDB()
+	db, err := getGulintermDB()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to open db: %v", err), http.StatusInternalServerError)
 		return

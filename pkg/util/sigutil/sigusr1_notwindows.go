@@ -11,11 +11,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 )
 
-const DumpFilePath = "/tmp/waveterm-usr1-dump.log"
+const DumpFilePath = "/tmp/gulin-usr1-dump.log"
 
 func InstallSIGUSR1Handler() {
 	sigCh := make(chan os.Signal, 1)

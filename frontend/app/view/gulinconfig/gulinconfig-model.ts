@@ -33,7 +33,7 @@ export type ConfigFile = {
     visualComponent?: React.ComponentType<{ model: GulinConfigViewModel }>;
 };
 
-export const SecretNameRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
+export const SecretNameRegex = /^[A-Za-z][A-Za-z0-9_:]*$/;
 
 function validateBgJson(parsed: any): ValidationResult {
     const keys = Object.keys(parsed);
@@ -587,5 +587,25 @@ export class GulinConfigViewModel implements ViewModel {
             return true;
         }
         return false;
+    }
+
+    async syncGulinBridgeModels() {
+        await RpcApi.GulinBridgeSyncModelsCommand(TabRpcClient);
+    }
+
+    async syncGulinBridgeLogin(url: string, email: string, password: string) {
+        await RpcApi.GulinBridgeLoginCommand(TabRpcClient, { url, email, password });
+    }
+
+    async syncGulinBridgeLogout() {
+        await RpcApi.GulinBridgeLogoutCommand(TabRpcClient);
+    }
+
+    async syncGulinBridgeCreateToken(name: string): Promise<string> {
+        return await RpcApi.GulinBridgeCreateTokenCommand(TabRpcClient, name);
+    }
+
+    async syncGulinBridgeRegister(data: CommandGulinBridgeRegisterData): Promise<void> {
+        return await RpcApi.GulinBridgeRegisterCommand(TabRpcClient, data);
     }
 }

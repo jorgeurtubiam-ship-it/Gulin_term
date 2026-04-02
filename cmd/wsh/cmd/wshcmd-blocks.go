@@ -11,9 +11,9 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 // Command-line flags for the blocks commands
@@ -31,8 +31,8 @@ type BlockDetails struct {
 	BlockId     string              `json:"blockid"`     // Unique identifier for the block
 	WorkspaceId string              `json:"workspaceid"` // ID of the workspace containing the block
 	TabId       string              `json:"tabid"`       // ID of the tab containing the block
-	View        string              `json:"view"`        // Canonical view type (term, web, preview, edit, sysinfo, waveai)
-	Meta        waveobj.MetaMapType `json:"meta"`        // Block metadata including view type
+	View        string              `json:"view"`        // Canonical view type (term, web, preview, edit, sysinfo, gulinai)
+	Meta        gulinobj.MetaMapType `json:"meta"`        // Block metadata including view type
 }
 
 // blocksListCmd represents the 'blocks list' command
@@ -74,7 +74,7 @@ func init() {
 	blocksListCmd.Flags().StringVar(&blocksWindowId, "window", "", "restrict to window id")
 	blocksListCmd.Flags().StringVar(&blocksWorkspaceId, "workspace", "", "restrict to workspace id")
 	blocksListCmd.Flags().StringVar(&blocksTabId, "tab", "", "restrict to specific tab id")
-	blocksListCmd.Flags().StringVar(&blocksView, "view", "", "restrict to view type (term/terminal, web/browser, preview/edit, sysinfo, waveai)")
+	blocksListCmd.Flags().StringVar(&blocksView, "view", "", "restrict to view type (term/terminal, web/browser, preview/edit, sysinfo, gulinai)")
 	blocksListCmd.Flags().BoolVar(&blocksJSON, "json", false, "output as JSON")
 	blocksListCmd.Flags().IntVar(&blocksTimeout, "timeout", 5000, "timeout in milliseconds for RPC calls (default: 5000)")
 
@@ -100,7 +100,7 @@ func init() {
 func blocksListRun(cmd *cobra.Command, args []string) error {
 	if v := strings.TrimSpace(blocksView); v != "" {
 		if !isKnownViewFilter(v) {
-			return fmt.Errorf("unknown --view %q; try one of: term, web, preview, edit, sysinfo, waveai", v)
+			return fmt.Errorf("unknown --view %q; try one of: term, web, preview, edit, sysinfo, gulinai", v)
 		}
 	}
 
@@ -165,7 +165,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 			}
 
 			if blocksView != "" {
-				view := b.Meta.GetString(waveobj.MetaKey_View, "")
+				view := b.Meta.GetString(gulinobj.MetaKey_View, "")
 
 				// Support view type aliases
 				if !matchesViewType(view, blocksView) {
@@ -173,7 +173,7 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 				}
 			}
 
-			v := b.Meta.GetString(waveobj.MetaKey_View, "")
+			v := b.Meta.GetString(gulinobj.MetaKey_View, "")
 			allBlocks = append(allBlocks, BlockDetails{
 				BlockId:     b.BlockId,
 				WorkspaceId: b.WorkspaceId,
@@ -230,11 +230,11 @@ func blocksListRun(cmd *cobra.Command, args []string) error {
 
 		switch view {
 		case "preview", "edit":
-			content = b.Meta.GetString(waveobj.MetaKey_File, "<no file>")
+			content = b.Meta.GetString(gulinobj.MetaKey_File, "<no file>")
 		case "web":
-			content = b.Meta.GetString(waveobj.MetaKey_Url, "<no url>")
+			content = b.Meta.GetString(gulinobj.MetaKey_Url, "<no url>")
 		case "term":
-			content = b.Meta.GetString(waveobj.MetaKey_CmdCwd, "<no cwd>")
+			content = b.Meta.GetString(gulinobj.MetaKey_CmdCwd, "<no cwd>")
 		default:
 			content = ""
 		}
@@ -270,8 +270,8 @@ func matchesViewType(actual, filter string) bool {
 		return strings.EqualFold(actual, "term")
 	case "web", "browser", "url":
 		return strings.EqualFold(actual, "web")
-	case "ai", "waveai", "assistant":
-		return strings.EqualFold(actual, "waveai")
+	case "ai", "gulinai", "assistant":
+		return strings.EqualFold(actual, "gulinai")
 	case "sys", "sysinfo", "system":
 		return strings.EqualFold(actual, "sysinfo")
 	}
@@ -286,7 +286,7 @@ func isKnownViewFilter(f string) bool {
 		"web", "browser", "url",
 		"preview", "edit",
 		"sysinfo", "sys", "system",
-		"waveai", "ai", "assistant":
+		"gulinai", "ai", "assistant":
 		return true
 	default:
 		return false

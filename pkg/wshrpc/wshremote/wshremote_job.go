@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/wavetermdev/waveterm/pkg/wavebase"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 func isProcessRunning(pid int, pidStartTs int64) (*process.Process, error) {
@@ -43,7 +43,7 @@ func isProcessRunning(pid int, pidStartTs int64) (*process.Process, error) {
 
 // returns jobRouteId, cleanupFunc, error
 func (impl *ServerImpl) connectToJobManager(ctx context.Context, jobId string, mainServerJwtToken string) (string, func(), error) {
-	socketPath := wavebase.GetRemoteJobSocketPath(jobId)
+	socketPath := gulinbase.GetRemoteJobSocketPath(jobId)
 	log.Printf("connectToJobManager: connecting to socket: %s\n", socketPath)
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
@@ -151,7 +151,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 
 	cmd := exec.Command(wshPath, "jobmanager", "--jobid", data.JobId, "--clientid", data.ClientId)
 	if data.PublicKeyBase64 != "" {
-		cmd.Env = append(os.Environ(), "WAVETERM_PUBLICKEY="+data.PublicKeyBase64)
+		cmd.Env = append(os.Environ(), "GULIN_PUBLICKEY="+data.PublicKeyBase64)
 	}
 	cmd.ExtraFiles = []*os.File{readyPipeWrite}
 	stdin, err := cmd.StdinPipe()
@@ -174,7 +174,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	readyPipeWrite.Close()
 	log.Printf("RemoteStartJobCommand: job manager process started\n")
 
-	jobAuthTokenLine := fmt.Sprintf("Wave-JobAccessToken:%s\n", data.JobAuthToken)
+	jobAuthTokenLine := fmt.Sprintf("Gulin-JobAccessToken:%s\n", data.JobAuthToken)
 	if _, err := stdin.Write([]byte(jobAuthTokenLine)); err != nil {
 		cmd.Process.Kill()
 		return nil, fmt.Errorf("cannot write job auth token: %w", err)
@@ -214,7 +214,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 		for scanner.Scan() {
 			line := scanner.Text()
 			log.Printf("RemoteStartJobCommand: ready pipe line: %s\n", line)
-			if strings.Contains(line, "Wave-JobManagerStart") {
+			if strings.Contains(line, "Gulin-JobManagerStart") {
 				startCh <- nil
 				return
 			}

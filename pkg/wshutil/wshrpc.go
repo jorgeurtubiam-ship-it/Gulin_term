@@ -16,13 +16,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/baseds"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/streamclient"
-	"github.com/wavetermdev/waveterm/pkg/util/ds"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/baseds"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/streamclient"
+	"github.com/gulindev/gulin/pkg/util/ds"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
 )
 
 const DefaultTimeoutMs = 5000
@@ -286,12 +286,12 @@ func (w *WshRpc) handleEventRecv(req *RpcMessage) {
 	if req.Data == nil {
 		return
 	}
-	var waveEvent wps.WaveEvent
-	err := utilfn.ReUnmarshal(&waveEvent, req.Data)
+	var gulinEvent wps.GulinEvent
+	err := utilfn.ReUnmarshal(&gulinEvent, req.Data)
 	if err != nil {
 		return
 	}
-	w.EventListener.RecvEvent(&waveEvent)
+	w.EventListener.RecvEvent(&gulinEvent)
 }
 
 func (w *WshRpc) handleStreamData(req *RpcMessage) {

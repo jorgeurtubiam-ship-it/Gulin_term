@@ -8,8 +8,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 var focusBlockCmd = &cobra.Command{
@@ -29,9 +29,9 @@ func focusBlockRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		sendActivity("focusblock", rtnErr == nil)
 	}()
 
-	tabId := os.Getenv("WAVETERM_TABID")
+	tabId := os.Getenv("GULIN_TABID")
 	if tabId == "" {
-		return fmt.Errorf("no tab id specified (set WAVETERM_TABID environment variable)")
+		return fmt.Errorf("no tab id specified (set GULIN_TABID environment variable)")
 	}
 
 	fullORef, err := resolveBlockArg()

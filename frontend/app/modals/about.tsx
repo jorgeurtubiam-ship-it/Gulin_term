@@ -23,7 +23,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
             <div className="flex flex-col gap-[26px] w-full">
                 <div className="flex flex-col items-center justify-center gap-4 self-stretch w-full text-center">
                     <Logo />
-                    <div className="text-[25px]">Wave Terminal</div>
+                    <div className="text-[25px]">Gulin Term</div>
                     <div className="leading-5">
                         Open-Source AI-Native Terminal
                         <br />
@@ -37,7 +37,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                 </div>
                 <div className="flex items-start gap-[10px] self-stretch w-full text-center">
                     <a
-                        href="https://github.com/wavetermdev/waveterm?ref=about"
+                        href="https://github.com/gulindev/gulin?ref=about"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
@@ -45,7 +45,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                         <i className="fa-brands fa-github mr-2"></i>Github
                     </a>
                     <a
-                        href="https://www.waveterm.dev/?ref=about"
+                        href="https://www.gulin.dev/?ref=about"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"
@@ -53,7 +53,7 @@ const AboutModalV = ({ versionString, updaterChannel, onClose }: AboutModalVProp
                         <i className="fa-sharp fa-light fa-globe mr-2"></i>Website
                     </a>
                     <a
-                        href="https://github.com/wavetermdev/waveterm/blob/main/ACKNOWLEDGEMENTS.md"
+                        href="https://github.com/gulindev/gulin/blob/main/ACKNOWLEDGEMENTS.md"
                         target="_blank"
                         rel="noopener"
                         className="inline-flex items-center px-4 py-2 rounded border border-border hover:bg-hoverbg transition-colors duration-200"

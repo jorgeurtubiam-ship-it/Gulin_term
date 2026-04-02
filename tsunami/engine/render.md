@@ -10,7 +10,7 @@ Tsunami uses separate types for different phases of the rendering pipeline:
 
 - **VDomElem**: Input format used by developers (JSX-like elements created with `vdom.H()`)
 - **ComponentImpl**: Internal shadow tree that maintains component identity and state across renders
-- **RenderedElem**: Output format sent to the frontend with populated WaveIds
+- **RenderedElem**: Output format sent to the frontend with populated GulinIds
 
 This separation mirrors React's approach where JSX elements, Fiber nodes, and DOM operations use different data structures optimized for their specific purposes.
 
@@ -20,7 +20,7 @@ The `ComponentImpl` structure is Tsunami's equivalent to React's Fiber nodes. It
 
 Each ComponentImpl contains:
 
-- **Identity fields**: WaveId (unique identifier), Tag (component type), Key (for reconciliation)
+- **Identity fields**: GulinId (unique identifier), Tag (component type), Key (for reconciliation)
 - **State management**: Hooks array for React-like state and effects
 - **Content organization**: Exactly one of three mutually exclusive patterns
 
@@ -48,7 +48,7 @@ Children []*ComponentImpl      // Child components (Pattern 2: containers only)
 RenderedComp = nil            // Not used
 ```
 
-Used for HTML elements, fragments, and Wave-specific elements that act as containers. These components render multiple children but don't transform into other component types.
+Used for HTML elements, fragments, and Gulin-specific elements that act as containers. These components render multiple children but don't transform into other component types.
 
 **Example**: `vdom.H("div", nil, child1, child2)` creates a ComponentImpl with `Children = [child1Comp, child2Comp]`
 
@@ -56,7 +56,7 @@ Used for HTML elements, fragments, and Wave-specific elements that act as contai
 
 - HTML tags with lowercase first letter (`"div"`, `"span"`, `"button"`)
 - Hash-prefixed special elements (`"#fragment"`, `"#text"`)
-- Wave-specific elements (`"wave:text"`, `"wave:null"`)
+- Gulin-specific elements (`"gulin:text"`, `"gulin:null"`)
 
 ### Pattern 3: Custom Components
 
@@ -188,7 +188,7 @@ for idx, elem := range elems {
 
 New components are created with:
 
-- Unique WaveId for tracking
+- Unique GulinId for tracking
 - Tag and Key for reconciliation
 - Registration in global ComponentMap
 - Empty pattern fields (populated during rendering)
@@ -220,7 +220,7 @@ This preserves component state across rendering/not-rendering cycles.
 The shadow tree gets converted to frontend-ready format through `MakeRendered()`:
 
 1. **Component chain following**: For Pattern 3 components, follow `RenderedComp` until reaching a base element
-2. **Base element conversion**: Convert Pattern 1/2 components to RenderedElem with WaveIds
+2. **Base element conversion**: Convert Pattern 1/2 components to RenderedElem with GulinIds
 3. **Null component filtering**: Components with `RenderedComp == nil` don't appear in output
 
 Only base elements (Pattern 1/2) appear in the final output - custom components (Pattern 3) are invisible, having transformed into base elements.

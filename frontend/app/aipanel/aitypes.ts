@@ -20,7 +20,7 @@ export interface DBConnectionInfo {
     type: string;
 }
 
-type WaveUIDataTypes = {
+type GulinUIDataTypes = {
     // pkg/aiusechat/uctypes/uctypes.go UIMessageDataUserFile
     userfile: {
         filename: string;
@@ -47,18 +47,23 @@ type WaveUIDataTypes = {
         toolname: string;
         statuslines: string[];
     };
+    "data-expert-status": {
+        expertid: string;
+        status: "running" | "completed";
+        task?: string;
+    };
 };
 
-export type WaveUIMessage = UIMessage<unknown, WaveUIDataTypes, any>;
-export type WaveUIMessagePart = UIMessagePart<WaveUIDataTypes, any>;
+export type GulinUIMessage = UIMessage<any, GulinUIDataTypes, any>;
+export type GulinUIMessagePart = UIMessagePart<GulinUIDataTypes, any>;
 
 export type UseChatSetMessagesType = (
-    messages: WaveUIMessage[] | ((messages: WaveUIMessage[]) => WaveUIMessage[])
+    messages: GulinUIMessage[] | ((messages: GulinUIMessage[]) => GulinUIMessage[])
 ) => void;
 
 export type UseChatSendMessageType = (
     message?:
-        | (Omit<WaveUIMessage, "id" | "role"> & {
+        | (Omit<GulinUIMessage, "id" | "role"> & {
             id?: string;
             role?: "system" | "user" | "assistant";
         } & {

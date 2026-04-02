@@ -7,9 +7,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 var notifyTitle string
@@ -34,7 +34,7 @@ func notifyRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		sendActivity("notify", rtnErr == nil)
 	}()
 	message := args[0]
-	notificationOptions := &wshrpc.WaveNotificationOptions{
+	notificationOptions := &wshrpc.GulinNotificationOptions{
 		Title:  notifyTitle,
 		Body:   message,
 		Silent: notifySilent,

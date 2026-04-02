@@ -8,10 +8,10 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
-	"github.com/wavetermdev/waveterm/pkg/wshutil"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wshutil"
 )
 
 var webCmd = &cobra.Command{
@@ -61,7 +61,7 @@ func webGetRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("getting block info: %w", err)
 	}
-	if blockInfo.Block.Meta.GetString(waveobj.MetaKey_View, "") != "web" {
+	if blockInfo.Block.Meta.GetString(gulinobj.MetaKey_View, "") != "web" {
 		return fmt.Errorf("block %s is not a web block", fullORef.OID)
 	}
 	data := wshrpc.CommandWebSelectorData{
@@ -100,7 +100,7 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 		sendActivity("web", rtnErr == nil)
 	}()
 
-	var replaceBlockORef *waveobj.ORef
+	var replaceBlockORef *gulinobj.ORef
 	if webOpenReplaceBlock != "" {
 		var err error
 		replaceBlockORef, err = resolveSimpleId(webOpenReplaceBlock)
@@ -114,15 +114,15 @@ func webOpenRun(cmd *cobra.Command, args []string) (rtnErr error) {
 
 	tabId := getTabIdFromEnv()
 	if tabId == "" {
-		return fmt.Errorf("no WAVETERM_TABID env var set")
+		return fmt.Errorf("no GULIN_TABID env var set")
 	}
 
 	wshCmd := wshrpc.CommandCreateBlockData{
 		TabId: tabId,
-		BlockDef: &waveobj.BlockDef{
+		BlockDef: &gulinobj.BlockDef{
 			Meta: map[string]any{
-				waveobj.MetaKey_View: "web",
-				waveobj.MetaKey_Url:  args[0],
+				gulinobj.MetaKey_View: "web",
+				gulinobj.MetaKey_Url:  args[0],
 			},
 		},
 		Magnified: webOpenMagnified,

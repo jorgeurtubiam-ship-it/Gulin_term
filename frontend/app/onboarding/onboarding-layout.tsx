@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { MagnifyIcon } from "@/app/element/magnify";
-import { WaveStreamdown } from "@/app/element/streamdown";
+import { GulinStreamdown } from "@/app/element/streamdown";
 import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { cn, makeIconClass } from "@/util/util";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -61,7 +61,7 @@ export const FakeBlock = ({
                     <img src={imgsrc} alt={name} className="max-w-full max-h-full object-contain" />
                 ) : markdown ? (
                     <div className="w-full">
-                        <WaveStreamdown text={markdown} />
+                        <GulinStreamdown text={markdown} />
                     </div>
                 ) : (
                     <i className={makeIconClass(icon, false) + " text-4xl text-foreground/50"} />

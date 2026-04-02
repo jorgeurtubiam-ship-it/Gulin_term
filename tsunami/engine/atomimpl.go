@@ -23,7 +23,7 @@ type AtomMeta struct {
 type AtomImpl[T any] struct {
 	lock   *sync.Mutex
 	val    T
-	usedBy map[string]bool // component waveid -> true
+	usedBy map[string]bool // component gulinid -> true
 	meta   *AtomMeta       // optional metadata
 }
 
@@ -77,13 +77,13 @@ func (a *AtomImpl[T]) SetVal(val any) error {
 	return a.setVal_nolock(val)
 }
 
-func (a *AtomImpl[T]) SetUsedBy(waveId string, used bool) {
+func (a *AtomImpl[T]) SetUsedBy(gulinId string, used bool) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	if used {
-		a.usedBy[waveId] = true
+		a.usedBy[gulinId] = true
 	} else {
-		delete(a.usedBy, waveId)
+		delete(a.usedBy, gulinId)
 	}
 }
 

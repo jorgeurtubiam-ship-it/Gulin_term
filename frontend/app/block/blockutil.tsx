@@ -22,7 +22,7 @@ export function blockViewToIcon(view: string): string {
     if (view == "web") {
         return "globe";
     }
-    if (view == "waveai") {
+    if (view == "gulinai") {
         return "sparkles";
     }
     if (view == "help") {
@@ -30,6 +30,9 @@ export function blockViewToIcon(view: string): string {
     }
     if (view == "tips") {
         return "lightbulb";
+    }
+    if (view == "widget-builder") {
+        return "wand-magic-sparkles";
     }
     return "square";
 }
@@ -47,14 +50,17 @@ export function blockViewToName(view: string): string {
     if (view == "web") {
         return "Web";
     }
-    if (view == "waveai") {
-        return "WaveAI";
+    if (view == "gulinai") {
+        return "GulinAI";
     }
     if (view == "help") {
         return "Help";
     }
     if (view == "tips") {
         return "Tips";
+    }
+    if (view == "widget-builder") {
+        return "Widget Builder";
     }
     return view;
 }

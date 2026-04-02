@@ -1,15 +1,15 @@
 ---
 name: create-view
-description: Guide for implementing a new view type in Wave Terminal. Use when creating a new view component, implementing the ViewModel interface, registering a new view type in BlockRegistry, or adding a new content type to display within blocks.
+description: Guide for implementing a new view type in Gulin Terminal. Use when creating a new view component, implementing the ViewModel interface, registering a new view type in BlockRegistry, or adding a new content type to display within blocks.
 ---
 
-# Creating a New View in Wave Terminal
+# Creating a New View in Gulin Terminal
 
-This guide explains how to implement a new view type in Wave Terminal. Views are the core content components displayed within blocks in the terminal interface.
+This guide explains how to implement a new view type in Gulin Terminal. Views are the core content components displayed within blocks in the terminal interface.
 
 ## Architecture Overview
 
-Wave Terminal uses a **Model-View architecture** where:
+Gulin Terminal uses a **Model-View architecture** where:
 
 - **ViewModel** - Contains all state, logic, and UI configuration as Jotai atoms
 - **ViewComponent** - Pure React component that renders the UI using the model
@@ -76,7 +76,7 @@ interface ViewModel {
   giveFocus?: () => boolean;
 
   // Optional: Handles keyboard events, returns true if handled
-  keyDownHandler?: (e: WaveKeyboardEvent) => boolean;
+  keyDownHandler?: (e: GulinKeyboardEvent) => boolean;
 
   // Optional: Cleanup when block is closed
   dispose?: () => void;
@@ -132,7 +132,7 @@ export class MyViewModel implements ViewModel {
     this.viewType = "myview";
     this.blockId = blockId;
     this.nodeModel = nodeModel;
-    this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+    this.blockAtom = WOS.getGulinObjectAtom<Block>(`block:${blockId}`);
 
     // Create derived atoms that depend on block data or other atoms
     this.viewText = jotai.atom((get) => {
@@ -416,7 +416,7 @@ Follow these rules for Jotai atoms in models:
 - All view state should live in atoms on the model
 - Use `useBlockAtom()` helper for block-scoped atoms that persist
 - Use `globalStore` for imperative access outside React components
-- Subscribe to Wave events using `waveEventSubscribe()`
+- Subscribe to Gulin events using `gulinEventSubscribe()`
 
 ### Styling
 
@@ -435,17 +435,17 @@ Implement `giveFocus()` to focus your view when:
 
 ### Keyboard Handling
 
-Implement `keyDownHandler(e: WaveKeyboardEvent)` for:
+Implement `keyDownHandler(e: GulinKeyboardEvent)` for:
 
 - View-specific keyboard shortcuts
 - Return `true` if event was handled (prevents propagation)
-- Use `keyutil.checkKeyPressed(waveEvent, "Cmd:K")` for shortcut checks
+- Use `keyutil.checkKeyPressed(gulinEvent, "Cmd:K")` for shortcut checks
 
 ### Cleanup
 
 Implement `dispose()` to:
 
-- Unsubscribe from Wave events
+- Unsubscribe from Gulin events
 - Unregister routes/handlers
 - Clear timers/intervals
 - Release resources
@@ -485,7 +485,7 @@ const flag = useAtomValue(model.someFlag);
 
 ### Configuration Overrides
 
-Wave has a hierarchical config system (global → connection → block):
+Gulin has a hierarchical config system (global → connection → block):
 
 ```typescript
 import { getOverrideConfigAtom } from "@/store/global";

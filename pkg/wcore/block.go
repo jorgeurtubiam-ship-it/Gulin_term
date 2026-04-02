@@ -10,22 +10,22 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/waveterm/pkg/filestore"
-	"github.com/wavetermdev/waveterm/pkg/panichandler"
-	"github.com/wavetermdev/waveterm/pkg/telemetry"
-	"github.com/wavetermdev/waveterm/pkg/telemetry/telemetrydata"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/filestore"
+	"github.com/gulindev/gulin/pkg/panichandler"
+	"github.com/gulindev/gulin/pkg/telemetry"
+	"github.com/gulindev/gulin/pkg/telemetry/telemetrydata"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wstore"
 )
 
-func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
+func CreateSubBlock(ctx context.Context, blockId string, blockDef *gulinobj.BlockDef) (*gulinobj.Block, error) {
 	if blockDef == nil {
 		return nil, fmt.Errorf("blockDef is nil")
 	}
-	if blockDef.Meta == nil || blockDef.Meta.GetString(waveobj.MetaKey_View, "") == "" {
+	if blockDef.Meta == nil || blockDef.Meta.GetString(gulinobj.MetaKey_View, "") == "" {
 		return nil, fmt.Errorf("no view provided for new block")
 	}
 	blockData, err := createSubBlockObj(ctx, blockId, blockDef)
@@ -35,16 +35,16 @@ func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.Block
 	return blockData, nil
 }
 
-func createSubBlockObj(ctx context.Context, parentBlockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
-	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*waveobj.Block, error) {
-		parentBlock, _ := wstore.DBGet[*waveobj.Block](tx.Context(), parentBlockId)
+func createSubBlockObj(ctx context.Context, parentBlockId string, blockDef *gulinobj.BlockDef) (*gulinobj.Block, error) {
+	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*gulinobj.Block, error) {
+		parentBlock, _ := wstore.DBGet[*gulinobj.Block](tx.Context(), parentBlockId)
 		if parentBlock == nil {
 			return nil, fmt.Errorf("parent block not found: %q", parentBlockId)
 		}
 		blockId := uuid.NewString()
-		blockData := &waveobj.Block{
+		blockData := &gulinobj.Block{
 			OID:         blockId,
-			ParentORef:  waveobj.MakeORef(waveobj.OType_Block, parentBlockId).String(),
+			ParentORef:  gulinobj.MakeORef(gulinobj.OType_Block, parentBlockId).String(),
 			RuntimeOpts: nil,
 			Meta:        blockDef.Meta,
 		}
@@ -55,11 +55,11 @@ func createSubBlockObj(ctx context.Context, parentBlockId string, blockDef *wave
 	})
 }
 
-func CreateBlock(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (rtnBlock *waveobj.Block, rtnErr error) {
+func CreateBlock(ctx context.Context, tabId string, blockDef *gulinobj.BlockDef, rtOpts *gulinobj.RuntimeOpts) (rtnBlock *gulinobj.Block, rtnErr error) {
 	return CreateBlockWithTelemetry(ctx, tabId, blockDef, rtOpts, true)
 }
 
-func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts, recordTelemetry bool) (rtnBlock *waveobj.Block, rtnErr error) {
+func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *gulinobj.BlockDef, rtOpts *gulinobj.RuntimeOpts, recordTelemetry bool) (rtnBlock *gulinobj.Block, rtnErr error) {
 	var blockCreated bool
 	var newBlockOID string
 	defer func() {
@@ -75,7 +75,7 @@ func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveo
 	if blockDef == nil {
 		return nil, fmt.Errorf("blockDef is nil")
 	}
-	if blockDef.Meta == nil || blockDef.Meta.GetString(waveobj.MetaKey_View, "") == "" {
+	if blockDef.Meta == nil || blockDef.Meta.GetString(gulinobj.MetaKey_View, "") == "" {
 		return nil, fmt.Errorf("no view provided for new block")
 	}
 	blockData, err := createBlockObj(ctx, tabId, blockDef, rtOpts)
@@ -98,8 +98,8 @@ func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveo
 		}
 	}
 	if recordTelemetry {
-		blockView := blockDef.Meta.GetString(waveobj.MetaKey_View, "")
-		blockController := blockDef.Meta.GetString(waveobj.MetaKey_Controller, "")
+		blockView := blockDef.Meta.GetString(gulinobj.MetaKey_View, "")
+		blockController := blockDef.Meta.GetString(gulinobj.MetaKey_Controller, "")
 		go recordBlockCreationTelemetry(blockView, blockController)
 	}
 	return blockData, nil
@@ -126,16 +126,16 @@ func recordBlockCreationTelemetry(blockView string, blockController string) {
 	})
 }
 
-func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDef, rtOpts *waveobj.RuntimeOpts) (*waveobj.Block, error) {
-	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*waveobj.Block, error) {
-		tab, _ := wstore.DBGet[*waveobj.Tab](tx.Context(), tabId)
+func createBlockObj(ctx context.Context, tabId string, blockDef *gulinobj.BlockDef, rtOpts *gulinobj.RuntimeOpts) (*gulinobj.Block, error) {
+	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*gulinobj.Block, error) {
+		tab, _ := wstore.DBGet[*gulinobj.Tab](tx.Context(), tabId)
 		if tab == nil {
 			return nil, fmt.Errorf("tab not found: %q", tabId)
 		}
 		blockId := uuid.NewString()
-		blockData := &waveobj.Block{
+		blockData := &gulinobj.Block{
 			OID:         blockId,
-			ParentORef:  waveobj.MakeORef(waveobj.OType_Tab, tabId).String(),
+			ParentORef:  gulinobj.MakeORef(gulinobj.OType_Tab, tabId).String(),
 			RuntimeOpts: rtOpts,
 			Meta:        blockDef.Meta,
 		}
@@ -151,7 +151,7 @@ func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDe
 // recursive: if true, will recursively close parent tab, window, workspace, if they are empty.
 // Returns new active tab id, error.
 func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
-	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+	block, err := wstore.DBGet[*gulinobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
 	}
@@ -171,9 +171,9 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 		return fmt.Errorf("error deleting block: %w", err)
 	}
 	log.Printf("DeleteBlock: parentBlockCount: %d", parentBlockCount)
-	parentORef := waveobj.ParseORefNoErr(block.ParentORef)
+	parentORef := gulinobj.ParseORefNoErr(block.ParentORef)
 
-	if recursive && parentORef.OType == waveobj.OType_Tab && parentBlockCount == 0 {
+	if recursive && parentORef.OType == gulinobj.OType_Tab && parentBlockCount == 0 {
 		// if parent tab has no blocks, delete the tab
 		log.Printf("DeleteBlock: parent tab has no blocks, deleting tab %s", parentORef.OID)
 		parentWorkspaceId, err := wstore.DBFindWorkspaceForTabId(ctx, parentORef.OID)
@@ -193,7 +193,7 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 // returns the updated block count for the parent object
 func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (int, error) {
-		block, err := wstore.DBGet[*waveobj.Block](tx.Context(), blockId)
+		block, err := wstore.DBGet[*gulinobj.Block](tx.Context(), blockId)
 		if err != nil {
 			return -1, fmt.Errorf("error getting block: %w", err)
 		}
@@ -203,18 +203,18 @@ func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 		if len(block.SubBlockIds) > 0 {
 			return -1, fmt.Errorf("block has subblocks, must delete subblocks first")
 		}
-		parentORef := waveobj.ParseORefNoErr(block.ParentORef)
+		parentORef := gulinobj.ParseORefNoErr(block.ParentORef)
 		parentBlockCount := -1
 		if parentORef != nil {
-			if parentORef.OType == waveobj.OType_Tab {
-				tab, _ := wstore.DBGet[*waveobj.Tab](tx.Context(), parentORef.OID)
+			if parentORef.OType == gulinobj.OType_Tab {
+				tab, _ := wstore.DBGet[*gulinobj.Tab](tx.Context(), parentORef.OID)
 				if tab != nil {
 					tab.BlockIds = utilfn.RemoveElemFromSlice(tab.BlockIds, blockId)
 					wstore.DBUpdate(tx.Context(), tab)
 					parentBlockCount = len(tab.BlockIds)
 				}
-			} else if parentORef.OType == waveobj.OType_Block {
-				parentBlock, _ := wstore.DBGet[*waveobj.Block](tx.Context(), parentORef.OID)
+			} else if parentORef.OType == gulinobj.OType_Block {
+				parentBlock, _ := wstore.DBGet[*gulinobj.Block](tx.Context(), parentORef.OID)
 				if parentBlock != nil {
 					parentBlock.SubBlockIds = utilfn.RemoveElemFromSlice(parentBlock.SubBlockIds, blockId)
 					wstore.DBUpdate(tx.Context(), parentBlock)
@@ -222,10 +222,10 @@ func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 				}
 			}
 		}
-		wstore.DBDelete(tx.Context(), waveobj.OType_Block, blockId)
+		wstore.DBDelete(tx.Context(), gulinobj.OType_Block, blockId)
 
 		// Clean up block runtime info
-		blockORef := waveobj.MakeORef(waveobj.OType_Block, blockId)
+		blockORef := gulinobj.MakeORef(gulinobj.OType_Block, blockId)
 		wstore.DeleteRTInfo(blockORef)
 
 		return parentBlockCount, nil
@@ -233,12 +233,12 @@ func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 }
 
 func sendBlockCloseEvent(blockId string) {
-	waveEvent := wps.WaveEvent{
+	gulinEvent := wps.GulinEvent{
 		Event: wps.Event_BlockClose,
 		Scopes: []string{
-			waveobj.MakeORef(waveobj.OType_Block, blockId).String(),
+			gulinobj.MakeORef(gulinobj.OType_Block, blockId).String(),
 		},
 		Data: blockId,
 	}
-	wps.Broker.Publish(waveEvent)
+	wps.Broker.Publish(gulinEvent)
 }

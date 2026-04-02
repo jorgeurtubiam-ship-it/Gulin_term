@@ -1,4 +1,4 @@
-CREATE TABLE db_wave_file (
+CREATE TABLE db_gulin_file (
     zoneid varchar(36) NOT NULL,
     name varchar(200) NOT NULL,
     size bigint NOT NULL,

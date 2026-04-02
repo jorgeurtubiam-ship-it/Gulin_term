@@ -7,10 +7,10 @@ import (
 	"log"
 	"sync"
 
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/wps"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc"
-	"github.com/wavetermdev/waveterm/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/wps"
+	"github.com/gulindev/gulin/pkg/wshrpc"
+	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 )
 
 type TabIndicatorStore struct {
@@ -33,7 +33,7 @@ func InitTabIndicatorStore() {
 	}, nil)
 }
 
-func handleTabIndicatorEvent(event *wps.WaveEvent) {
+func handleTabIndicatorEvent(event *wps.GulinEvent) {
 	if event.Event != wps.Event_TabIndicator {
 		return
 	}

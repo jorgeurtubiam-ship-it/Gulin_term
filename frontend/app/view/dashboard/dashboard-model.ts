@@ -5,7 +5,7 @@ import { BlockNodeModel } from "@/app/block/blocktypes";
 import { TabModel } from "@/app/store/tab-model";
 import { atom, Atom } from "jotai";
 import { DashboardView } from "./dashboard";
-import { makeORef, getWaveObjectAtom } from "@/store/wos";
+import { makeORef, getGulinObjectAtom } from "@/store/wos";
 
 export class DashboardViewModel implements ViewModel {
     viewType: string;
@@ -28,7 +28,7 @@ export class DashboardViewModel implements ViewModel {
 
         this.dataContentAtom = atom("");
 
-        const blockDataAtom = getWaveObjectAtom<Block>(makeORef("block", blockId));
+        const blockDataAtom = getGulinObjectAtom<Block>(makeORef("block", blockId));
 
         this.viewIcon = atom((get) => {
             return "chart-pie";
@@ -48,7 +48,7 @@ export class DashboardViewModel implements ViewModel {
 
     private initializeData(blockDataAtom: any) {
         const getInitData = async () => {
-            // In Wave, config and text are often stored or piped via specific methods.
+            // In Gulin, config and text are often stored or piped via specific methods.
             // For now we'll listen to the block meta 'dashboard-data' property.
         }
         getInitData();

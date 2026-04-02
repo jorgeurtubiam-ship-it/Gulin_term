@@ -11,17 +11,17 @@ import (
 	"reflect"
 
 	"github.com/invopop/jsonschema"
-	"github.com/wavetermdev/waveterm/pkg/util/utilfn"
-	"github.com/wavetermdev/waveterm/pkg/waveobj"
-	"github.com/wavetermdev/waveterm/pkg/wconfig"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
+	"github.com/gulindev/gulin/pkg/gulinobj"
+	"github.com/gulindev/gulin/pkg/wconfig"
 )
 
-const WaveSchemaSettingsFileName = "schema/settings.json"
-const WaveSchemaConnectionsFileName = "schema/connections.json"
-const WaveSchemaAiPresetsFileName = "schema/aipresets.json"
-const WaveSchemaWidgetsFileName = "schema/widgets.json"
-const WaveSchemaBgPresetsFileName = "schema/bgpresets.json"
-const WaveSchemaWaveAIFileName = "schema/waveai.json"
+const GulinSchemaSettingsFileName = "schema/settings.json"
+const GulinSchemaConnectionsFileName = "schema/connections.json"
+const GulinSchemaAiPresetsFileName = "schema/aipresets.json"
+const GulinSchemaWidgetsFileName = "schema/widgets.json"
+const GulinSchemaBgPresetsFileName = "schema/bgpresets.json"
+const GulinSchemaGulinAIFileName = "schema/gulinai.json"
 
 // ViewNameType is a string type whose JSON Schema offers enum suggestions for the most
 // common widget view names while still accepting any arbitrary string value.
@@ -123,7 +123,7 @@ func generateSchema(template any, dir string) error {
 }
 
 func generateWidgetsSchema(dir string) error {
-	metaT := reflect.TypeOf(waveobj.MetaMapType(nil))
+	metaT := reflect.TypeOf(gulinobj.MetaMapType(nil))
 
 	// Build the hints schema once using an expanded reflector
 	hr := &jsonschema.Reflector{
@@ -163,37 +163,37 @@ func generateWidgetsSchema(dir string) error {
 }
 
 func main() {
-	err := generateSchema(&wconfig.SettingsType{}, WaveSchemaSettingsFileName)
+	err := generateSchema(&wconfig.SettingsType{}, GulinSchemaSettingsFileName)
 	if err != nil {
 		log.Fatalf("settings schema error: %v", err)
 	}
 
 	connectionTemplate := make(map[string]wconfig.ConnKeywords)
-	err = generateSchema(&connectionTemplate, WaveSchemaConnectionsFileName)
+	err = generateSchema(&connectionTemplate, GulinSchemaConnectionsFileName)
 	if err != nil {
 		log.Fatalf("connections schema error: %v", err)
 	}
 
 	aiPresetsTemplate := make(map[string]wconfig.AiSettingsType)
-	err = generateSchema(&aiPresetsTemplate, WaveSchemaAiPresetsFileName)
+	err = generateSchema(&aiPresetsTemplate, GulinSchemaAiPresetsFileName)
 	if err != nil {
 		log.Fatalf("ai presets schema error: %v", err)
 	}
 
-	err = generateWidgetsSchema(WaveSchemaWidgetsFileName)
+	err = generateWidgetsSchema(GulinSchemaWidgetsFileName)
 	if err != nil {
 		log.Fatalf("widgets schema error: %v", err)
 	}
 
 	bgPresetsTemplate := make(map[string]wconfig.BgPresetsType)
-	err = generateSchema(&bgPresetsTemplate, WaveSchemaBgPresetsFileName)
+	err = generateSchema(&bgPresetsTemplate, GulinSchemaBgPresetsFileName)
 	if err != nil {
 		log.Fatalf("bg presets schema error: %v", err)
 	}
 
-	waveAITemplate := make(map[string]wconfig.AIModeConfigType)
-	err = generateSchema(&waveAITemplate, WaveSchemaWaveAIFileName)
+	gulinAITemplate := make(map[string]wconfig.AIModeConfigType)
+	err = generateSchema(&gulinAITemplate, GulinSchemaGulinAIFileName)
 	if err != nil {
-		log.Fatalf("waveai schema error: %v", err)
+		log.Fatalf("gulinai schema error: %v", err)
 	}
 }

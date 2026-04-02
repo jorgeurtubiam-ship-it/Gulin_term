@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wavetermdev/waveterm/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 )
 
 func TestReadDirCallback(t *testing.T) {
@@ -286,7 +286,7 @@ func TestGetReadDirToolDefinition(t *testing.T) {
 	if toolDef.ToolApproval == nil {
 		t.Error("ToolApproval should not be nil")
 	} else {
-		approval := toolDef.ToolApproval(nil, uctypes.WaveChatOpts{})
+		approval := toolDef.ToolApproval(nil, uctypes.GulinChatOpts{})
 		if approval != uctypes.ApprovalNeedsApproval {
 			t.Errorf("Expected ApprovalNeedsApproval, got %s", approval)
 		}

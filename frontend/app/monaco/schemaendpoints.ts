@@ -5,7 +5,7 @@ import settingsSchema from "../../../schema/settings.json";
 import connectionsSchema from "../../../schema/connections.json";
 import aipresetsSchema from "../../../schema/aipresets.json";
 import bgpresetsSchema from "../../../schema/bgpresets.json";
-import waveaiSchema from "../../../schema/waveai.json";
+import gulinaiSchema from "../../../schema/gulinai.json";
 import widgetsSchema from "../../../schema/widgets.json";
 
 type SchemaInfo = {
@@ -16,33 +16,33 @@ type SchemaInfo = {
 
 const MonacoSchemas: SchemaInfo[] = [
     {
-        uri: "wave://schema/settings.json",
-        fileMatch: ["*/WAVECONFIGPATH/settings.json"],
+        uri: "gulin://schema/settings.json",
+        fileMatch: ["*/GULINCONFIGPATH/settings.json"],
         schema: settingsSchema,
     },
     {
-        uri: "wave://schema/connections.json",
-        fileMatch: ["*/WAVECONFIGPATH/connections.json"],
+        uri: "gulin://schema/connections.json",
+        fileMatch: ["*/GULINCONFIGPATH/connections.json"],
         schema: connectionsSchema,
     },
     {
-        uri: "wave://schema/aipresets.json",
-        fileMatch: ["*/WAVECONFIGPATH/presets/ai.json"],
+        uri: "gulin://schema/aipresets.json",
+        fileMatch: ["*/GULINCONFIGPATH/presets/ai.json"],
         schema: aipresetsSchema,
     },
     {
-        uri: "wave://schema/bgpresets.json",
-        fileMatch: ["*/WAVECONFIGPATH/presets/bg.json"],
+        uri: "gulin://schema/bgpresets.json",
+        fileMatch: ["*/GULINCONFIGPATH/presets/bg.json"],
         schema: bgpresetsSchema,
     },
     {
-        uri: "wave://schema/waveai.json",
-        fileMatch: ["*/WAVECONFIGPATH/waveai.json"],
-        schema: waveaiSchema,
+        uri: "gulin://schema/gulinai.json",
+        fileMatch: ["*/GULINCONFIGPATH/gulinai.json"],
+        schema: gulinaiSchema,
     },
     {
-        uri: "wave://schema/widgets.json",
-        fileMatch: ["*/WAVECONFIGPATH/widgets.json"],
+        uri: "gulin://schema/widgets.json",
+        fileMatch: ["*/GULINCONFIGPATH/widgets.json"],
         schema: widgetsSchema,
     },
 ];
