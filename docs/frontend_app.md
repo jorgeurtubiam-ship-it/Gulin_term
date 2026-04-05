@@ -27,6 +27,15 @@ El núcleo de la experiencia reside en `aipanel`:
 - **`AiMessage`**: Controla la visualización de un mensaje individual y sus estados de carga.
 - **`ToolGroup`**: Agrupa y muestra las ejecuciones de herramientas (ej. bloques de código ejecutados o archivos leídos).
 - **`AiInput`**: El campo de texto enriquecido con soporte para adjuntar archivos y menciones.
+- **`ModeSelector`**: Permite al usuario alternar entre **PLAN** y **ACT**, enviando el sufijo correspondiente (`@plan` o `@act`) al backend para modificar el comportamiento del agente.
+- **`AIContextMenu`**: Proporciona acceso rápido a configuraciones avanzadas como el modelo actual y el límite de **Max Output Tokens** (4k, 16k, 64k).
+
+## Estados de Interacción
+
+La UI refleja dinámicamente el estado del agente:
+- **Planning (Modo Plan)**: Indica que la IA está analizando y esperando aprobación para el siguiente paso.
+- **Acting (Modo Acción)**: Muestra una ejecución autónoma fluida sin interrupciones de permiso.
+- **Waiting for Approval**: Estado crítico donde el frontend detiene el stream de la IA hasta que el usuario confirma o deniega una acción (`tool_call`).
 
 ## Comunicación con el Backend
 

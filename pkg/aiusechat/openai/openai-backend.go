@@ -640,7 +640,6 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 		chatOpts: chatOpts,
 	}
 
-	var rtnStopReason *uctypes.GulinStopReason
 	var rtnMessages []*OpenAIChatMessage
 
 	// Ensure step is closed on error/cancellation
@@ -649,9 +648,6 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 			return
 		}
 		_ = sse.AiMsgFinishStep()
-		if rtnStopReason == nil || rtnStopReason.Kind != uctypes.StopKindToolUse {
-			_ = sse.AiMsgFinish(state.msgID)
-		}
 	}()
 
 	// SSE event processing loop
@@ -690,7 +686,6 @@ func handleOpenAIStreamingResp(ctx context.Context, sse *sse.SSEHandlerCh, decod
 		}
 
 		if finalStopReason, finalMessages := handleOpenAIEvent(event, sse, state, cont); finalStopReason != nil {
-			rtnStopReason = finalStopReason
 			if finalMessages != nil {
 				rtnMessages = finalMessages
 			} else if finalStopReason.Kind == uctypes.StopKindCanceled {

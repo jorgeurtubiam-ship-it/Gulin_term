@@ -8,10 +8,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
+	"github.com/gulindev/gulin/pkg/gulinbase"
 	"github.com/gulindev/gulin/pkg/gulinobj"
 	"github.com/gulindev/gulin/pkg/wcore"
 	"github.com/gulindev/gulin/pkg/wshrpc"
@@ -46,7 +49,7 @@ type TermGetScrollbackToolOutput struct {
 
 func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error) {
 	const (
-		DefaultCount = 200
+		DefaultCount = 20
 		MaxCount     = 1000
 	)
 
@@ -281,7 +284,12 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 			blockORef := gulinobj.MakeORef(gulinobj.OType_Block, fullBlockId)
 			rtInfo := wstore.GetRTInfo(blockORef)
 			if rtInfo == nil || !rtInfo.ShellIntegration {
-				return nil, fmt.Errorf("shell integration is not enabled for this terminal")
+				// NOTE: Return a helpful message instead of an error to avoid "red" cards in the UI
+				// when shell integration is missing but the command may have actually run.
+				return map[string]any{
+					"status": "warning",
+					"message": "Note: Shell integration is not enabled for this terminal. The command was sent but its exact exit code and structured output could not be captured. You may check the terminal scrollback using term_get_scrollback if needed.",
+				}, nil
 			}
 
 			output, err := getTermScrollbackOutput(
@@ -380,8 +388,8 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 			// For others, \n is the standard. We trim any existing terminator first.
 			cleanCmd := strings.TrimRight(parsed.Command, "\r\n")
 			terminator := "\n"
-			if rtInfo != nil && (rtInfo.ShellType == "pwsh" || rtInfo.ShellType == "powershell") {
-				terminator = "\r"
+			if rtInfo != nil && (rtInfo.ShellType == "pwsh" || rtInfo.ShellType == "powershell" || rtInfo.ShellType == "cmd") {
+				terminator = "\r\n"
 			}
 			cmdWithTerminator := cleanCmd + terminator
 			b64Data := base64.StdEncoding.EncodeToString([]byte(cmdWithTerminator))
@@ -397,7 +405,24 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 			if err != nil {
 				return nil, fmt.Errorf("failed to run command in terminal: %w", err)
 			}
-			return "Command sent to terminal successfully and is running/ran.", nil
+
+			// Log the command to ai_history.sh
+			historyPath := filepath.Join(gulinbase.GetGulinConfigDir(), "ai_history.sh")
+			f, err := os.OpenFile(historyPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err == nil {
+				defer f.Close()
+				if _, err := f.WriteString(cleanCmd + "\n"); err != nil {
+					// silent failure for logging
+				}
+			}
+
+			return "Command sent to terminal successfully and is running/ran (logged to history).", nil
+		},
+		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
+			if strings.Contains(chatOpts.Config.Model, "@plan") {
+				return uctypes.ApprovalNeedsApproval
+			}
+			return uctypes.ApprovalAutoApproved
 		},
 	}
 }

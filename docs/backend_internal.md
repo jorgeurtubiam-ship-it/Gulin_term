@@ -35,9 +35,16 @@ El backend integra un emulador de terminal capaz de:
 - Notificar al frontend sobre cambios en el estado de ejecución de procesos.
 - Permitir al agente de IA ejecutar comandos en la terminal como si fuera un usuario.
 
-## Seguridad y RPC
+## Gestión de Tokens y Límites de Salida
 
-La comunicación entre frontend y backend está protegida mediante:
-- **Tokens JWT**: Generados para cada sesión local.
-- **Auth Keys**: Verificación de identidad entre el servidor y el cliente Electron.
-- **RPC Seguro**: Cada comando enviado desde la UI es validado por el servidor antes de su ejecución.
+El backend controla la longitud de las respuestas mediante la configuración `gulinai:maxoutputtokens`. 
+
+### Limitaciones de Modelos (Gemini)
+- **Valores por Defecto**: La mayoría de los modelos tienen un límite de salida de **4,096 tokens**. Intentar forzar valores superiores (16k, 64k) puede causar errores de cuota o de la propia API si el modelo no los soporta (ej. Gemini 3 Flash Preview).
+- **Implementación**: El parámetro `MaxTokens` se transmite al SDK del proveedor, pero está sujeto a los límites del nivel de suscripción y el modelo elegido.
+
+## Registro de Auditoría y Telemetría
+
+Cada interacción del agente es registrada para auditoría interna:
+- **Metrics**: Se capturan tokens de entrada/salida, uso de herramientas y latencia.
+- **Diagnostics**: Los errores de las APIs de proveedores (OpenAI, Anthropic, Google) son capturados y tipificados para facilitar el soporte al usuario.

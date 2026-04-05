@@ -51,7 +51,6 @@ const (
 	AiMsgToolOutputAvailable = "tool-output-available" // not used here, but reserved
 	AiMsgStartStep           = "start-step"
 	AiMsgFinishStep          = "finish-step"
-	AiMsgFinish              = "finish"
 	AiMsgError               = "error"
 )
 
@@ -102,6 +101,10 @@ func (h *SSEHandlerCh) SetupSSE() error {
 		return fmt.Errorf("SSE handler is closed")
 	}
 
+	if h.initialized {
+		return nil
+	}
+
 	h.initialized = true
 
 	// Reset write deadline for streaming
@@ -135,8 +138,8 @@ func (h *SSEHandlerCh) writerLoop() {
 	defer h.wg.Done()
 	defer h.runOnCloseHandlers()
 
-	keepaliveTicker := time.NewTicker(SSEKeepaliveInterval)
-	defer keepaliveTicker.Stop()
+	// keepaliveTicker := time.NewTicker(SSEKeepaliveInterval)
+	// defer keepaliveTicker.Stop()
 
 	for {
 		select {
@@ -151,12 +154,10 @@ func (h *SSEHandlerCh) writerLoop() {
 				h.setError(err)
 				return
 			}
-
-		case <-keepaliveTicker.C:
-			if err := h.writeDirectly("keepalive", SSEMsgComment); err != nil {
-				h.setError(err)
-				return
-			}
+		// case <-keepaliveTicker.C:
+		// 	if !h.closed && h.initialized {
+		// 		h.writeDirectly(SSEKeepaliveMsg, SSEMsgComment)
+		// 	}
 
 		case <-h.ctx.Done():
 			h.setError(h.ctx.Err())
@@ -382,6 +383,9 @@ func (h *SSEHandlerCh) AiMsgTextStart(textId string) error {
 }
 
 func (h *SSEHandlerCh) AiMsgTextDelta(textId string, text string) error {
+	if text == "" {
+		return nil
+	}
 	resp := map[string]interface{}{
 		"type":  AiMsgTextDelta,
 		"id":    textId,
@@ -398,13 +402,6 @@ func (h *SSEHandlerCh) AiMsgTextEnd(textId string) error {
 	return h.WriteJsonData(resp)
 }
 
-func (h *SSEHandlerCh) AiMsgFinish(messageId string) error {
-	resp := map[string]interface{}{
-		"type": AiMsgFinish,
-		"id":   messageId,
-	}
-	return h.WriteJsonData(resp)
-}
 
 func (h *SSEHandlerCh) AiMsgReasoningStart(reasoningId string) error {
 	resp := map[string]interface{}{
@@ -415,6 +412,9 @@ func (h *SSEHandlerCh) AiMsgReasoningStart(reasoningId string) error {
 }
 
 func (h *SSEHandlerCh) AiMsgReasoningDelta(reasoningId string, reasoning string) error {
+	if reasoning == "" {
+		return nil
+	}
 	resp := map[string]interface{}{
 		"type":  AiMsgReasoningDelta,
 		"id":    reasoningId,

@@ -264,123 +264,34 @@ func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.GulinChatO
 	}
 }
 
-func processToolCallInternal(ctx context.Context, backend UseChatBackend, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, toolDef *uctypes.ToolDefinition, sseHandler *sse.SSEHandlerCh) uctypes.AIToolResult {
-	if toolCall.ToolUseData == nil {
-		return uctypes.AIToolResult{
-			ToolName:  toolCall.Name,
-			ToolUseID: toolCall.ID,
-			ErrorText: "Invalid Tool Call",
-		}
-	}
-
-	if toolCall.ToolUseData.Status == uctypes.ToolUseStatusError {
-		errorMsg := toolCall.ToolUseData.ErrorMessage
-		if errorMsg == "" {
-			errorMsg = "Unspecified Tool Error"
-		}
-		return uctypes.AIToolResult{
-			ToolName:  toolCall.Name,
-			ToolUseID: toolCall.ID,
-			ErrorText: errorMsg,
-		}
-	}
-
-	if toolDef != nil && toolDef.ToolVerifyInput != nil {
-		if err := toolDef.ToolVerifyInput(toolCall.Input, toolCall.ToolUseData); err != nil {
-			errorMsg := fmt.Sprintf("Input validation failed: %v", err)
-			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
-			toolCall.ToolUseData.ErrorMessage = errorMsg
-			return uctypes.AIToolResult{
-				ToolName:  toolCall.Name,
-				ToolUseID: toolCall.ID,
-				ErrorText: errorMsg,
-			}
-		}
-		// ToolVerifyInput can modify the toolusedata.  re-send it here.
-		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
-	}
-
-	if toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
-		log.Printf("  waiting for approval...\n")
-		approval, err := WaitForToolApproval(sseHandler.Context(), toolCall.ID)
-		if err != nil || approval == "" {
-			approval = uctypes.ApprovalCanceled
-		}
-		log.Printf("  approval result: %q\n", approval)
-		toolCall.ToolUseData.Approval = approval
-
-		if !toolCall.ToolUseData.IsApproved() {
-			errorMsg := "Tool use denied or timed out"
-			if approval == uctypes.ApprovalUserDenied {
-				errorMsg = "Tool use denied by user"
-			} else if approval == uctypes.ApprovalTimeout {
-				errorMsg = "Tool approval timed out"
-			} else if approval == uctypes.ApprovalCanceled {
-				errorMsg = "Tool approval canceled"
-			}
-			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
-			toolCall.ToolUseData.ErrorMessage = errorMsg
-			return uctypes.AIToolResult{
-				ToolName:  toolCall.Name,
-				ToolUseID: toolCall.ID,
-				ErrorText: errorMsg,
-			}
-		}
-
-		// this still happens here because we need to update the FE to say the tool call was approved
-		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
-	}
-
-	toolCall.ToolUseData.RunTs = time.Now().UnixMilli()
-	result := ResolveToolCall(ctx, toolDef, toolCall, chatOpts)
-
-	if result.ErrorText != "" {
-		toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
-		toolCall.ToolUseData.ErrorMessage = result.ErrorText
-	} else {
-		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
-	}
-
-	return result
-}
-
 func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
-	inputJSON, _ := json.Marshal(toolCall.Input)
-	logutil.DevPrintf("TOOLUSE name=%s id=%s input=%s approval=%q\n", toolCall.Name, toolCall.ID, utilfn.TruncateString(string(inputJSON), 40), toolCall.ToolUseData.Approval)
-
+	log.Printf("AI tool %s id=%s input=%v\n", toolCall.Name, toolCall.ID, toolCall.Input)
+	
 	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
 	
-	// Interceptar la llamada al experto para el Orquestador
-	if toolCall.Name == "call_expert" {
+	// ResolveToolCall maneja validación, esperas de aprobación (PLAN) y keep-alive SSE
+	result := ResolveToolCall(ctx, toolDef, toolCall, chatOpts, sseHandler)
+
+	// Interceptor para 'call_expert': Ejecución secuencial delegada
+	if toolCall.Name == "call_expert" && result.ErrorText == "" {
 		expertID, _ := toolCall.Input.(map[string]any)["expert_id"].(string)
 		task, _ := toolCall.Input.(map[string]any)["task"].(string)
 		log.Printf("ORCHESTRATOR delegando tarea a %s: %s\n", expertID, task)
 		
 		resultText, err := runExpertSubChat(ctx, backend, chatOpts, sseHandler, expertID, task)
 		if err != nil {
-			toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
-			toolCall.ToolUseData.ErrorMessage = fmt.Sprintf("error delegando al experto %s: %v", expertID, err)
-			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-			updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
-			return uctypes.AIToolResult{
-				ToolUseID: toolCall.ID,
-				ToolName:  toolCall.Name,
-				ErrorText: fmt.Sprintf("error delegando al experto %s: %v", expertID, err),
+			result.ErrorText = fmt.Sprintf("error delegando al experto %s: %v", expertID, err)
+			if toolCall.ToolUseData != nil {
+				toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+				toolCall.ToolUseData.ErrorMessage = result.ErrorText
+			}
+		} else {
+			result.Text = resultText
+			if toolCall.ToolUseData != nil {
+				toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
 			}
 		}
-		toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
-		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
-		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
-		return uctypes.AIToolResult{
-			ToolUseID: toolCall.ID,
-			ToolName:  toolCall.Name,
-			Text:      resultText,
-		}
 	}
-
-	result := processToolCallInternal(ctx, backend, toolCall, chatOpts, toolDef, sseHandler)
 
 	if result.ErrorText != "" {
 		log.Printf("  error=%s\n", result.ErrorText)
@@ -493,21 +404,59 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	}
 	firstStep := true
 	var cont *uctypes.GulinContinueResponse
-	if strings.Contains(chatOpts.Config.AIMode, "@orchestrate") {
-		// Orchestrator optimization: only provide the delegation tool to the Orchestrator
-		// to maintain precision and keep the prompt focused.
-		var filteredTools []uctypes.ToolDefinition
-		for _, tool := range chatOpts.Tools {
-			if tool.Name == "call_expert" {
-				filteredTools = append(filteredTools, tool)
+	
+	// Preserve original tools/prompt to allow switching between Orchestrator and Experts in the loop
+	originalTools := chatOpts.Tools
+	originalSystemPrompt := chatOpts.SystemPrompt
+	for {
+		// RESTORE original tools/prompt before each step so experts work correctly
+		chatOpts.Tools = originalTools
+		chatOpts.SystemPrompt = originalSystemPrompt
+
+		if strings.Contains(chatOpts.Config.Model, "@orchestrate") {
+			// Orchestrator optimization: only provide the delegation tool
+			var filteredTools []uctypes.ToolDefinition
+			for _, tool := range chatOpts.Tools {
+				if tool.Name == "call_expert" {
+					filteredTools = append(filteredTools, tool)
+				}
+			}
+			if len(filteredTools) > 0 {
+				chatOpts.Tools = filteredTools
+				chatOpts.TabTools = nil
+			}
+			
+			// Si estamos en orquestador, el prompt base ya fue configurado por getSystemPrompt,
+			// pero aquí aseguramos que se mantenga enfocado si el bucle continúa.
+			chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, false, true, chatOpts.WidgetAccess, chatOpts.Config.AIMode)
+		} else if strings.Contains(chatOpts.Config.Model, "@") {
+			// Manejo de Expertos (e.g. gemini@db_expert)
+			modelParts := strings.Split(chatOpts.Config.Model, "@")
+			expertIDStr := modelParts[1]
+			// Limpiar sufijos extras si existen (ej: db_expert@plan -> db_expert)
+			if strings.Contains(expertIDStr, "@") {
+				expertIDStr = strings.Split(expertIDStr, "@")[0]
+			}
+			
+			expertID := AgentExpertType(expertIDStr)
+			if expert, ok := Experts[expertID]; ok {
+				// Aplicar Prompt del Experto
+				chatOpts.SystemPrompt = []string{expert.SystemPrompt}
+				// Añadir prompts de modo si existen
+				if strings.HasSuffix(chatOpts.Config.AIMode, "@plan") {
+					chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, SystemPrompt_Plan)
+				} else if strings.HasSuffix(chatOpts.Config.AIMode, "@act") {
+					chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, SystemPrompt_Act)
+				}
+
+				// Filtrar herramientas del experto incorporando las de la pestaña (TabTools)
+				allAvailableTools := append([]uctypes.ToolDefinition{}, originalTools...)
+				allAvailableTools = append(allAvailableTools, chatOpts.TabTools...)
+				chatOpts.Tools = expert.GetAgentTools(allAvailableTools)
+				log.Printf("RunAIChat: Activando Experto %s (%s) con %d herramientas. Model=%s\n", expert.Name, expertID, len(chatOpts.Tools), chatOpts.Config.Model)
 			}
 		}
-		if len(filteredTools) > 0 {
-			chatOpts.Tools = filteredTools
-			chatOpts.TabTools = nil
-		}
-	}
-	for {
+
 		if chatOpts.TabStateGenerator != nil {
 			tabState, tabTools, tabId, tabErr := chatOpts.TabStateGenerator()
 			if tabErr == nil {
@@ -551,7 +500,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		}
 		if err != nil {
 			metrics.HadError = true
-			_ = sseHandler.AiMsgFinish("")
+			_ = sseHandler.WriteError(err.Error())
 			break
 		}
 		for _, msg := range rtnMessages {
@@ -575,6 +524,28 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 			log.Printf("RunAIChat: processing %d tool calls...\n", len(stopReason.ToolCalls))
 			processAllToolCalls(ctx, backend, stopReason, chatOpts, sseHandler, metrics)
 			
+			// Si el orquestador delegó a un experto, actualizamos el modelo para el siguiente paso del bucle
+			for _, toolCall := range stopReason.ToolCalls {
+				if toolCall.Name == "call_expert" {
+					if inputMap, ok := toolCall.Input.(map[string]interface{}); ok {
+						if expertID, ok := inputMap["expert_id"].(string); ok {
+							baseModel := strings.Split(chatOpts.Config.Model, "@")[0]
+							newModel := baseModel + "@" + expertID
+							
+							// PRESERVAR SEGURIDAD: Si el modelo actual tiene @plan, lo propagamos al experto
+							if strings.Contains(chatOpts.Config.Model, "@plan") {
+								if !strings.Contains(newModel, "@plan") {
+									newModel += "@plan"
+								}
+							}
+							
+							chatOpts.Config.Model = newModel
+							log.Printf("RunAIChat: Orchestrator delegated to %s. Switching mode to %s\n", expertID, chatOpts.Config.Model)
+						}
+					}
+				}
+			}
+
 			// SYNC FIX: Ensure the chat store has a moment to flush and that we are continuing from the right state
 			log.Printf("RunAIChat: tool calls processed, continuing to next turn.\n")
 			time.Sleep(100 * time.Millisecond)
@@ -590,7 +561,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	return metrics, nil
 }
 
-func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts) (result uctypes.AIToolResult) {
+func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh) (result uctypes.AIToolResult) {
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
 		ToolUseID: toolCall.ID,
@@ -606,6 +577,61 @@ func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolC
 	if toolDef == nil {
 		result.ErrorText = fmt.Sprintf("tool '%s' not found", toolCall.Name)
 		return
+	}
+
+	// WAIT FOR APPROVAL: If the tool requires approval (PLAN Mode), wait until approved or denied
+	if toolCall.ToolUseData != nil && toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
+		log.Printf("ResolveToolCall: Tool %s (%s) needs approval, waiting...\n", toolCall.Name, toolCall.ID)
+
+		// SSE KEEP-ALIVE: Start a goroutine to send comments while waiting
+		// this prevents the browser/LoadBalancer from closing the connection for inactivity
+		stopChan := make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(10 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					log.Printf("SSE Keep-alive: Sending comment while waiting for approval of %s\n", toolCall.ID)
+					_ = sseHandler.WriteComment("")
+				case <-stopChan:
+					return
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+
+		approval, err := WaitForToolApproval(ctx, toolCall.ID)
+		close(stopChan) // Stop keep-alive goroutine
+
+		if err != nil {
+			if err == context.Canceled {
+				result.ErrorText = "context cancelled while waiting for tool approval"
+			} else {
+				result.ErrorText = fmt.Sprintf("error waiting for approval: %v", err)
+			}
+			return
+		}
+
+		// Update in-memory approval for actual execution decisions
+		toolCall.ToolUseData.Approval = approval
+
+		if approval == uctypes.ApprovalUserApproved {
+			log.Printf("ResolveToolCall: Tool %s (%s) APPROVED by user.\n", toolCall.Name, toolCall.ID)
+			// Trigger a UI update to show it's progressing
+			_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
+		} else if approval == uctypes.ApprovalUserDenied {
+			log.Printf("ResolveToolCall: Tool %s (%s) DENIED by user.\n", toolCall.Name, toolCall.ID)
+			result.ErrorText = "tool execution denied by user"
+			return
+		} else if approval == uctypes.ApprovalCanceled {
+			result.ErrorText = "tool execution canceled"
+			return
+		} else {
+			result.ErrorText = fmt.Sprintf("unexpected approval status: %s", approval)
+			return
+		}
 	}
 
 	// Try ToolTextCallback first, then ToolAnyCallback

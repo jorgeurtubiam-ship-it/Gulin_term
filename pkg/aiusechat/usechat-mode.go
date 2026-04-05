@@ -519,10 +519,25 @@ func SyncGulinBridgeModels() error {
 
 	// Post-procesar modelos para detectar el proveedor real
 	var models []GulinBridgeModel
+	foundAuto := false
 	for _, m := range rawModels {
+		if m.ID == "auto/model" {
+			foundAuto = true
+		}
 		m.Provider = getProviderFromModelID(m.ID, m.Provider)
 		logToAll(fmt.Sprintf("Gulin Bridge: Modelo descubierto ID=%s Provider=%s", m.ID, m.Provider))
 		models = append(models, m)
+	}
+
+	// Forzar la inclusión del modelo Auto si no fue descubierto (el Bridge siempre lo tiene)
+	if !foundAuto {
+		logToAll("Gulin Bridge: Forzando inclusión de modelo Auto (auto/model)")
+		models = append(models, GulinBridgeModel{
+			ID:        "auto/model",
+			Provider:  "auto",
+			Name:      "Auto",
+			Available: true,
+		})
 	}
 
 	// Lista de modelos que fallaron en las pruebas de conectividad recentes (Status 500/etc.)

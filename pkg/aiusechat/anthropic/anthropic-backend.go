@@ -546,7 +546,6 @@ func handleAnthropicStreamingResp(
 		},
 	}
 
-	var rtnStopReason *uctypes.GulinStopReason
 
 	// Ensure step is closed on error/cancellation
 	defer func() {
@@ -561,9 +560,6 @@ func handleAnthropicStreamingResp(
 			return
 		}
 		_ = sse.AiMsgFinishStep()
-		if rtnStopReason == nil || rtnStopReason.Kind != uctypes.StopKindToolUse {
-			_ = sse.AiMsgFinish(state.msgID)
-		}
 	}()
 
 	// SSE event processing loop
@@ -595,7 +591,6 @@ func handleAnthropicStreamingResp(
 
 		if stop, ret := handleAnthropicEvent(event, sse, state, cont); ret != nil {
 			// Either error or message_stop triggered return
-			rtnStopReason = ret
 			return ret, state.rtnMessage
 		} else {
 			// maybe updated final stop reason (from message_delta)
@@ -606,11 +601,10 @@ func handleAnthropicStreamingResp(
 	}
 
 	// EOF - let defer handle cleanup
-	rtnStopReason = &uctypes.GulinStopReason{
+	return &uctypes.GulinStopReason{
 		Kind:      uctypes.StopKindDone,
 		RawReason: state.stopFromDelta,
-	}
-	return rtnStopReason, state.rtnMessage
+	}, state.rtnMessage
 }
 
 // handleAnthropicEvent processes one SSE event block. It may emit SSE parts

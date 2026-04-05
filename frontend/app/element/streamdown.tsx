@@ -27,7 +27,7 @@ function CodePlain({ className = "", isCodeBlock, text }: { className?: string; 
     }
 
     return (
-        <code className={cn("text-secondary font-mono text-[12px] rounded-sm bg-zinc-800/80 px-1.5 py-0.5", className)}>
+        <code className={cn("text-gray-300 font-mono text-[12px] rounded-sm bg-zinc-800/80 px-1.5 py-0.5", className)}>
             {text}
         </code>
     );
@@ -159,7 +159,7 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
             }
         >
             <div className="flex items-center justify-between pl-3 pr-2 pt-2 pb-1.5">
-                <span className="text-[11px] text-white/50">{language}</span>
+                <span className="text-[11px] text-white/50">{language !== "text" ? language : ""}</span>
                 <div className="flex items-center gap-2">
                     <CopyButton onClick={handleCopy} title="Copy" />
                     {onClickExecute && (
@@ -173,7 +173,7 @@ const CodeBlock = ({ children, onClickExecute, codeBlockMaxWidthAtom }: CodeBloc
                     )}
                 </div>
             </div>
-            <pre className="px-4 pb-2 pt-0 overflow-x-auto m-0 text-secondary max-w-full">{children}</pre>
+            <pre className="px-4 pb-2 pt-0 overflow-x-auto m-0 text-gray-100 max-w-full">{children}</pre>
         </div>
     );
 };
@@ -222,7 +222,7 @@ export const GulinStreamdown = ({
                     codeBlockMaxWidthAtom={codeBlockMaxWidthAtom}
                 />
             ),
-            p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <p {...props} className="text-secondary" />,
+            p: (props: React.HTMLAttributes<HTMLParagraphElement>) => <p {...props} className="text-gray-200" />,
             h1: (props: React.HTMLAttributes<HTMLHeadingElement>) => (
                 <h1 {...props} className="text-2xl font-bold text-primary mt-6 mb-3" />
             ),
@@ -260,20 +260,20 @@ export const GulinStreamdown = ({
             ul: (props: React.HTMLAttributes<HTMLUListElement>) => (
                 <ul
                     {...props}
-                    className="list-disc list-outside pl-6 mt-1 mb-2 text-secondary [&_ul]:my-1 [&_ol]:my-1"
+                    className="list-disc list-outside pl-6 mt-1 mb-2 text-gray-200 [&_ul]:my-1 [&_ol]:my-1"
                 />
             ),
             ol: (props: React.HTMLAttributes<HTMLOListElement>) => (
                 <ol
                     {...props}
-                    className="list-decimal list-outside pl-6 mt-1 mb-2 text-secondary [&_ul]:my-1 [&_ol]:my-1"
+                    className="list-decimal list-outside pl-6 mt-1 mb-2 text-gray-200 [&_ul]:my-1 [&_ol]:my-1"
                 />
             ),
             li: (props: React.HTMLAttributes<HTMLLIElement>) => (
                 <li {...props} className="text-secondary leading-snug" />
             ),
             blockquote: (props: React.HTMLAttributes<HTMLQuoteElement>) => (
-                <blockquote {...props} className="border-l-2 border-border pl-4 my-2 text-secondary italic" />
+                <blockquote {...props} className="border-l-2 border-border pl-4 my-2 text-gray-400 italic" />
             ),
             details: ({ children, ...props }) => {
                 const childArray = Array.isArray(children) ? children : [children];
@@ -305,7 +305,7 @@ export const GulinStreamdown = ({
         <Streamdown
             parseIncompleteMarkdown={parseIncompleteMarkdown}
             className={cn(
-                "gulin-streamdown text-secondary [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0 space-y-2",
+                "gulin-streamdown text-gray-100 [&>*:first-child]:mt-0 [&>*:first-child>*:first-child]:mt-0 space-y-2",
                 className
             )}
             shikiTheme={[ShikiTheme, ShikiTheme]}

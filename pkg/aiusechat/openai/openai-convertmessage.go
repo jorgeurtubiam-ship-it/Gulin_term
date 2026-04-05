@@ -271,24 +271,31 @@ func buildOpenAIHTTPRequest(ctx context.Context, inputs []any, chatOpts uctypes.
 	}
 
 	// Add tools if provided
-	if len(chatOpts.Tools) > 0 {
-		tools := make([]OpenAIRequestTool, len(chatOpts.Tools))
-		for i, tool := range chatOpts.Tools {
-			tools[i] = ConvertToolDefinitionToOpenAI(tool)
-		}
-		reqBody.Tools = tools
-	}
-	for _, tool := range chatOpts.TabTools {
-		convertedTool := ConvertToolDefinitionToOpenAI(tool)
-		reqBody.Tools = append(reqBody.Tools, convertedTool)
-	}
+	if len(chatOpts.Tools) > 0 || len(chatOpts.TabTools) > 0 || chatOpts.AllowNativeWebSearch {
+		var finalTools []OpenAIRequestTool
+		toolNames := make(map[string]bool)
 
-	// Add native web search tool if enabled
-	if chatOpts.AllowNativeWebSearch {
-		webSearchTool := OpenAIRequestTool{
-			Type: "web_search",
+		for _, tool := range chatOpts.Tools {
+			if !toolNames[tool.Name] {
+				finalTools = append(finalTools, ConvertToolDefinitionToOpenAI(tool))
+				toolNames[tool.Name] = true
+			}
 		}
-		reqBody.Tools = append(reqBody.Tools, webSearchTool)
+		for _, tool := range chatOpts.TabTools {
+			if !toolNames[tool.Name] {
+				finalTools = append(finalTools, ConvertToolDefinitionToOpenAI(tool))
+				toolNames[tool.Name] = true
+			}
+		}
+
+		// Add native web search tool if enabled
+		if chatOpts.AllowNativeWebSearch {
+			webSearchTool := OpenAIRequestTool{
+				Type: "web_search",
+			}
+			finalTools = append(finalTools, webSearchTool)
+		}
+		reqBody.Tools = finalTools
 	}
 
 	// Set reasoning based on thinking level from config

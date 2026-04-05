@@ -588,7 +588,7 @@ export const getFilteredAIModeConfigs = (
     const isCurrentModeCloud = currentMode?.startsWith("gulinai@") ?? false;
     const shouldShowCloudModes = showCloudModes || !hasCustomModels || isCurrentModeCloud;
 
-    const gulinProviderConfigs = [];
+    const gulinProviderConfigs = allConfigs.filter((config) => config["ai:provider"] === "gulin");
 
     return {
         gulinProviderConfigs,

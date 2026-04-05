@@ -251,6 +251,11 @@ func CreateToolUseData(toolCallID, toolName string, arguments string, chatOpts u
 		toolUseData.Approval = uctypes.ApprovalAutoApproved
 	}
 
+	// Si estamos en modo @plan, forzar que todas las herramientas requieran aprobación
+	if strings.HasSuffix(chatOpts.Config.AIMode, "@plan") {
+		toolUseData.Approval = uctypes.ApprovalNeedsApproval
+	}
+
 	if chatOpts.TabId != "" {
 		if argsMap, ok := parsedArgs.(map[string]any); ok {
 			if widgetId, ok := argsMap["widget_id"].(string); ok && widgetId != "" {

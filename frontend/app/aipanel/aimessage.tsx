@@ -117,8 +117,10 @@ interface AIMessagePartProps {
 const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => {
     const model = GulinAIModel.getInstance();
 
+    if (!part || typeof part !== "object") return null;
+
     if (part.type === "text") {
-        const content = part.text ?? "";
+        const content = (part as any)?.text || (part as any)?.content || "";
 
         if (role === "user") {
             return <div className="whitespace-pre-wrap break-words">{content}</div>;
@@ -134,6 +136,20 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
         }
     }
 
+    if (part.type === "reasoning") {
+        const reasoning = (part as any)?.reasoning || (part as any)?.text || (part as any)?.content || "";
+        if (!reasoning) return null;
+        
+        // SAFE ACCESS: Access providerMetadata only safely with optional chaining
+        const metadata = (part as any)?.providerMetadata;
+        
+        return (
+            <div className="text-gray-400 italic text-sm border-l-2 border-gray-600 pl-2 my-1">
+                {reasoning}
+            </div>
+        );
+    }
+
     return null;
 });
 
@@ -145,8 +161,10 @@ interface AIMessageProps {
 }
 
 const isDisplayPart = (part: GulinUIMessagePart): boolean => {
+    if (!part || typeof part.type !== "string") return false;
     return (
         part.type === "text" ||
+        part.type === "reasoning" || // Permitir renderizado de razonamiento
         part.type === "data-tooluse" ||
         part.type === "data-toolprogress" ||
         (part.type.startsWith("tool-") && "state" in part && part.state === "input-available")
@@ -159,9 +177,11 @@ type MessagePart =
 
 const groupMessageParts = (parts: GulinUIMessagePart[]): MessagePart[] => {
     const grouped: MessagePart[] = [];
+    if (!Array.isArray(parts)) return grouped;
     let currentToolGroup: Array<GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }> = [];
 
     for (const part of parts) {
+        if (!part) continue;
         if (part.type === "data-tooluse" || part.type === "data-toolprogress") {
             currentToolGroup.push(part as GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" });
         } else {
@@ -190,40 +210,56 @@ const getThinkingMessage = (
         return null;
     }
 
-    const hasPendingApprovals = parts.some(
-        (part) => part.type === "data-tooluse" && part.data?.approval === "needs-approval"
-    );
+    if (!Array.isArray(parts) || parts.length === 0) return { message: t("gulin.ai.message.thinking") };
+    const lastPart = parts[parts.length - 1];
 
-    if (hasPendingApprovals) {
+    if (!lastPart || typeof lastPart !== "object") return { message: t("gulin.ai.message.thinking") };
+
+    if (lastPart.type === "data-tooluse" && (lastPart as any)?.data?.approval === "needs-approval") {
         return { message: t("gulin.ai.message.waiting_approval"), isWaitingApproval: true };
     }
 
-    const lastPart = parts[parts.length - 1];
-
-    if (lastPart?.type === "reasoning") {
-        const reasoningContent = lastPart.text || "";
+    if (lastPart.type === "reasoning") {
+        const reasoningContent = (lastPart as any)?.reasoning || (lastPart as any)?.text || (lastPart as any)?.content || "";
+        // Extreme safety for providerMetadata access which can cause crashes in some SDK versions
+        const metadata = (lastPart as any)?.providerMetadata;
         return { message: t("gulin.ai.message.thinking"), reasoningText: reasoningContent };
     }
 
-    if (lastPart?.type === "text" && lastPart.text) {
+    if (lastPart.type === "text" && ((lastPart as any)?.text || (lastPart as any)?.content)) {
         return null;
     }
 
-    return { message: "" };
+    return { message: t("gulin.ai.message.thinking") };
 };
 
 export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
-    const parts = message.parts || [];
-    const displayParts = parts.filter(isDisplayPart);
-    const fileParts = parts.filter(
-        (part): part is GulinUIMessagePart & { type: "data-userfile" } => part.type === "data-userfile"
+    // Seguridad extrema en el acceso a 'message' y 'parts'
+    if (!message) return null;
+    const parts = Array.isArray(message.parts) ? message.parts : [];
+    
+    // Filtrar partes válidas con guarda de tipo
+    const validParts = parts.filter(p => p && typeof p.type === "string");
+    const displayParts = validParts.filter(isDisplayPart);
+    
+    const fileParts = validParts.filter((part): part is GulinUIMessagePart & { type: "data-userfile" } => 
+        part.type === "data-userfile" && part.data !== undefined
     );
+    
     const { t } = useTranslation();
 
-    const thinkingData = getThinkingMessage(parts, isStreaming, message.role, t);
+    const thinkingData = getThinkingMessage(validParts, isStreaming, message.role, t);
     const groupedParts = groupMessageParts(displayParts);
-    // Track which terminal blockids have already been rendered across tool groups in this message
     const seenBlockIds = new Set<string>();
+
+    const allText = validParts
+        .filter((p) => p && (p.type === "text" || p.type === "reasoning"))
+        .map((p) => {
+            const anyP = p as any;
+            return anyP?.text || anyP?.reasoning || anyP?.content || "";
+        })
+        .filter(t => t != null)
+        .join("\n\n");
 
     return (
         <div className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
@@ -239,36 +275,33 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                     <div className="whitespace-pre-wrap break-words">{t("gulin.ai.message.no_content")}</div>
                 ) : (
                     <>
-                        {groupedParts.map((group, index: number) =>
-                            group.type === "toolgroup" ? (
-                                <AIToolUseGroup key={index} parts={group.parts} isStreaming={isStreaming} seenBlockIds={seenBlockIds} />
-                            ) : (
+                        {groupedParts.map((group, index: number) => {
+                            if (group.type === "toolgroup") {
+                                return <AIToolUseGroup key={index} parts={group.parts} isStreaming={isStreaming} seenBlockIds={seenBlockIds} />;
+                            }
+                            if (!group.part) return null;
+                            return (
                                 <div key={index} className="mt-2">
                                     <AIMessagePart part={group.part} role={message.role} isStreaming={isStreaming} />
                                 </div>
-                            )
-                        )}
-                        {thinkingData != null && (
+                            );
+                        })}
+                        {thinkingData != null && thinkingData.message && (
                             <div className="mt-2">
-                                <AIThinking
-                                    message={thinkingData.message}
-                                    reasoningText={thinkingData.reasoningText}
-                                    isWaitingApproval={thinkingData.isWaitingApproval}
+                                <AIThinking 
+                                    message={thinkingData.message} 
+                                    reasoningText={thinkingData.reasoningText} 
+                                    isWaitingApproval={thinkingData.isWaitingApproval} 
                                 />
                             </div>
+                        )}
+                        {message.role === "assistant" && !isStreaming && (
+                            <AIFeedbackButtons messageText={allText} />
                         )}
                     </>
                 )}
 
-                {message.role === "user" && <UserMessageFiles fileParts={fileParts} />}
-                {message.role === "assistant" && !isStreaming && displayParts.length > 0 && (
-                    <AIFeedbackButtons
-                        messageText={parts
-                            .filter((p) => p.type === "text")
-                            .map((p) => p.text || "")
-                            .join("\n\n")}
-                    />
-                )}
+                {message.role === "user" && fileParts.length > 0 && <UserMessageFiles fileParts={fileParts} />}
             </div>
         </div>
     );

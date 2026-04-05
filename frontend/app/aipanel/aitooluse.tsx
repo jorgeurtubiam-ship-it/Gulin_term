@@ -20,6 +20,7 @@ interface ToolDescLineProps {
 }
 
 const ToolDescLine = memo(({ text }: ToolDescLineProps) => {
+    if (!text || typeof text !== "string") return null;
     let displayText = text;
     if (displayText.startsWith("* ")) {
         displayText = "• " + displayText.slice(2);
@@ -63,6 +64,7 @@ interface ToolDescProps {
 }
 
 const ToolDesc = memo(({ text, className }: ToolDescProps) => {
+    if (!text) return null;
     const lines = Array.isArray(text) ? text : text.split("\n");
 
     if (lines.length === 0) return null;
@@ -120,6 +122,7 @@ interface AIToolUseBatchItemProps {
 
 const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItemProps) => {
     const { t } = useTranslation();
+    if (!part?.data) return null;
     const statusIcon = part.data.status === "completed" ? "✓" : part.data.status === "error" ? "✗" : "•";
     const statusColor =
         part.data.status === "completed"
@@ -133,7 +136,7 @@ const AIToolUseBatchItem = memo(({ part, effectiveApproval }: AIToolUseBatchItem
         <div className="text-sm pl-2 flex items-start gap-1.5">
             <span className={cn("font-bold flex-shrink-0", statusColor)}>{statusIcon}</span>
             <div className="flex-1">
-                <span className="text-gray-400">{part.data.tooldesc}</span>
+                <span className="text-gray-400">{part.data.tooldesc || part.data.toolname}</span>
                 {effectiveErrorMessage && <div className="text-red-300 mt-0.5">{effectiveErrorMessage}</div>}
             </div>
         </div>
@@ -151,21 +154,27 @@ const AIToolUseBatch = memo(({ parts, isStreaming }: AIToolUseBatchProps) => {
     const { t } = useTranslation();
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
 
+    if (!Array.isArray(parts) || parts.length === 0 || !parts[0]?.data) return null;
     const firstTool = parts[0].data;
+    if (!firstTool) return null;
     const baseApproval = userApprovalOverride || firstTool.approval;
     const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
 
     const handleApprove = () => {
         setUserApprovalOverride("user-approved");
         parts.forEach((part) => {
-            GulinAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-approved");
+            if (part?.data?.toolcallid) {
+                GulinAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-approved");
+            }
         });
     };
 
     const handleDeny = () => {
         setUserApprovalOverride("user-denied");
         parts.forEach((part) => {
-            GulinAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-denied");
+            if (part?.data?.toolcallid) {
+                GulinAIModel.getInstance().toolUseSendApproval(part.data.toolcallid, "user-denied");
+            }
         });
     };
 
@@ -194,12 +203,15 @@ interface AIToolUseProps {
 }
 
 const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
-    const toolData = part.data;
+    const toolData = part?.data;
+    if (!toolData) return null;
+
     const { t } = useTranslation();
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
+
     const model = GulinAIModel.getInstance();
     const restoreModalToolCallId = useAtomValue(model.restoreBackupModalToolCallId);
-    const showRestoreModal = restoreModalToolCallId === toolData.toolcallid;
+    const showRestoreModal = toolData.toolcallid && restoreModalToolCallId === toolData.toolcallid;
     const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const highlightedBlockIdRef = useRef<string | null>(null);
 
@@ -329,15 +341,16 @@ interface AIToolProgressProps {
 }
 
 const AIToolProgress = memo(({ part }: AIToolProgressProps) => {
-    const progressData = part.data;
+    const progressData = part?.data;
+    if (!progressData) return null;
 
     return (
         <div className="flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700">
             <div className="flex items-center gap-2">
                 <i className="fa fa-spinner fa-spin text-gray-400"></i>
-                <div className="font-semibold">{progressData.toolname}</div>
+                <div className="font-semibold">{progressData.toolname || "Tool Progress"}</div>
             </div>
-            {progressData.statuslines && progressData.statuslines.length > 0 && (
+            {progressData.statuslines && Array.isArray(progressData.statuslines) && progressData.statuslines.length > 0 && (
                 <ToolDesc text={progressData.statuslines} className="text-sm text-gray-400 pl-6 space-y-0.5" />
             )}
         </div>
@@ -351,7 +364,9 @@ interface AIExpertStatusProps {
 }
 
 export const AIExpertStatus = memo(({ part }: AIExpertStatusProps) => {
-    const { expertid, status, task } = part.data;
+    const expertData = (part as any)?.data;
+    if (!expertData) return null;
+    const { expertid, status, task } = expertData;
     const isRunning = status === "running";
 
     return (
@@ -363,7 +378,7 @@ export const AIExpertStatus = memo(({ part }: AIExpertStatusProps) => {
                     <i className="fa fa-check-circle text-green-400"></i>
                 )}
                 <div className="font-semibold text-indigo-200">
-                    {expertid.replace("_", " ").toUpperCase()}
+                    {(expertid || "expert").replace("_", " ").toUpperCase()}
                 </div>
                 <div className="text-xs text-indigo-300 ml-auto">
                     {isRunning ? "TRABAJANDO..." : "COMPLETADO"}
@@ -385,13 +400,16 @@ interface AITerminalToolGroupCardProps {
 }
 
 const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) => {
+    if (!Array.isArray(parts) || parts.length === 0) return null;
+
     // Representative tool: the first one that ran a command (not just output)
-    const commandPart = parts.find((p) => p.data.toolname === "term_run_command") ?? parts[0];
+    const commandPart = parts.find((p) => p?.data?.toolname === "term_run_command") ?? parts[0];
+    if (!commandPart?.data) return null;
     const toolData = commandPart.data;
 
     // Overall status: error if any errored, completed if all done, else pending
-    const hasError = parts.some((p) => p.data.status === "error");
-    const allCompleted = parts.every((p) => p.data.status === "completed");
+    const hasError = parts.some((p) => p?.data?.status === "error");
+    const allCompleted = parts.every((p) => p?.data?.status === "completed");
     const overallStatus = hasError ? "error" : allCompleted ? "completed" : "pending";
 
     const statusIcon = overallStatus === "completed" ? "✓" : overallStatus === "error" ? "✗" : "•";
@@ -402,6 +420,7 @@ const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) =
     const allDescs: string[] = [];
     const seenDescs = new Set<string>();
     for (const p of parts) {
+        if (!p || !p.data) continue;
         const desc = p.data.tooldesc;
         if (desc && !seenDescs.has(desc)) {
             seenDescs.add(desc);
@@ -427,9 +446,9 @@ const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) =
                     ))}
                 </div>
             )}
-            {parts.some((p) => p.data.errormessage) && (
+            {parts.some((p) => p?.data?.errormessage) && (
                 <div className="text-sm text-red-300 pl-6">
-                    {parts.find((p) => p.data.errormessage)?.data.errormessage}
+                    {parts.find((p) => p?.data?.errormessage)?.data?.errormessage}
                 </div>
             )}
         </div>
@@ -460,8 +479,8 @@ export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds }: AITool
         GulinUIMessagePart & { type: "data-toolprogress" }
     >;
 
-    const tooluseCallIds = new Set(tooluseParts.map((p) => p.data.toolcallid));
-    const filteredProgressParts = toolprogressParts.filter((p) => !tooluseCallIds.has(p.data.toolcallid));
+    const tooluseCallIds = new Set(tooluseParts.map((p) => p?.data?.toolcallid).filter(id => id != null));
+    const filteredProgressParts = toolprogressParts.filter((p) => p && p.data && p.data.toolcallid && !tooluseCallIds.has(p.data.toolcallid));
 
     const isFileOp = (part: GulinUIMessagePart & { type: "data-tooluse" }) => {
         const toolName = part.data?.toolname;
@@ -479,17 +498,21 @@ export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds }: AITool
     const readFileNeedsApproval: Array<GulinUIMessagePart & { type: "data-tooluse" }> = [];
     const readFileOther: Array<GulinUIMessagePart & { type: "data-tooluse" }> = [];
 
+    const safeToolUseParts = tooluseParts.filter(p => p && p.data);
+
     // Group terminal ops by blockid
     const terminalGroupMap = new Map<string, Array<GulinUIMessagePart & { type: "data-tooluse" }>>();
     for (const part of tooluseParts) {
         if (isTerminalOp(part) && !isFileOp(part)) {
-            const bid = part.data.blockid!;
-            if (!terminalGroupMap.has(bid)) terminalGroupMap.set(bid, []);
-            terminalGroupMap.get(bid)!.push(part);
+            const bid = part.data?.blockid;
+            if (bid) {
+                if (!terminalGroupMap.has(bid)) terminalGroupMap.set(bid, []);
+                terminalGroupMap.get(bid)!.push(part);
+            }
         }
     }
 
-    for (const part of tooluseParts) {
+    for (const part of safeToolUseParts) {
         if (isFileOp(part)) {
             if (needsApproval(part)) {
                 readFileNeedsApproval.push(part);
@@ -504,7 +527,7 @@ export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds }: AITool
     let addedOtherBatch = false;
     const addedTerminalGroups = new Set<string>();
 
-    for (const part of tooluseParts) {
+    for (const part of safeToolUseParts) {
         const isFileOpPart = isFileOp(part);
         const isTermOp = isTerminalOp(part);
         const partNeedsApproval = needsApproval(part);
@@ -520,8 +543,8 @@ export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds }: AITool
                 addedOtherBatch = true;
             }
         } else if (isTermOp) {
-            const bid = part.data.blockid!;
-            if (!addedTerminalGroups.has(bid)) {
+            const bid = part.data?.blockid;
+            if (bid && !addedTerminalGroups.has(bid)) {
                 addedTerminalGroups.add(bid);
                 // Skip if already rendered in a previous tool group of this message
                 if (seenBlockIds && seenBlockIds.has(bid)) {

@@ -155,16 +155,25 @@ func buildAnthropicHTTPRequest(ctx context.Context, msgs []anthropicInputMessage
 		reqBody.System = systemBlocks
 	}
 
-	if len(chatOpts.Tools) > 0 {
-		cleanedTools := make([]uctypes.ToolDefinition, len(chatOpts.Tools))
-		for i, tool := range chatOpts.Tools {
-			cleanedTools[i] = *tool.Clean()
+	if len(chatOpts.Tools) > 0 || len(chatOpts.TabTools) > 0 {
+		var finalTools []uctypes.ToolDefinition
+		toolNames := make(map[string]bool)
+
+		processTool := func(tool uctypes.ToolDefinition) {
+			if toolNames[tool.Name] {
+				return
+			}
+			finalTools = append(finalTools, *tool.Clean())
+			toolNames[tool.Name] = true
 		}
-		reqBody.Tools = cleanedTools
-	}
-	for _, tool := range chatOpts.TabTools {
-		cleanedTool := *tool.Clean()
-		reqBody.Tools = append(reqBody.Tools, cleanedTool)
+
+		for _, tool := range chatOpts.Tools {
+			processTool(tool)
+		}
+		for _, tool := range chatOpts.TabTools {
+			processTool(tool)
+		}
+		reqBody.Tools = finalTools
 	}
 
 	// Enable extended thinking based on level
@@ -316,7 +325,10 @@ func convertPartToAnthropicBlocks(p uctypes.UIMessagePart, role string, blockInd
 			Text: p.Text,
 		}}, nil
 	} else if p.Type == "reasoning" {
-		// Check if we have a signature in provider metadata
+		// Ensure ProviderMetadata is not nil for reasoning parts to prevent frontend crashes
+		if p.ProviderMetadata == nil {
+			p.ProviderMetadata = make(map[string]any)
+		}
 		signature, hasSignature := p.ProviderMetadata[ProviderMetadataThinkingSignatureKey]
 		if !hasSignature {
 			return nil, fmt.Errorf("reasoning part requires signature in provider metadata key '%s'", ProviderMetadataThinkingSignatureKey)

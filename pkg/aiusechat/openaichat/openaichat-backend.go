@@ -54,9 +54,16 @@ func RunChatStep(
 		strings.Contains(chatOpts.Config.Endpoint, ":8090") ||
 		strings.Contains(chatOpts.Config.Endpoint, "gulinbridge") ||
 		strings.Contains(chatOpts.Config.Endpoint, "proxy.gulin.cl")
-	if isBridge && len(nativeMessages) > 50 {
-		// Keep last 50 messages to avoid cutting off tool calls and causing 413/EOF
-		nativeMessages = nativeMessages[len(nativeMessages)-50:]
+	
+	limit := 50
+	if strings.Contains(chatOpts.Config.Model, "@orchestrate") {
+		// Orchestrator only needs minimal recent context to decide which expert to call.
+		// Heavily limiting history prevents "max tokens exceeded" caused by large terminal/file outputs.
+		limit = 10
+	}
+	
+	if isBridge && len(nativeMessages) > limit {
+		nativeMessages = nativeMessages[len(nativeMessages)-limit:]
 	}
 
 	// Convert native messages
@@ -501,8 +508,8 @@ func processChatStream(
 		_ = sseHandler.AiMsgFinishStep()
 		errMsg := fmt.Sprintf("El modelo '%s' devolvió una respuesta vacía (finish_reason: %s). Intente con un modelo más capaz o reduzca el número de herramientas activas.",
 			chatOpts.Config.Model, finishReason)
-		_ = sseHandler.AiMsgError(errMsg)
-		_ = sseHandler.AiMsgFinish(msgID)
+		// No enviamos el error SSE inmediatamente si es un posible reintento silencioso
+		log.Printf("openaichat: DETECTED EMPTY RESPONSE (finish_reason=%s). Signaling for potential retry.\n", finishReason)
 		return &uctypes.GulinStopReason{
 			Kind:      uctypes.StopKindError,
 			ErrorType: "empty_response",
@@ -533,7 +540,6 @@ func processChatStream(
 		_ = sseHandler.AiMsgTextEnd(textID)
 	}
 	_ = sseHandler.AiMsgFinishStep()
-	_ = sseHandler.AiMsgFinish(msgID)
 
 	if textBuilder.Len() > 0 {
 		log.Printf("openaichat: raw response text (len=%d): %q\n", textBuilder.Len(), textBuilder.String())

@@ -33,7 +33,7 @@ interface ChatMessageType {
 }
 
 const outline = "2px solid var(--accent-color)";
-const slidingWindowSize = 30;
+const slidingWindowSize = 8;
 
 interface ChatItemProps {
     chatItemAtom: Atom<ChatMessageType>;
@@ -142,9 +142,11 @@ export class GulinAiModel implements ViewModel {
 
         this.updateLastMessageAtom = atom(null, (get, set, text: string, isUpdating: boolean) => {
             const messages = get(this.messagesAtom);
+            if (messages.length === 0) return;
             const lastMessage = messages[messages.length - 1];
-            if (lastMessage.user == "assistant") {
-                const updatedMessage = { ...lastMessage, text: lastMessage.text + text, isUpdating };
+            if (lastMessage && lastMessage.user == "assistant") {
+                const currentText = lastMessage.text || "";
+                const updatedMessage = { ...lastMessage, text: currentText + text, isUpdating };
                 set(this.messagesAtom, [...messages.slice(0, -1), updatedMessage]);
             }
         });
@@ -163,7 +165,8 @@ export class GulinAiModel implements ViewModel {
 
             // Add a typing indicator
             set(this.addMessageAtom, typingMessage);
-            const parts = userMessage.text.split(" ");
+            const textToSplit = userMessage?.text || "";
+            const parts = textToSplit.split(" ");
             let currentPart = 0;
             while (currentPart < parts.length) {
                 const part = parts[currentPart] + " ";
@@ -384,8 +387,10 @@ export class GulinAiModel implements ViewModel {
             try {
                 const aiGen = RpcApi.StreamGulinAiCommand(TabRpcClient, beMsg, { timeout: opts.timeoutms });
                 for await (const msg of aiGen) {
-                    fullMsg += msg.text ?? "";
-                    globalStore.set(this.updateLastMessageAtom, msg.text ?? "", true);
+                    if (!msg) continue;
+                    const deltaText = msg.text ?? "";
+                    fullMsg += deltaText;
+                    globalStore.set(this.updateLastMessageAtom, deltaText, true);
                     if (this.cancel) {
                         break;
                     }
@@ -464,6 +469,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
     const fontSize = useAtomValue(model.mergedPresets)?.["ai:fontsize"];
     const fixedFontSize = useAtomValue(model.mergedPresets)?.["ai:fixedfontsize"];
     const renderContent = useMemo(() => {
+        const currentText = text || "";
         if (user == "error") {
             return (
                 <>
@@ -474,7 +480,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                     </div>
                     <div className="chat-msg chat-msg-error">
                         <Markdown
-                            text={text}
+                            text={currentText}
                             scrollable={false}
                             fontSizeOverride={fontSize}
                             fixedFontSizeOverride={fixedFontSize}
@@ -484,7 +490,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
             );
         }
         if (user == "assistant") {
-            return text ? (
+            return currentText ? (
                 <>
                     <div className="chat-msg chat-msg-header">
                         <div className="icon-box">
@@ -493,7 +499,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                     </div>
                     <div className="chat-msg chat-msg-assistant">
                         <Markdown
-                            text={text}
+                            text={currentText}
                             scrollable={false}
                             fontSizeOverride={fontSize}
                             fixedFontSizeOverride={fixedFontSize}
@@ -514,7 +520,7 @@ const ChatItem = ({ chatItemAtom, model }: ChatItemProps) => {
                 <div className="chat-msg chat-msg-user">
                     <Markdown
                         className="msg-text"
-                        text={text}
+                        text={currentText}
                         scrollable={false}
                         fontSizeOverride={fontSize}
                         fixedFontSizeOverride={fixedFontSize}

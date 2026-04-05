@@ -86,6 +86,20 @@ GuLiN ahora es totalmente controlable. Se acabó el esperar a que una tarea err�
 *   **Cancelación Atómica de Herramientas**: Todas las herramientas de bajo nivel (Terminal, Web, RAG) están vinculadas al contexto de la sesión. Si detienes al agente, los procesos de terminal en espera y las lecturas web se cortan instantáneamente, liberando recursos y permitiendo una respuesta inmediata.
 *   **Caso de Uso**: ¿Le pediste que analice todo el disco pero solo querías `/tmp`? Envía el mensaje correctivo a mitad de ejecución y GuLiN cambiará de rumbo al instante.
 
+## 🚀 9. Optimización Extrema de Contexto y Tokens (NUEVO)
+GuLiN v2.0.3 introduce mejoras críticas para maximizar la velocidad de respuesta y minimizar el consumo de tokens, especialmente en sesiones largas.
+
+*   **Ventana de Memoria de Chat (Sliding Window)**:
+    *   La IA ahora solo recibe el contexto de las **últimas 4 interacciones** (8 mensajes totales) del chat actual. Esto evita que el costo por mensaje escale exponencialmente y mantiene la respuesta ágil.
+*   **Gestión Inteligente de Terminal**:
+    *   **Límite de Contexto**: Cuando la IA consulta el terminal por defecto, solo se envían las últimas **20 líneas** del scrollback (antes 200). Esto inyecta solo la información necesaria.
+    *   **No Repetición Redundante**: Se han ajustado todos los roles expertos para que **NO repitan los resultados del terminal** en el chat de texto si estos ya son visibles en el widget. Menos ruido, más precisión.
+*   **Registro de Comandos de IA (AI History)**:
+    *   Cada comando ejecutado por la IA se registra automáticamente en `~/.gulin/ai_history.sh`.
+    *   Ideal para auditoría o para reutilizar comandos complejos orquestados por el agente.
+*   **Respuestas Ultra-Concisas**:
+    *   Los prompts de sistema han sido fortificados para eliminar preámbulos y conclusiones amigables innecesarias. La IA va directa al dato técnico.
+
 ---
 
 *GuLiN Terminal: El futuro del desarrollo agentic está en tus manos.*

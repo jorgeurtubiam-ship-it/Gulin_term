@@ -131,6 +131,18 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 
 	finalMessages := messages
 	if len(chatOpts.SystemPrompt) > 0 {
+		// Optimization for @orchestrate: remove any existing system messages to prevent payload overload
+		// and ensure only the minimalist prompt is used.
+		if strings.Contains(opts.Model, "@orchestrate") {
+			var nonSystemMessages []ChatRequestMessage
+			for _, m := range messages {
+				if m.Role != "system" {
+					nonSystemMessages = append(nonSystemMessages, m)
+				}
+			}
+			messages = nonSystemMessages
+		}
+
 		systemMessage := ChatRequestMessage{
 			Role:    "system",
 			Content: strings.Join(chatOpts.SystemPrompt, "\n\n"),
@@ -179,12 +191,27 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 	}
 
 	// Add tool definitions if tools capability is available and tools exist
-	var allTools []uctypes.ToolDefinition
 	if opts.HasCapability(uctypes.AICapabilityTools) {
-		allTools = append(allTools, chatOpts.Tools...)
-		allTools = append(allTools, chatOpts.TabTools...)
-		if len(allTools) > 0 {
-			reqBody.Tools = convertToolDefinitions(allTools, opts.Capabilities)
+		var finalTools []uctypes.ToolDefinition
+		toolNames := make(map[string]bool)
+
+		processTool := func(tool uctypes.ToolDefinition) {
+			if toolNames[tool.Name] {
+				return
+			}
+			finalTools = append(finalTools, tool)
+			toolNames[tool.Name] = true
+		}
+
+		for _, tool := range chatOpts.Tools {
+			processTool(tool)
+		}
+		for _, tool := range chatOpts.TabTools {
+			processTool(tool)
+		}
+
+		if len(finalTools) > 0 {
+			reqBody.Tools = convertToolDefinitions(finalTools, opts.Capabilities)
 			if isBridgeReq {
 				sanitizeToolDefinitionsForBridge(reqBody.Tools)
 			}
@@ -192,7 +219,7 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 	}
 
 	if gulinbase.IsDevMode() {
-		log.Printf("openaichat: model %s, messages: %d, tools: %d\n", opts.Model, len(messages), len(allTools))
+		log.Printf("openaichat: model %s, messages: %d, tools: %d\n", opts.Model, len(messages), len(reqBody.Tools))
 	}
 
 	reqBytes, err := json.Marshal(reqBody)

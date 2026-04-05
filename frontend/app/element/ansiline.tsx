@@ -143,11 +143,14 @@ const AnsiLine = ({ line }) => {
 
     return (
         <div>
-            {segments.map((seg, idx) => (
-                <span key={idx} className={seg.classes}>
-                    {seg.text}
-                </span>
-            ))}
+            {segments.map((seg, idx) => {
+                if (!seg || typeof seg.text !== "string") return null;
+                return (
+                    <span key={idx} className={seg.classes}>
+                        {seg.text}
+                    </span>
+                );
+            })}
         </div>
     );
 };

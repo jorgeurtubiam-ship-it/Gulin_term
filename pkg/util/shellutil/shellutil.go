@@ -71,6 +71,7 @@ const (
 	ShellType_zsh     = "zsh"
 	ShellType_fish    = "fish"
 	ShellType_pwsh    = "pwsh"
+	ShellType_cmd     = "cmd"
 	ShellType_unknown = "unknown"
 )
 
@@ -472,6 +473,9 @@ func GetShellTypeFromShellPath(shellPath string) string {
 	}
 	if strings.Contains(shellBase, "pwsh") || strings.Contains(shellBase, "powershell") {
 		return ShellType_pwsh
+	}
+	if strings.Contains(shellBase, "cmd") {
+		return ShellType_cmd
 	}
 	return ShellType_unknown
 }

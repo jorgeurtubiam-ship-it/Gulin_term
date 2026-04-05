@@ -6,6 +6,7 @@ package aiusechat
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 )
@@ -24,7 +25,7 @@ type AgentExpert struct {
 	Name         string
 	SystemPrompt string
 	Tools        []string // Nombres de las herramientas que este experto puede usar
-	DefaultModel string   // Modelo preferido para este experto (ej. "gpt-4o-mini" para ahorro)
+	DefaultModel string   // Modelo preferido para este experto
 }
 
 var Experts = map[AgentExpertType]AgentExpert{
@@ -32,29 +33,29 @@ var Experts = map[AgentExpertType]AgentExpert{
 		ID:           Expert_DB,
 		Name:         "Experto en Bases de Datos",
 		SystemPrompt: SystemPrompt_DBExpert,
-		Tools:        []string{"db_query", "db_register", "db_schema"},
-		DefaultModel: "gpt-4o-mini",
+		Tools:        []string{"db_query", "db_register_connection", "db_list_connections"},
+		DefaultModel: "gemini-3.1-flash-lite",
 	},
 	Expert_File: {
 		ID:           Expert_File,
 		Name:         "Especialista en Archivos",
 		SystemPrompt: SystemPrompt_FileExpert,
 		Tools:        []string{"read_text_file", "write_text_file", "edit_text_file", "delete_text_file", "read_dir"},
-		DefaultModel: "gpt-4o-mini",
+		DefaultModel: "gemini-3.1-flash-lite",
 	},
 	Expert_Web: {
 		ID:           Expert_Web,
 		Name:         "Investigador Web",
 		SystemPrompt: SystemPrompt_WebExpert,
 		Tools:        []string{"web_navigate", "web_read_page", "web_click", "web_type"},
-		DefaultModel: "gpt-4o-mini",
+		DefaultModel: "gemini-3.1-flash-lite",
 	},
 	Expert_Command: {
 		ID:           Expert_Command,
 		Name:         "Administrador de Sistemas",
 		SystemPrompt: SystemPrompt_CommandExpert,
-		Tools:        []string{"term:runcommand", "term:getscrollback", "term:search"},
-		DefaultModel: "gpt-4o", // Los comandos críticos requieren más precisión
+		Tools:        []string{"term_run_command", "term_command_output", "term_get_scrollback", "term_search"},
+		DefaultModel: "gemini-3.1-flash-lite", // Los comandos iniciales ahora son de Nivel 1 (Ahorro)
 	},
 }
 
@@ -113,6 +114,9 @@ func GetCallExpertToolDefinition() uctypes.ToolDefinition {
 			"additionalProperties": false,
 		},
 		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {
+			if strings.Contains(chatOpts.Config.Model, "@plan") {
+				return uctypes.ApprovalNeedsApproval
+			}
 			return uctypes.ApprovalAutoApproved
 		},
 		// El callback se manejará en el loop principal de usechat.go

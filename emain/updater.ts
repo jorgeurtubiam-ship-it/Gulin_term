@@ -228,6 +228,8 @@ let autoUpdateLock = false;
  * Configures the auto-updater based on the user's preference
  */
 export async function configureAutoUpdater() {
+    console.log("auto-updater is temporarily disabled by developer request");
+    return;
     if (isDev()) {
         console.log("skipping auto-updater in dev mode");
         return;

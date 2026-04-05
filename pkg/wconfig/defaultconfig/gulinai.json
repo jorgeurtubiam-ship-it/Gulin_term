@@ -64,8 +64,8 @@
         "display:icon": "clipboard-list",
         "display:description": "Research and analysis mode.\nGulin investigates and proposes a plan without acting.",
         "ai:provider": "gulin",
-        "ai:apitype": "openai-responses",
-        "ai:model": "gpt-5.1",
+        "ai:apitype": "google-gemini",
+        "ai:model": "gemini-3.1-flash-lite",
         "ai:thinkinglevel": "medium",
         "ai:verbosity": "high",
         "ai:capabilities": [
@@ -84,8 +84,8 @@
         "display:icon": "rocket",
         "display:description": "Autonomous action mode.\nGulin solves problems pro-actively using all tools.",
         "ai:provider": "gulin",
-        "ai:apitype": "openai-responses",
-        "ai:model": "gpt-5.1",
+        "ai:apitype": "google-gemini",
+        "ai:model": "gemini-3.1-flash-lite",
         "ai:thinkinglevel": "medium",
         "ai:verbosity": "low",
         "ai:capabilities": [

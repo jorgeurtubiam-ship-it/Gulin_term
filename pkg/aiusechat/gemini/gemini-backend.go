@@ -132,20 +132,29 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 		}
 	}
 
-	// Add tools if provided
-	var allTools []uctypes.ToolDefinition
-	allTools = append(allTools, chatOpts.Tools...)
-	allTools = append(allTools, chatOpts.TabTools...)
-
-	if len(allTools) > 0 {
+	if len(chatOpts.Tools) > 0 || len(chatOpts.TabTools) > 0 {
 		var functionDeclarations []GeminiFunctionDeclaration
-		for _, tool := range allTools {
+		toolNames := make(map[string]bool)
+
+		processTool := func(tool uctypes.ToolDefinition) {
+			if toolNames[tool.Name] {
+				return
+			}
 			// Only include tools whose capabilities are met
 			if !tool.HasRequiredCapabilities(opts.Capabilities) {
-				continue
+				return
 			}
 			functionDeclarations = append(functionDeclarations, ConvertToolDefinitionToGemini(tool))
+			toolNames[tool.Name] = true
 		}
+
+		for _, tool := range chatOpts.Tools {
+			processTool(tool)
+		}
+		for _, tool := range chatOpts.TabTools {
+			processTool(tool)
+		}
+
 		if len(functionDeclarations) > 0 {
 			reqBody.Tools = []GeminiTool{
 				{FunctionDeclarations: functionDeclarations},
@@ -170,8 +179,10 @@ func buildGeminiHTTPRequest(ctx context.Context, contents []GeminiContent, chatO
 	}
 	if gulinbase.IsDevMode() {
 		var toolNames []string
-		for _, tool := range allTools {
-			toolNames = append(toolNames, tool.Name)
+		if len(reqBody.Tools) > 0 && len(reqBody.Tools[0].FunctionDeclarations) > 0 {
+			for _, tool := range reqBody.Tools[0].FunctionDeclarations {
+				toolNames = append(toolNames, tool.Name)
+			}
 		}
 		log.Printf("gemini: model %s, messages: %d, tools: %s\n", opts.Model, len(contents), strings.Join(toolNames, ","))
 	}
@@ -509,9 +520,6 @@ func processGeminiStream(
 		_ = sseHandler.AiMsgTextEnd(textID)
 	}
 	_ = sseHandler.AiMsgFinishStep()
-	if stopKind != uctypes.StopKindToolUse {
-		_ = sseHandler.AiMsgFinish(msgID)
-	}
 
 	return stopReason, assistantMsg, nil
 }
