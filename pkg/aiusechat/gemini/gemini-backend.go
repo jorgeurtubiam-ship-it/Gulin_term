@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -55,32 +56,106 @@ func appendPartToLastUserMessage(contents []GeminiContent, text string) {
 }
 
 func truncateGeminiLargeMessages(contents []GeminiContent, isBridgeReq bool) {
-	if !isBridgeReq {
-		return
+	// Always truncate massive messages (e.g terminal outputs, large file attachments)
+	// to prevent context overflow. 40,000 characters is ~10k tokens.
+	maxLen := 40000
+	if isBridgeReq {
+		maxLen = 15000 // Stricter for bridge
 	}
-	const MaxMessageLength = 15000
+	
 	for i := range contents {
 		content := &contents[i]
 		for j := range content.Parts {
 			part := &content.Parts[j]
-			if len(part.Text) > MaxMessageLength {
-				truncMsg := fmt.Sprintf("\n\n... [TRUNCATED: The user/tool output was %d bytes, which exceeds the context limit for Gulin Bridge. Only showing the first %d bytes. If this is a tool result, you MUST adjust your command to output less data (e.g., use 'head', 'grep', or aggregate first).]", len(part.Text), MaxMessageLength)
-				part.Text = part.Text[:MaxMessageLength] + truncMsg
+			if len(part.Text) > maxLen {
+				truncMsg := fmt.Sprintf("\n\n... [TRUNCATED: The content was %d bytes, showing first %d. Adjust your output to avoid this.]", len(part.Text), maxLen)
+				part.Text = part.Text[:maxLen] + truncMsg
 			}
 			if part.FunctionResponse != nil && part.FunctionResponse.Response != nil {
 				// Convert to JSON to check length
 				bytes, err := json.Marshal(part.FunctionResponse.Response)
-				if err == nil && len(bytes) > MaxMessageLength {
-					truncMsg := fmt.Sprintf("\n\n... [TRUNCATED: The tool output was %d bytes, exceeding context limits. Only showing %d bytes. Adjust your tool call to return less data.]", len(bytes), MaxMessageLength)
-					
-					// Re-encode a truncated version
+				if err == nil && len(bytes) > maxLen {
+					truncMsg := fmt.Sprintf("\n\n... [TRUNCATED tool output: %d bytes, showing first %d.]", len(bytes), maxLen)
 					part.FunctionResponse.Response = map[string]interface{}{
-						"truncated_output": string(bytes[:MaxMessageLength]) + truncMsg,
+						"truncated_output": string(bytes[:maxLen]) + truncMsg,
 					}
 				}
 			}
 		}
 	}
+}
+
+// getGeminiMessageEffectiveLen calculates the approximate length of a Gemini message including tools.
+func getGeminiMessageEffectiveLen(c GeminiContent) int {
+	l := 0
+	for _, part := range c.Parts {
+		l += len(part.Text)
+		if part.FunctionCall != nil {
+			l += len(part.FunctionCall.Name)
+			// Estimate args length (JSON)
+			bytes, _ := json.Marshal(part.FunctionCall.Args)
+			l += len(bytes)
+		}
+		if part.FunctionResponse != nil {
+			l += len(part.FunctionResponse.Name)
+			bytes, _ := json.Marshal(part.FunctionResponse.Response)
+			l += len(bytes)
+		}
+	}
+	return l
+}
+
+// limitGeminiTotalMessages implements a sliding window for Gemini conversations.
+func limitGeminiTotalMessages(contents []GeminiContent, maxTotalLen int, userMsgsLimit int) []GeminiContent {
+	if len(contents) <= 2 {
+		return contents
+	}
+
+	var kept []GeminiContent
+	totalLen := 0
+
+	numUserMsgs := 0
+	// Process from newest to oldest
+	for i := len(contents) - 1; i >= 0; i-- {
+		if contents[i].Role == "user" {
+			numUserMsgs++
+		}
+
+		// Limit to N user questions
+		if numUserMsgs > userMsgsLimit {
+			break
+		}
+
+		msgLen := getGeminiMessageEffectiveLen(contents[i])
+
+		if totalLen+msgLen > maxTotalLen && len(kept) > 0 {
+			break
+		}
+
+		kept = append(kept, contents[i])
+		totalLen += msgLen
+	}
+
+	// Restore chronological order
+	slices.Reverse(kept)
+
+	// SAFE HEAD LOGIC: Gemini/OpenAI models generally expect to start with a 'user' message.
+	firstUserIdx := -1
+	for i, msg := range kept {
+		if msg.Role == "user" {
+			firstUserIdx = i
+			break
+		}
+	}
+
+	if firstUserIdx != -1 {
+		kept = kept[firstUserIdx:]
+	} else if len(kept) > 0 {
+		// If no user message was found, we shouldn't send orphaned assistant/tool messages.
+		kept = nil
+	}
+
+	return kept
 }
 
 // buildGeminiHTTPRequest creates an HTTP request for the Gemini API
@@ -270,6 +345,23 @@ func RunGeminiChatStep(
 		}
 		contents = append(contents, content)
 	}
+
+	isBridgeReq := chatOpts.Config.Provider == uctypes.AIProvider_GulinBridge || chatOpts.Config.BridgeProvider != ""
+	
+	// Apply individual message truncation
+	truncateGeminiLargeMessages(contents, isBridgeReq)
+
+	// Apply sliding window for total context based on TokenMode
+	// 150,000 chars is roughly 35k-45k tokens
+	historyLimit := 3
+	if chatOpts.TokenMode == uctypes.TokenModeMini {
+		historyLimit = 1
+	} else if chatOpts.TokenMode == uctypes.TokenModeBalanced {
+		historyLimit = 10
+	} else if chatOpts.TokenMode == uctypes.TokenModeMax {
+		historyLimit = 25
+	}
+	contents = limitGeminiTotalMessages(contents, 150000, historyLimit)
 
 	req, err := buildGeminiHTTPRequest(ctx, contents, chatOpts)
 	if err != nil {

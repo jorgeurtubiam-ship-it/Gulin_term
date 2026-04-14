@@ -441,7 +441,7 @@ func RunAnthropicChatStep(
 	}
 
 	// Convert GenAIMessages to anthropicInputMessages
-	var anthropicMsgs []anthropicInputMessage
+	var tempMsgs []anthropicInputMessage
 	for _, genMsg := range chat.NativeMessages {
 		var chatMsg *anthropicChatMessage
 		var ok bool
@@ -463,7 +463,71 @@ func RunAnthropicChatStep(
 			Role:    chatMsg.Role,
 			Content: contentCopy,
 		}
-		anthropicMsgs = append(anthropicMsgs, inputMsg)
+		tempMsgs = append(tempMsgs, inputMsg)
+	}
+
+	// Limit history based on TokenMode
+	historyLimit := 3
+	if chatOpts.TokenMode == uctypes.TokenModeMini {
+		historyLimit = 1
+	} else if chatOpts.TokenMode == uctypes.TokenModeBalanced {
+		historyLimit = 10
+	} else if chatOpts.TokenMode == uctypes.TokenModeMax {
+		historyLimit = 25
+	}
+
+	// Limit to last 3 user turns
+	var anthropicMsgs []anthropicInputMessage
+	numUserMsgs := 0
+	for i := len(tempMsgs) - 1; i >= 0; i-- {
+		if tempMsgs[i].Role == "user" {
+			numUserMsgs++
+		}
+		if numUserMsgs > historyLimit {
+			break
+		}
+		anthropicMsgs = append([]anthropicInputMessage{tempMsgs[i]}, anthropicMsgs...)
+	}
+
+	// SAFE HEAD LOGIC: Ensure the history starts with a 'user' message
+	firstUserIdx := -1
+	for i, msg := range anthropicMsgs {
+		if msg.Role == "user" {
+			firstUserIdx = i
+			break
+		}
+	}
+	if firstUserIdx != -1 {
+		anthropicMsgs = anthropicMsgs[firstUserIdx:]
+	} else if len(anthropicMsgs) > 0 {
+		anthropicMsgs = nil
+	}
+
+	// TOOL SANITIZATION: Anthropic is strict about tool_use being followed by tool_result.
+	// We map all present results first.
+	toolResultsMap := make(map[string]bool)
+	for _, msg := range anthropicMsgs {
+		for _, block := range msg.Content {
+			if block.Type == "tool_result" {
+				toolResultsMap[block.ToolUseID] = true
+			}
+		}
+	}
+
+	// Now sanitize tool_use blocks
+	for i := range anthropicMsgs {
+		msg := &anthropicMsgs[i]
+		var sanitizedContent []anthropicMessageContentBlock
+		for _, block := range msg.Content {
+			if block.Type == "tool_use" {
+				if !toolResultsMap[block.ID] {
+					// Drop tool_use if no result is present in history
+					continue
+				}
+			}
+			sanitizedContent = append(sanitizedContent, block)
+		}
+		msg.Content = sanitizedContent
 	}
 
 	req, err := buildAnthropicHTTPRequest(ctx, anthropicMsgs, chatOpts)

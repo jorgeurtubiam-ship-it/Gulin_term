@@ -92,7 +92,7 @@ func truncateLargeMessages(messages []ChatRequestMessage, maxLen int) []ChatRequ
 	if len(messages) == 0 {
 		return messages
 	}
-	
+
 	truncMsg := "\n\n... [truncated by Gulin Bridge to prevent payload overload] ..."
 	for i := range messages {
 		// Truncate plain text content
@@ -109,6 +109,98 @@ func truncateLargeMessages(messages []ChatRequestMessage, maxLen int) []ChatRequ
 		}
 	}
 	return messages
+}
+
+// getMessageEffectiveLen calculates the approximate length of a message including tools and parts.
+func getMessageEffectiveLen(m ChatRequestMessage) int {
+	l := len(m.Content)
+	for _, part := range m.ContentParts {
+		l += len(part.Text)
+		if part.ImageUrl != nil {
+			l += len(part.ImageUrl.Url)
+		}
+	}
+	for _, tc := range m.ToolCalls {
+		l += len(tc.ID) + len(tc.Function.Name) + len(tc.Function.Arguments)
+	}
+	l += len(m.ToolCallID) + len(m.Name)
+	return l
+}
+
+// limitTotalMessages implements a sliding window to keep the total conversation within token limits.
+// It prioritizes the system prompt and the most recent messages.
+func limitTotalMessages(messages []ChatRequestMessage, maxTotalLen int) []ChatRequestMessage {
+	if len(messages) <= 1 {
+		return messages
+	}
+
+	// Preserve system message if it's at the beginning
+	var systemMsg *ChatRequestMessage
+	startIdx := 0
+	if messages[0].Role == "system" {
+		systemMsg = &ChatRequestMessage{
+			Role:    messages[0].Role,
+			Content: messages[0].Content,
+		}
+		startIdx = 1
+	}
+
+	var keptMessages []ChatRequestMessage
+	totalLen := 0
+	if systemMsg != nil {
+		totalLen += len(systemMsg.Content)
+	}
+
+	numUserMsgs := 0
+	// Process from newest to oldest
+	for i := len(messages) - 1; i >= startIdx; i-- {
+		if messages[i].Role == "user" {
+			numUserMsgs++
+		}
+
+		// Limit to last 3 user questions
+		if numUserMsgs > 3 {
+			break
+		}
+
+		msgLen := getMessageEffectiveLen(messages[i])
+		if totalLen+msgLen > maxTotalLen {
+			if len(keptMessages) > 0 {
+				break
+			}
+		}
+
+		keptMessages = append(keptMessages, messages[i])
+		totalLen += msgLen
+	}
+
+	// Reverse keptMessages because we collected from end to start
+	slices.Reverse(keptMessages)
+
+	// SAFE HEAD LOGIC: Ensure we don't start with a 'tool' message or an 'assistant' message.
+	// We must start with a 'user' message (after the system prompt) to satisfy OpenAI's strict ordering.
+	firstUserIdx := -1
+	for i, msg := range keptMessages {
+		if msg.Role == "user" {
+			firstUserIdx = i
+			break
+		}
+	}
+
+	if firstUserIdx != -1 {
+		keptMessages = keptMessages[firstUserIdx:]
+	} else if len(keptMessages) > 0 {
+		// If no user message was found in the truncated window, we shouldn't send anything
+		// other than the system prompt to avoid invalid starting roles.
+		keptMessages = nil
+	}
+
+	var result []ChatRequestMessage
+	if systemMsg != nil {
+		result = append(result, *systemMsg)
+	}
+	result = append(result, keptMessages...)
+	return result
 }
 
 // buildChatHTTPRequest creates an HTTP request for the OpenAI chat completions API
@@ -168,11 +260,15 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 		strings.Contains(opts.Endpoint, ":3000") ||
 		strings.Contains(opts.Endpoint, ":8090") ||
 		strings.Contains(opts.Endpoint, "gulinbridge") ||
-		strings.Contains(opts.Endpoint, "proxy.gulin.cl")
+		strings.Contains(opts.Endpoint, "localhost:8090")
 		
-	if isBridgeReq {
-		sanitizedMessages = truncateLargeMessages(sanitizedMessages, 15000)
-	}
+	// Truncate massive messages (e.g terminal outputs, large file attachments)
+	// to prevent individual message explosion. 40,000 characters is ~10k tokens.
+	sanitizedMessages = truncateLargeMessages(sanitizedMessages, 40000)
+
+	// Apply sliding window to keep the TOTAL context within model limits.
+	// 150,000 chars is roughly 35k-45k tokens, leaving ample room (90k tokens) for tools and system prompts.
+	sanitizedMessages = limitTotalMessages(sanitizedMessages, 150000)
 
 	reqBody := &ChatRequest{
 		Messages: sanitizedMessages,
@@ -225,6 +321,11 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling request: %w", err)
+	}
+
+	// Payload guard: if > 5MB, we are likely to fail or be rejected by the provider
+	if len(reqBytes) > 5*1024*1024 {
+		return nil, fmt.Errorf("request payload too large (%d bytes). please reduce the amount of data or clear chat history.", len(reqBytes))
 	}
 
 	// ALWAYS dump the full payload to disk so I can inspect exactly which tools are passed!
@@ -448,6 +549,10 @@ func ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) (
 			content = fmt.Sprintf("Error: %s", toolResult.ErrorText)
 		} else {
 			content = toolResult.Text
+			// Safety truncation for individual tool results: 256KB
+			if len(content) > 256*1024 {
+				content = content[:256*1024] + "\n\n... [tool result truncated for length] ..."
+			}
 		}
 
 		msg := &StoredChatMessage{
@@ -693,9 +798,20 @@ func sanitizeOpenAIMessages(messages []ChatRequestMessage) []ChatRequestMessage 
 	var sanitized []ChatRequestMessage
 	for i, msg := range messages {
 		if msg.Role == "assistant" && len(msg.ToolCalls) > 0 {
-			// RELAXED: We no longer strip tool calls even if responses are missing.
-			// This prevents the assistant message from becoming empty and being deleted,
-			// which causes the AI to 'forget' its recent actions.
+			// STRICT: Ensure all tool calls in this assistant message have a corresponding tool response later in the list.
+			// If not, we STRIP the tool calls from the assistant message to prevent 400 errors.
+			allToolResponsesPresent := true
+			for _, tc := range msg.ToolCalls {
+				if !toolResponses[tc.ID] {
+					allToolResponsesPresent = false
+					break
+				}
+			}
+
+			if !allToolResponsesPresent {
+				// We don't delete the whole message, just the tool_calls to keep the history flow.
+				msg.ToolCalls = nil
+			}
 			sanitized = append(sanitized, msg)
 			continue
 		}

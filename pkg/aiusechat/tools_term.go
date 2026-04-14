@@ -47,10 +47,13 @@ type TermGetScrollbackToolOutput struct {
 	LastCommand        *CommandInfo `json:"lastcommand,omitempty"`
 }
 
-func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error) {
+func parseTermGetScrollbackInput(ctx context.Context, input any) (*TermGetScrollbackToolInput, error) {
 	const (
-		DefaultCount = 20
-		MaxCount     = 1000
+		DefaultCount          = 20
+		DefaultCountMini      = 10
+		DefaultCountBalanced  = 30
+		DefaultCountMax       = 100
+		MaxCount              = 1000
 	)
 
 	result := &TermGetScrollbackToolInput{
@@ -58,8 +61,18 @@ func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error)
 		Count:     0,
 	}
 
+	tokenMode, _ := ctx.Value(uctypes.TokenModeContextKey).(string)
+
 	if input == nil {
-		result.Count = DefaultCount
+		if tokenMode == uctypes.TokenModeMini {
+			result.Count = DefaultCountMini
+		} else if tokenMode == uctypes.TokenModeBalanced {
+			result.Count = DefaultCountBalanced
+		} else if tokenMode == uctypes.TokenModeMax {
+			result.Count = DefaultCountMax
+		} else {
+			result.Count = DefaultCount
+		}
 		return result, nil
 	}
 
@@ -73,7 +86,15 @@ func parseTermGetScrollbackInput(input any) (*TermGetScrollbackToolInput, error)
 	}
 
 	if result.Count == 0 {
-		result.Count = DefaultCount
+		if tokenMode == uctypes.TokenModeMini {
+			result.Count = DefaultCountMini
+		} else if tokenMode == uctypes.TokenModeBalanced {
+			result.Count = DefaultCountBalanced
+		} else if tokenMode == uctypes.TokenModeMax {
+			result.Count = DefaultCountMax
+		} else {
+			result.Count = DefaultCount
+		}
 	}
 
 	if result.Count < 0 {
@@ -104,7 +125,11 @@ func getTermScrollbackOutput(ctx context.Context, tabId string, widgetId string,
 		return nil, err
 	}
 
-	content := strings.Join(result.Lines, "\n")
+	lines := result.Lines
+	if rpcData.LastCommand && len(lines) > 30 {
+		lines = lines[len(lines)-30:]
+	}
+	content := strings.Join(lines, "\n")
 	var effectiveLineEnd int
 	if rpcData.LastCommand {
 		effectiveLineEnd = result.LineStart + len(result.Lines)
@@ -183,7 +208,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 			"additionalProperties": false,
 		},
 		ToolCallDesc: func(input any, output any, toolUseData *uctypes.UIMessageDataToolUse) string {
-			parsed, err := parseTermGetScrollbackInput(input)
+			parsed, err := parseTermGetScrollbackInput(context.Background(), input)
 			if err != nil {
 				return fmt.Sprintf("error parsing input: %v", err)
 			}
@@ -195,7 +220,7 @@ func GetTermGetScrollbackToolDefinition(tabId string) uctypes.ToolDefinition {
 			return fmt.Sprintf("reading terminal output from %s (lines %d-%d)", parsed.WidgetId, parsed.LineStart, lineEnd)
 		},
 		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
-			parsed, err := parseTermGetScrollbackInput(input)
+			parsed, err := parseTermGetScrollbackInput(ctx, input)
 			if err != nil {
 				return nil, err
 			}
