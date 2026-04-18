@@ -140,6 +140,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         allConnStatus: allConnStatusAtom,
         reinitVersion,
         gulinAIRateLimitInfoAtom: rateLimitInfoAtom,
+        tokenModeAtom: atom<"mini" | "balanced" | "max">("balanced") as PrimitiveAtom<"mini" | "balanced" | "max">,
     } as GlobalAtomsType;
 }
 

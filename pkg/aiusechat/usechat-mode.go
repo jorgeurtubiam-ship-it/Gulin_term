@@ -161,6 +161,34 @@ func applyProviderDefaults(config *wconfig.AIModeConfigType) {
 			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
 		}
 	}
+	if config.Provider == uctypes.AIProvider_Groq {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = GroqChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = GroqAPITokenSecretName
+		}
+		if len(config.Capabilities) == 0 {
+			config.Capabilities = []string{uctypes.AICapabilityTools}
+		}
+	}
+	if config.Provider == uctypes.AIProvider_OpenRouter {
+		if config.APIType == "" {
+			config.APIType = uctypes.APIType_OpenAIChat
+		}
+		if config.Endpoint == "" {
+			config.Endpoint = OpenRouterChatEndpoint
+		}
+		if config.APITokenSecretName == "" {
+			config.APITokenSecretName = OpenRouterAPITokenSecretName
+		}
+		if len(config.Capabilities) == 0 {
+			config.Capabilities = []string{uctypes.AICapabilityTools, uctypes.AICapabilityImages, uctypes.AICapabilityPdfs}
+		}
+	}
 	if config.Provider == uctypes.AIProvider_AzureLegacy {
 		if config.AzureAPIVersion == "" {
 			config.AzureAPIVersion = AzureLegacyDefaultAPIVersion

@@ -122,8 +122,12 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const showCloudModes = useAtomValue(getSettingsKeyAtom("gulinai:showcloudmodes"));
     const [isProviderOpen, setIsProviderOpen] = useState(false);
     const [isModelOpen, setIsModelOpen] = useState(false);
+    const [isTokenOpen, setIsTokenOpen] = useState(false);
     const providerRef = useRef<HTMLDivElement>(null);
     const modelRef = useRef<HTMLDivElement>(null);
+    const tokenRef = useRef<HTMLDivElement>(null);
+
+    const tokenMode = useAtomValue(atoms.tokenModeAtom);
 
     const { gulinProviderConfigs, otherProviderConfigs } = getFilteredAIModeConfigs(
         aiModeConfigs,
@@ -162,6 +166,11 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
         model.setAIMode(mode);
     };
 
+    const handleSelectTokenMode = (mode: string) => {
+        model.setTokenMode(mode as any);
+        setIsTokenOpen(false);
+    };
+
     const handleNewChatClick = () => {
         model.clearChat();
         setIsModelOpen(false);
@@ -182,6 +191,14 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
     const hasToolsSupport = resolvedConfig && resolvedConfig["ai:capabilities"]?.includes("tools");
     const showNoToolsWarning = widgetContextEnabled && resolvedConfig && !hasToolsSupport;
 
+    const tokenOptions = [
+        { id: "mini", label: "Mínimo", desc: "Optimizado para tokens" },
+        { id: "balanced", label: "Equilibrado", desc: "Consumo estándar" },
+        { id: "max", label: "Máximo", desc: "Contexto completo" }
+    ];
+
+    const currentTokenLabel = tokenOptions.find(o => o.id === tokenMode)?.label || "Equilibrado";
+
     return (
         <div className="flex items-center gap-2">
             {/* Provider Dropdown */}
@@ -189,10 +206,10 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 <div className="flex flex-col gap-0.5">
                     <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold ml-1">Provider</span>
                     <button
-                        onClick={() => { setIsProviderOpen(!isProviderOpen); setIsModelOpen(false); }}
+                        onClick={() => { setIsProviderOpen(!isProviderOpen); setIsModelOpen(false); setIsTokenOpen(false); }}
                         className={cn(
-                            "group flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50 min-w-[120px]",
-                            isProviderOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
+                            "group flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-white/5 min-w-[120px]",
+                            isProviderOpen ? "bg-zinc-800" : "bg-zinc-950/60 hover:bg-zinc-800"
                         )}
                         title="Seleccionar Proveedor"
                     >
@@ -203,7 +220,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 {isProviderOpen && (
                     <>
                         <div className="fixed inset-0 z-40" onClick={() => setIsProviderOpen(false)} />
-                        <div className="absolute top-full left-0 mt-2 bg-zinc-800 border border-zinc-600 rounded-md shadow-2xl z-50 min-w-[150px] py-1 overflow-hidden">
+                        <div className="absolute top-full left-0 mt-2 bg-zinc-950 border border-white/10 rounded-md shadow-2xl z-50 min-w-[150px] py-1 overflow-hidden">
                             <div className="px-3 py-1.5 text-[10px] text-gray-400 uppercase tracking-widest border-b border-gray-700/50 mb-1 bg-zinc-900/50">
                                 Proveedores
                             </div>
@@ -240,10 +257,10 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 <div className="flex flex-col gap-0.5">
                     <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold ml-1">Model</span>
                     <button
-                        onClick={() => { setIsModelOpen(!isModelOpen); setIsProviderOpen(false); }}
+                        onClick={() => { setIsModelOpen(!isModelOpen); setIsProviderOpen(false); setIsTokenOpen(false); }}
                         className={cn(
-                            "group flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-gray-600/50 min-w-[200px]",
-                            isModelOpen ? "bg-zinc-700" : "bg-zinc-800/50 hover:bg-zinc-700"
+                            "group flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-white/5 min-w-[200px]",
+                            isModelOpen ? "bg-zinc-800" : "bg-zinc-950/60 hover:bg-zinc-800"
                         )}
                         title={`${t("gulin.ai.welcome.title")}: ${displayName}`}
                     >
@@ -258,7 +275,7 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                 {isModelOpen && (
                     <>
                         <div className="fixed inset-0 z-40" onClick={() => setIsModelOpen(false)} />
-                        <div className="absolute top-full left-0 mt-2 bg-zinc-800 border border-zinc-600 rounded-md shadow-2xl z-50 min-w-[300px] py-1 max-h-[450px] overflow-y-auto">
+                        <div className="absolute top-full left-0 mt-2 bg-zinc-950 border border-white/10 rounded-md shadow-2xl z-50 min-w-[300px] py-1 max-h-[450px] overflow-y-auto">
                             <div className="px-3 py-1.5 text-[10px] text-gray-400 uppercase tracking-widest border-b border-gray-700/50 mb-1 bg-zinc-900/50">
                                 {currentProvider.toUpperCase()} Models
                             </div>
@@ -295,6 +312,56 @@ export const AIModeDropdown = memo(({ compatibilityMode = false }: AIModeDropdow
                                     <span className="text-xs">{t("gulin.ai.mode.configure")}</span>
                                 </button>
                             </div>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Token Usage Dropdown */}
+            <div className="relative" ref={tokenRef}>
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold ml-1">Uso de Tokens</span>
+                    <button
+                        onClick={() => { setIsTokenOpen(!isTokenOpen); setIsModelOpen(false); setIsProviderOpen(false); }}
+                        className={cn(
+                            "group flex items-center justify-between gap-1.5 px-3 py-1.5 text-xs text-gray-300 hover:text-white rounded transition-colors cursor-pointer border border-white/5 min-w-[120px]",
+                            isTokenOpen ? "bg-zinc-800" : "bg-zinc-950/60 hover:bg-zinc-800"
+                        )}
+                        title="Nivel de contexto y uso de tokens"
+                    >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                            <i className="fa fa-database text-[10px] text-green-400"></i>
+                            <span className="text-[11px] truncate font-medium">{currentTokenLabel}</span>
+                        </div>
+                        <i className="fa fa-chevron-down text-[8px] opacity-50"></i>
+                    </button>
+                </div>
+
+                {isTokenOpen && (
+                    <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsTokenOpen(false)} />
+                        <div className="absolute top-full left-0 mt-2 bg-zinc-950 border border-white/10 rounded-md shadow-2xl z-50 min-w-[200px] py-1 overflow-hidden">
+                            <div className="px-3 py-1.5 text-[10px] text-gray-400 uppercase tracking-widest border-b border-gray-700/50 mb-1 bg-zinc-900/50">
+                                Modo de Contexto
+                            </div>
+                            {tokenOptions.map(opt => (
+                                <button
+                                    key={opt.id}
+                                    onClick={() => handleSelectTokenMode(opt.id)}
+                                    className={cn(
+                                        "w-full px-3 py-2 text-left hover:bg-zinc-700 transition-colors flex flex-col gap-0.5",
+                                        tokenMode === opt.id ? "bg-accent/10 border-l-2 border-accent" : ""
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between w-full">
+                                        <span className={cn("text-xs font-medium", tokenMode === opt.id ? "text-accent" : "text-gray-300")}>
+                                            {opt.label}
+                                        </span>
+                                        {tokenMode === opt.id && <i className="fa fa-check text-[10px] text-accent"></i>}
+                                    </div>
+                                    <span className="text-[10px] text-gray-500">{opt.desc}</span>
+                                </button>
+                            ))}
                         </div>
                     </>
                 )}

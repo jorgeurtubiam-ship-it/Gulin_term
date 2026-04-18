@@ -19,13 +19,24 @@ El motor de inteligencia de GuLiN no solo responde, sino que **aprende y recuerd
 
 ---
 
-## 📊 2. Dashboards Interactivos
-Visualiza datos complejos directamente en tu terminal utilizando componentes de `recharts`.
+## 📊 2. Dashboards Interactivos Pro
+Visualiza datos complejos con una estética premium directamente en tu terminal utilizando componentes avanzados de `recharts`.
 
-*   **Generación de Gráficos**: La IA puede transformar cualquier salida de texto o estadísticas en un Dashboard visual (Barras, Líneas).
-*   **Comando**: `term_create_dashboard`
-*   **Ejemplo de uso**: "Muéstrame un dashboard con el uso de CPU de los últimos 5 minutos" o "Crea un gráfico comparativo de los modelos Ollama vs GPT-4".
-*   **Persistencia**: Los dashboards se integran como widgets en tu espacio de trabajo actual.
+*   **Tipos de Gráficos Soportados**:
+    *   **Barras (`bar`)**: Comparaciones categóricas clásicas.
+    *   **Líneas (`line`)**: Seguimiento de tendencias temporales.
+    *   **Área (`area`)**: Visualización de volúmenes acumulados.
+    *   **Pay (`pie`)**: Distribuciones proporcionales y porcentajes.
+    *   **Radar (`radar`)**: Comparación de múltiples variables cuantitativas.
+    *   **Compuesto (`composed`)**: Mezcla de barras y líneas en un solo gráfico.
+    *   **Tabla (`grid`)**: Vista tabular optimizada para grandes volúmenes de datos.
+*   **Funcionalidad de Exportación**:
+    *   **Descarga PNG**: Cada dashboard incluye un botón de descarga para exportar el gráfico como una imagen de alta resolución con fondo optimizado.
+*   **Configuración vía Metadatos**:
+    *   `dashboard:type`: Define el tipo de gráfico (ej: "radar").
+    *   `dashboard:title`: Título personalizado del dashboard.
+    *   `dashboard:data`: JSON con los datos a representar.
+*   **Persistencia y Estabilidad**: Los dashboards utilizan un modo de renderizado "congelado" que captura la primera ráfaga de datos válida, evitando bucles de actualización constantes y asegurando un rendimiento fluido.
 
 ---
 

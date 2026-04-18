@@ -56,14 +56,20 @@ func RunChatStep(
 		strings.Contains(chatOpts.Config.Endpoint, "proxy.gulin.cl")
 	
 	limit := 50
-	if strings.Contains(chatOpts.Config.Model, "@orchestrate") {
-		// Orchestrator only needs minimal recent context to decide which expert to call.
+	if chatOpts.TokenMode == uctypes.TokenModeMini {
+		limit = 5
+	} else if chatOpts.TokenMode == uctypes.TokenModeBalanced {
+		limit = 20
+	} else if chatOpts.TokenMode == uctypes.TokenModeMax {
+		limit = 100
+	} else if strings.Contains(chatOpts.Config.Model, "@orchestrate") {
+		// Orchestator only needs minimal recent context to decide which expert to call.
 		// Heavily limiting history prevents "max tokens exceeded" caused by large terminal/file outputs.
 		limit = 10
 	}
-	
-	if isBridge && len(nativeMessages) > limit {
-		nativeMessages = nativeMessages[len(nativeMessages)-limit:]
+
+	if (isBridge || chatOpts.TokenMode != "") {
+		nativeMessages = uctypes.TruncateMessagesSafe(nativeMessages, limit)
 	}
 
 	// Convert native messages

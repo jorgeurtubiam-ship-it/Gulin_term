@@ -3,17 +3,28 @@
 
 import React, { memo, useRef, useMemo } from "react";
 import {
-    BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+    BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import { toPng } from 'html-to-image';
 import { useAtomValue } from "jotai";
 import { DashboardViewModel } from "./dashboard-model";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { getGulinObjectAtom, makeORef } from "@/store/wos";
+import { IconButton } from "@/element/iconbutton";
 
 /**
- * DashboardView: Widget interactivo con bloqueo de renderizado único.
- * Captura la primera ráfaga de datos válida y se 'congela' para evitar loops de React 
- * producidos por las actualizaciones constantes del chat de Gulin.
+ * DashboardView: Widget interactivo de alto rendimiento para la visualización de datos.
+ * 
+ * Este componente implementa una estrategia de "bloqueo de renderizado" (Ref Lock).
+ * Captura la primera ráfaga de datos válida recibida desde el backend y 'congela' el estado interno.
+ * Esto previene bucles de renderizado infinito causados por las actualizaciones constantes
+ * del flujo de chat de Gulin mientras mantiene una visualización estática y estable para el usuario.
+ * 
+ * Soporta múltiples tipos de gráficos de Recharts: bar, line, area, pie, radar, composed y grid.
+ * Incluye funcionalidad de exportación a PNG mediante la librería html-to-image.
+ * 
+ * @param model - El ViewModel que gestiona la lógica de negocio del dashboard.
+ * @param blockId - El identificador único del bloque/widget.
  */
 export const DashboardView = memo(({ model, blockId }: { model: DashboardViewModel, blockId: string }) => {
     // Suscripción al átomo del bloque (necesario para recibir la primera data)
@@ -26,6 +37,7 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
     const lockedData = useRef<any[] | null>(null);
     const lockedTitle = useRef<string | null>(null);
     const lockedType = useRef<string | null>(null);
+    const chartContainerRef = useRef<HTMLDivElement>(null);
 
     const rawData = blockData?.meta?.["dashboard:data"];
 
@@ -48,7 +60,25 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
     // Datos finales a renderizar (estáticos una vez bloqueados)
     const chartData = lockedData.current || [];
     const chartTitle = lockedTitle.current || "Interactive Dashboard";
-    const chartType = lockedType.current || "bar";
+    const chartType = (lockedType.current || "bar").toLowerCase();
+
+    const handleDownload = async () => {
+        if (!chartContainerRef.current) return;
+        try {
+            const dataUrl = await toPng(chartContainerRef.current, {
+                backgroundColor: "#111111",
+                style: {
+                    padding: "20px"
+                }
+            });
+            const link = document.createElement("a");
+            link.download = `gulin-chart-${chartTitle.toLowerCase().replace(/\s+/g, "-")}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (err) {
+            console.error("Error downloading chart:", err);
+        }
+    };
 
     const renderChart = () => {
         if (chartData.length === 0) {
@@ -99,34 +129,112 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
         const sample = chartData[0];
         const keys = Object.keys(sample).filter(k => k !== "name" && k !== "label" && k !== "id" && k !== "Año" && k !== "month");
         const xAxisKey = Object.keys(sample).find(k => k === "name" || k === "label" || k === "month" || k === "Año" || k === "Nivel" || k === "Equipo") || Object.keys(sample)[0] || "name";
-        const colors = ["#8b5cf6", "#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#06b6d4"];
+        const colors = ["#8b5cf6", "#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#06b6d4", "#f87171", "#fb923c"];
 
-        // Usamos dimensiones fijas en el wrapper o ResponsiveContainer estable para evitar Loops de ResizeObserver
+        const commonProps = {
+            data: chartData,
+            margin: { top: 20, right: 30, left: 10, bottom: 20 }
+        };
+
+        const renderChartContent = () => {
+            switch (chartType) {
+                case "line":
+                    return (
+                        <LineChart {...commonProps}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" vertical={false} />
+                            <XAxis dataKey={xAxisKey} stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: "#18181b", borderRadius: "8px", border: "1px solid #3f3f46" }} />
+                            <Legend iconType="circle" wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+                            {keys.map((key, i) => (
+                                <Line type="monotone" key={key} dataKey={key} stroke={colors[i % colors.length]} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
+                            ))}
+                        </LineChart>
+                    );
+                case "area":
+                    return (
+                        <AreaChart {...commonProps}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" vertical={false} />
+                            <XAxis dataKey={xAxisKey} stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: "#18181b", borderRadius: "8px", border: "1px solid #3f3f46" }} />
+                            <Legend iconType="rect" wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+                            {keys.map((key, i) => (
+                                <Area type="monotone" key={key} dataKey={key} fill={colors[i % colors.length]} stroke={colors[i % colors.length]} fillOpacity={0.3} isAnimationActive={false} />
+                            ))}
+                        </AreaChart>
+                    );
+                case "pie":
+                    return (
+                        <PieChart>
+                            <Pie
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                outerRadius="80%"
+                                fill="#8884d8"
+                                dataKey={keys[0]}
+                                isAnimationActive={false}
+                            >
+                                {chartData.map((_entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: "#18181b", borderRadius: "8px", border: "1px solid #3f3f46" }} />
+                            <Legend wrapperStyle={{ fontSize: "11px" }} />
+                        </PieChart>
+                    );
+                case "radar":
+                    return (
+                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                            <PolarGrid stroke="#3f3f46" />
+                            <PolarAngleAxis dataKey={xAxisKey} stroke="#a1a1aa" fontSize={11} />
+                            <PolarRadiusAxis stroke="#a1a1aa" fontSize={10} />
+                            {keys.map((key, i) => (
+                                <Radar key={key} name={key} dataKey={key} stroke={colors[i % colors.length]} fill={colors[i % colors.length]} fillOpacity={0.6} isAnimationActive={false} />
+                            ))}
+                            <Tooltip contentStyle={{ backgroundColor: "#18181b", borderRadius: "8px", border: "1px solid #3f3f46" }} />
+                            <Legend wrapperStyle={{ fontSize: "11px" }} />
+                        </RadarChart>
+                    );
+                case "composed":
+                    return (
+                        <ComposedChart {...commonProps}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" vertical={false} />
+                            <XAxis dataKey={xAxisKey} stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: "#18181b", borderRadius: "8px", border: "1px solid #3f3f46" }} />
+                            <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+                            {keys.map((key, i) => (
+                                i % 2 === 0 ? (
+                                    <Bar key={key} dataKey={key} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} barSize={30} isAnimationActive={false} />
+                                ) : (
+                                    <Line type="monotone" key={key} dataKey={key} stroke={colors[i % colors.length]} strokeWidth={3} isAnimationActive={false} />
+                                )
+                            ))}
+                        </ComposedChart>
+                    );
+                default:
+                    return (
+                        <BarChart {...commonProps}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" vertical={false} />
+                            <XAxis dataKey={xAxisKey} stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ backgroundColor: "#18181b", borderRadius: "8px", border: "1px solid #3f3f46" }} cursor={{ fill: "rgba(255, 255, 255, 0.05)" }} />
+                            <Legend iconType="rect" wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }} />
+                            {keys.map((key, i) => (
+                                <Bar key={key} dataKey={key} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} barSize={30} isAnimationActive={false} />
+                            ))}
+                        </BarChart>
+                    );
+            }
+        };
+
         return (
             <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                {chartType === "line" ? (
-                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" vertical={false} />
-                        <XAxis dataKey={xAxisKey} stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '8px', border: '1px solid #3f3f46' }} />
-                        <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                        {keys.map((key, i) => (
-                            <Line type="monotone" key={key} dataKey={key} stroke={colors[i % colors.length]} strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} isAnimationActive={false} />
-                        ))}
-                    </LineChart>
-                ) : (
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" vertical={false} />
-                        <XAxis dataKey={xAxisKey} stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#a1a1aa" fontSize={11} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '8px', border: '1px solid #3f3f46' }} cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} />
-                        <Legend iconType="rect" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                        {keys.map((key, i) => (
-                            <Bar key={key} dataKey={key} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} barSize={30} isAnimationActive={false} />
-                        ))}
-                    </BarChart>
-                )}
+                {renderChartContent()}
             </ResponsiveContainer>
         );
     };
@@ -139,12 +247,22 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
                         <h2 className="text-lg font-bold text-zinc-100 tracking-tight leading-none">{chartTitle}</h2>
                         <p className="text-[9px] text-zinc-500 uppercase tracking-widest mt-1 font-bold">Datos Congelados (Modo Estable)</p>
                     </div>
-                    <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[9px] font-bold rounded border border-zinc-700 uppercase">
-                        {chartType}
-                    </span>
+                    <div className="flex items-center gap-3">
+                        <IconButton
+                            decl={{
+                                icon: "download",
+                                click: handleDownload,
+                                title: "Descargar Gráfico",
+                            }}
+                            className="text-zinc-400 hover:text-white transition-colors"
+                        />
+                        <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[9px] font-bold rounded border border-zinc-700 uppercase">
+                            {chartType}
+                        </span>
+                    </div>
                 </div>
 
-                <div className="flex-1 min-h-0 w-full relative">
+                <div className="flex-1 min-h-0 w-full relative" ref={chartContainerRef}>
                     {renderChart()}
                 </div>
 

@@ -26,6 +26,7 @@ declare global {
         allConnStatus: jotai.Atom<ConnStatus[]>;
         reinitVersion: jotai.PrimitiveAtom<number>;
         gulinAIRateLimitInfoAtom: jotai.PrimitiveAtom<RateLimitInfo>;
+        tokenModeAtom: jotai.PrimitiveAtom<"mini" | "balanced" | "max">;
     };
 
     type WritableGulinObjectAtom<T extends GulinObj> = jotai.WritableAtom<T, [value: T], void>;

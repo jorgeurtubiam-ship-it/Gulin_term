@@ -17,7 +17,7 @@ import (
 )
 
 const ReadDirDefaultMaxEntries = 500
-const ReadDirHardMaxEntries = 10000
+const ReadDirHardMaxEntries = 1000
 
 type readDirParams struct {
 	Path       string `json:"path"`

@@ -79,6 +79,7 @@ export class GulinAIModel {
     isSidebarOpen: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     chatSummaries: jotai.PrimitiveAtom<ChatSummary[]> = jotai.atom([]);
     isLoadingChatSummaries: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
+    selectedChatIds: jotai.PrimitiveAtom<string[]> = jotai.atom([]);
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
@@ -326,6 +327,81 @@ export class GulinAIModel {
         }
     }
 
+    async deleteChat(chatId: string) {
+        try {
+            const response = await fetch(`${getWebServerEndpoint()}/gulin/chat-delete?chatid=${chatId}`);
+            if (response.ok) {
+                // If we deleted the active chat, start a new one
+                if (chatId === globalStore.get(this.chatId)) {
+                    this.clearChat();
+                }
+                // Refresh summaries
+                await this.loadChatSummaries();
+            }
+        } catch (error) {
+            console.error("Failed to delete chat:", error);
+            this.setError("Failed to delete chat.");
+        }
+    }
+
+    toggleChatSelection(chatId: string) {
+        const current = globalStore.get(this.selectedChatIds);
+        if (current.includes(chatId)) {
+            globalStore.set(
+                this.selectedChatIds,
+                current.filter((id) => id !== chatId)
+            );
+        } else {
+            globalStore.set(this.selectedChatIds, [...current, chatId]);
+        }
+    }
+
+    clearChatSelection() {
+        globalStore.set(this.selectedChatIds, []);
+    }
+
+    setSelectedChatIds(chatIds: string[]) {
+        globalStore.set(this.selectedChatIds, chatIds);
+    }
+
+    async bulkDeleteSelectedChats() {
+        const chatIds = globalStore.get(this.selectedChatIds);
+        if (chatIds.length === 0) {
+            return;
+        }
+
+        globalStore.set(this.isLoadingChatSummaries, true);
+        try {
+            const response = await fetch(`${getWebServerEndpoint()}/gulin/chat-bulk-delete`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ chatids: chatIds }),
+            });
+
+            if (response.ok) {
+                const activeChatId = globalStore.get(this.chatId);
+                if (chatIds.includes(activeChatId)) {
+                    this.clearChat();
+                }
+                this.clearChatSelection();
+                await this.loadChatSummaries();
+            } else {
+                const errorText = await response.text();
+                console.error("Bulk delete failed:", errorText);
+                this.setError(`Failed to delete selected chats: ${errorText}`);
+            }
+        } catch (error) {
+            console.error("Failed to bulk delete chats:", error);
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            this.setError(`Failed to delete selected chats: ${errorMsg}`);
+        } finally {
+            globalStore.set(this.isLoadingChatSummaries, false);
+        }
+    }
+
+
     toggleSidebar(open?: boolean) {
         const next = open ?? !globalStore.get(this.isSidebarOpen);
         globalStore.set(this.isSidebarOpen, next);
@@ -544,6 +620,13 @@ export class GulinAIModel {
         } else {
             this.setAIModeToDefault();
         }
+        
+        const tokenModeValue = rtInfo?.["gulinai:tokenmode"];
+        if (tokenModeValue === "mini" || tokenModeValue === "balanced" || tokenModeValue === "max") {
+            globalStore.set(atoms.tokenModeAtom, tokenModeValue);
+        } else {
+            globalStore.set(atoms.tokenModeAtom, "balanced");
+        }
 
         try {
             return await this.reloadChatFromBackend(chatIdValue);
@@ -615,12 +698,26 @@ export class GulinAIModel {
         this.realMessage = realMessage;
 
         // console.log("SUBMIT MESSAGE", realMessage);
+        
+        const tokenMode = globalStore.get(atoms.tokenModeAtom);
 
-        this.useChatSendMessage?.({ parts: uiMessageParts });
+        this.useChatSendMessage?.({ parts: uiMessageParts }, {
+            body: {
+                tokenmode: tokenMode,
+            }
+        });
 
         globalStore.set(this.isChatEmptyAtom, false);
         globalStore.set(this.inputAtom, "");
         this.clearFiles();
+    }
+
+    setTokenMode(mode: "mini" | "balanced" | "max") {
+        globalStore.set(atoms.tokenModeAtom, mode);
+        RpcApi.SetRTInfoCommand(TabRpcClient, {
+            oref: this.orefContext,
+            data: { "gulinai:tokenmode": mode },
+        });
     }
 
     async uiLoadInitialChat() {

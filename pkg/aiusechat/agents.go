@@ -33,7 +33,7 @@ var Experts = map[AgentExpertType]AgentExpert{
 		ID:           Expert_DB,
 		Name:         "Experto en Bases de Datos",
 		SystemPrompt: SystemPrompt_DBExpert,
-		Tools:        []string{"db_query", "db_register_connection", "db_list_connections"},
+		Tools:        []string{"db_query", "db_register_connection", "db_list_connections", "apimanager_list", "apimanager_call", "apimanager_delete"},
 		DefaultModel: "gemini-3.1-flash-lite",
 	},
 	Expert_File: {
@@ -54,7 +54,7 @@ var Experts = map[AgentExpertType]AgentExpert{
 		ID:           Expert_Command,
 		Name:         "Administrador de Sistemas",
 		SystemPrompt: SystemPrompt_CommandExpert,
-		Tools:        []string{"term_run_command", "term_command_output", "term_get_scrollback", "term_search"},
+		Tools:        []string{"term_run_command", "term_command_output", "term_get_scrollback", "term_search", "apimanager_list", "apimanager_call", "apimanager_delete"},
 		DefaultModel: "gemini-3.1-flash-lite", // Los comandos iniciales ahora son de Nivel 1 (Ahorro)
 	},
 }

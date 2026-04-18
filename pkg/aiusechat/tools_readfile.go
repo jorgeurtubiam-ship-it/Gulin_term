@@ -20,6 +20,7 @@ import (
 
 const ReadFileDefaultLineCount = 100
 const ReadFileDefaultMaxBytes = 50 * 1024
+const ReadFileHardMaxBytes = 512 * 1024 // 512KB hard cap for AI context
 const StopReasonMaxBytes = "max_bytes"
 
 type readTextFileParams struct {
@@ -75,6 +76,10 @@ func parseReadTextFileInput(input any) (*readTextFileParams, error) {
 	if result.MaxBytes == nil {
 		maxBytes := ReadFileDefaultMaxBytes
 		result.MaxBytes = &maxBytes
+	}
+
+	if *result.MaxBytes > ReadFileHardMaxBytes {
+		*result.MaxBytes = ReadFileHardMaxBytes
 	}
 
 	return result, nil
@@ -230,7 +235,7 @@ func verifyReadTextFileInput(input any, toolUseData *uctypes.UIMessageDataToolUs
 }
 
 func readTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
-	const ReadLimit = 1024 * 1024 * 1024
+	const ReadLimit = 10 * 1024 * 1024 // 10MB limit for scanning files
 
 	params, err := parseReadTextFileInput(input)
 	if err != nil {

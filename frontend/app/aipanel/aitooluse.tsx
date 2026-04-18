@@ -216,8 +216,12 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     const highlightedBlockIdRef = useRef<string | null>(null);
 
     const statusIcon = toolData.status === "completed" ? "✓" : toolData.status === "error" ? "✗" : "•";
-    const statusColor =
-        toolData.status === "completed" ? "text-success" : toolData.status === "error" ? "text-error" : "text-gray-400";
+    const statusStyles =
+        toolData.status === "completed"
+            ? "text-green-400 border-green-500/40 bg-green-500/10"
+            : toolData.status === "error"
+                ? "text-red-400 border-red-500/40 bg-red-500/10"
+                : "text-gray-400 border-zinc-700 bg-zinc-800/60";
 
     const baseApproval = userApprovalOverride || toolData.approval;
     const effectiveApproval = getEffectiveApprovalStatus(baseApproval, isStreaming);
@@ -284,7 +288,7 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
 
     return (
         <div
-            className={cn("flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700", statusColor)}
+            className={cn("flex flex-col gap-1 p-2 rounded border", statusStyles)}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -409,12 +413,17 @@ const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) =
 
     // Overall status: error if any errored, completed if all done, else pending
     const hasError = parts.some((p) => p?.data?.status === "error");
-    const allCompleted = parts.every((p) => p?.data?.status === "completed");
-    const overallStatus = hasError ? "error" : allCompleted ? "completed" : "pending";
+    const anyCompleted = parts.some((p) => p?.data?.status === "completed");
+    const allCompletedOrFinished = parts.every((p) => p?.data?.status === "completed" || (p?.data?.toolname && !p?.data?.status));
+    const overallStatus = hasError ? "error" : (allCompletedOrFinished || anyCompleted ? "completed" : "pending");
 
     const statusIcon = overallStatus === "completed" ? "✓" : overallStatus === "error" ? "✗" : "•";
-    const statusColor =
-        overallStatus === "completed" ? "text-success" : overallStatus === "error" ? "text-error" : "text-gray-400";
+    const statusStyles =
+        overallStatus === "completed"
+            ? "text-green-400 border-green-500/40 bg-green-500/10"
+            : overallStatus === "error"
+                ? "text-red-400 border-red-500/40 bg-red-500/10"
+                : "text-gray-400 border-zinc-700 bg-zinc-800/60";
 
     // Collect all distinct descriptions from tool calls (skip duplicates)
     const allDescs: string[] = [];
@@ -433,7 +442,7 @@ const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) =
 
     return (
         <div
-            className={`flex flex-col gap-1 p-2 rounded bg-zinc-800/60 border border-zinc-700 ${statusColor}`}
+            className={cn("flex flex-col gap-1 p-2 rounded border", statusStyles)}
         >
             <div className="flex items-center gap-2">
                 <span className="font-bold">{statusIcon}</span>

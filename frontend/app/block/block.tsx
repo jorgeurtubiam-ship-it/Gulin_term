@@ -71,6 +71,7 @@ BlockRegistry.set("db-explorer", DBExplorerViewModel);
 BlockRegistry.set("api-manager", APIEndpointManagerViewModel);
 BlockRegistry.set("dashboard", DashboardViewModel);
 BlockRegistry.set("widget-builder", WidgetBuilderViewModel);
+BlockRegistry.set("codeeditor", WidgetBuilderViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {
     const ctor = BlockRegistry.get(blockView);

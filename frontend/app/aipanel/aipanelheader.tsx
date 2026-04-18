@@ -5,11 +5,14 @@ import { useTranslation } from "@/app/store/i18n";
 import { handleGulinAIContextMenu } from "@/app/aipanel/aipanel-contextmenu";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
+import { atoms } from "@/app/store/global";
+import { cn } from "@/util/util";
 import { GulinAIModel } from "./gulinai-model";
 
 export const AIPanelHeader = memo(() => {
     const model = GulinAIModel.getInstance();
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
+    const tokenMode = useAtomValue(atoms.tokenModeAtom);
     const inBuilder = model.inBuilder;
 
     const handleKebabClick = (e: React.MouseEvent) => {

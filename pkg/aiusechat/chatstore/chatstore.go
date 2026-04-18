@@ -63,6 +63,19 @@ func (cs *ChatStore) Delete(chatId string) {
 	DeleteChatFromDB(chatId)
 }
 
+func (cs *ChatStore) BulkDelete(chatIds []string) error {
+	cs.lock.Lock()
+	for _, id := range chatIds {
+		delete(cs.chats, id)
+	}
+	cs.lock.Unlock()
+
+	// Persistence: Delete from DB
+	return BulkDeleteChatsFromDB(chatIds)
+}
+
+
+
 func (cs *ChatStore) CountUserMessages(chatId string) int {
 	cs.lock.Lock()
 	defer cs.lock.Unlock()

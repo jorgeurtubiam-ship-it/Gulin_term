@@ -85,6 +85,7 @@ func getSystemPrompt(apiType string, model string, isBuilder bool, hasToolsCapab
 		if useNoToolsPrompt {
 			basePrompt = SystemPromptText_NoTools
 		}
+
 		prompts = append(prompts, basePrompt)
 
 		if !useNoToolsPrompt {
@@ -579,6 +580,10 @@ func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolC
 		return
 	}
 
+	if chatOpts.TokenMode != "" {
+		ctx = context.WithValue(ctx, uctypes.TokenModeContextKey, chatOpts.TokenMode)
+	}
+
 	// WAIT FOR APPROVAL: If the tool requires approval (PLAN Mode), wait until approved or denied
 	if toolCall.ToolUseData != nil && toolCall.ToolUseData.Approval == uctypes.ApprovalNeedsApproval {
 		log.Printf("ResolveToolCall: Tool %s (%s) needs approval, waiting...\n", toolCall.Name, toolCall.ID)
@@ -674,7 +679,7 @@ func GulinAIPostMessageWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, m
 	startTime := time.Now()
 
 	// Convert AIMessage to native chat message using backend
-	backend, err := GetBackendByAPIType(chatOpts.Config.APIType)
+	backend, err := GetBackend(chatOpts.Config.APIType, chatOpts.Config.Provider)
 	if err != nil {
 		return err
 	}
@@ -754,6 +759,7 @@ type PostMessageRequest struct {
 	Msg          uctypes.AIMessage `json:"msg"`
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
 	AIMode       string            `json:"aimode"`
+	TokenMode    string            `json:"tokenmode,omitempty"`
 }
 
 type BrainSummary struct {
@@ -988,6 +994,65 @@ func GulinAIGetChatListHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(summaries)
 }
 
+func GulinAIDeleteChatHandler(w http.ResponseWriter, r *http.Request) {
+	// Get chatid from URL parameters
+	chatID := r.URL.Query().Get("chatid")
+	if chatID == "" {
+		http.Error(w, "chatid parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate chatid is a UUID
+	if _, err := uuid.Parse(chatID); err != nil {
+		http.Error(w, "chatid must be a valid UUID", http.StatusBadRequest)
+		return
+	}
+
+	chatstore.DefaultChatStore.Delete(chatID)
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+type BulkDeleteChatRequest struct {
+	ChatIds []string `json:"chatids"`
+}
+
+func GulinAIBulkDeleteChatHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req BulkDeleteChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("[GULIN] Error decoding bulk delete request: %v\n", err)
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if len(req.ChatIds) == 0 {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+		return
+	}
+
+	log.Printf("[GULIN] Handling bulk delete request for %d chats\n", len(req.ChatIds))
+
+	err := chatstore.DefaultChatStore.BulkDelete(req.ChatIds)
+	if err != nil {
+		log.Printf("[GULIN] Error performing bulk delete: %v\n", err)
+		http.Error(w, fmt.Sprintf("Failed to perform bulk delete: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+
+
+
 func GulinAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	// Only allow POST method
 	if r.Method != http.MethodPost {
@@ -1045,9 +1110,11 @@ func GulinAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 		Config:               *aiOpts,
 		WidgetAccess:         req.WidgetAccess,
 		AllowNativeWebSearch: true,
+		TokenMode:            req.TokenMode,
 		BuilderId:            req.BuilderId,
 		BuilderAppId:         req.BuilderAppId,
 	}
+
 	chatOpts.SystemPrompt = getSystemPrompt(chatOpts.Config.APIType, chatOpts.Config.Model, chatOpts.BuilderId != "", chatOpts.Config.HasCapability(uctypes.AICapabilityTools), chatOpts.WidgetAccess, chatOpts.Config.AIMode)
 	brainContext := GetGulinBrainContext(req.Msg.GetContent())
 	if brainContext != "" {
@@ -1146,7 +1213,7 @@ func GulinAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func RunAIChatWrap(ctx context.Context, sseHandler *sse.SSEHandlerCh, chatOpts uctypes.GulinChatOpts) error {
-	backend, err := GetBackendByAPIType(chatOpts.Config.APIType)
+	backend, err := GetBackend(chatOpts.Config.APIType, chatOpts.Config.Provider)
 	if err != nil {
 		return err
 	}

@@ -36,29 +36,6 @@ type APICallInput struct {
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-// getAPIEndpointByName reads the API endpoint record from gulin.db by its name.
-func getAPIEndpointByName(name string) (*uctypes.APIEndpointInfo, error) {
-	dataDir := gulinbase.GetGulinDataDir()
-	dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
-	db, err := sql.Open("sqlite3", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open gulin db: %w", err)
-	}
-	defer db.Close()
-
-	row := db.QueryRow(
-		fmt.Sprintf("SELECT id, name, url, username, password, token FROM %s WHERE name = ? LIMIT 1", GulinAPIEndpointsTable),
-		name,
-	)
-	var ep uctypes.APIEndpointInfo
-	if err := row.Scan(&ep.ID, &ep.Name, &ep.URL, &ep.Username, &ep.Password, &ep.Token); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("API '%s' not found in API Manager. Register it first using the API Manager widget", name)
-		}
-		return nil, fmt.Errorf("error reading API endpoint: %w", err)
-	}
-	return &ep, nil
-}
 
 // listAPIEndpointNames returns all registered API names, for error hints.
 func listAPIEndpointNames() ([]string, error) {
@@ -94,10 +71,11 @@ func GetAPICallToolDefinition() uctypes.ToolDefinition {
 		ToolLogName: "apimanager:call",
 		Description: strings.TrimSpace(`
 Call an HTTP REST API that has been registered in the GuLiN API Manager widget.
-The API Manager ALREADY stores the base URL and credentials (token, username/password).
-CRITICAL: You DO NOT need to look up passwords, tokens, or search the SQLite database to use this tool. You NEVER need to expose credentials. The tool handles authentication automatically behind the scenes.
-You only need to provide the API name (as it appears in the API Manager), the HTTP method, and optionally a path and body.
-Use this tool whenever the user mentions "api manager", an API registered in the app (e.g. "test"), or asks to connect to an API securely.
+The API Manager stores the base URL and credentials (token, username/password).
+You have access to these credentials via 'apimanager_list'. Use them to construct authentication requests (like login endpoints) if needed.
+You only need to provide the API name, the HTTP method, and optionally a path and body.
+SECURE PLACEHOLDERS: You can also use {{username}}, {{password}}, and {{token}} inside 'body' or 'path' if you want the tool to swap them automatically for you.
+Use this tool whenever the user mentions "api manager" or an API registered in the app.
 Do NOT use db_query or terminal commands for REST APIs — use this tool instead.
 `),
 		InputSchema: map[string]any{
@@ -158,6 +136,21 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 			}
 			baseURL := strings.TrimRight(ep.URL, "/")
 			path := parsed.Path
+
+			// Replace placeholders in Path and Body
+			if ep.Username != "" {
+				path = strings.ReplaceAll(path, "{{username}}", ep.Username)
+				parsed.Body = strings.ReplaceAll(parsed.Body, "{{username}}", ep.Username)
+			}
+			if ep.Password != "" {
+				path = strings.ReplaceAll(path, "{{password}}", ep.Password)
+				parsed.Body = strings.ReplaceAll(parsed.Body, "{{password}}", ep.Password)
+			}
+			if ep.Token != "" {
+				path = strings.ReplaceAll(path, "{{token}}", ep.Token)
+				parsed.Body = strings.ReplaceAll(parsed.Body, "{{token}}", ep.Token)
+			}
+
 			if path != "" && !strings.HasPrefix(path, "/") {
 				path = "/" + path
 			}
@@ -275,7 +268,7 @@ func GetAPIListToolDefinition() uctypes.ToolDefinition {
 			defer db.Close()
 
 			rows, err := db.Query(
-				fmt.Sprintf("SELECT name, url FROM %s ORDER BY name", GulinAPIEndpointsTable),
+				fmt.Sprintf("SELECT name, url, COALESCE(username, ''), COALESCE(password, ''), COALESCE(token, ''), COALESCE(system_prompt, ''), COALESCE(knowledge_source, ''), COALESCE(auth_instructions, '') FROM %s ORDER BY name", GulinAPIEndpointsTable),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to query APIs: %w", err)
@@ -283,19 +276,99 @@ func GetAPIListToolDefinition() uctypes.ToolDefinition {
 			defer rows.Close()
 
 			type APIInfo struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
+				Name             string `json:"name"`
+				URL              string `json:"url"`
+				Username         string `json:"username,omitempty"`
+				Password         string `json:"password,omitempty"`
+				Token            string `json:"token,omitempty"`
+				SystemPrompt     string `json:"system_prompt,omitempty"`
+				KnowledgeSource  string `json:"knowledge_source,omitempty"`
+				AuthInstructions string `json:"auth_instructions,omitempty"`
 			}
 			var apis []APIInfo
 			for rows.Next() {
 				var a APIInfo
-				rows.Scan(&a.Name, &a.URL)
+				rows.Scan(&a.Name, &a.URL, &a.Username, &a.Password, &a.Token, &a.SystemPrompt, &a.KnowledgeSource, &a.AuthInstructions)
 				apis = append(apis, a)
 			}
 			if len(apis) == 0 {
 				return "No APIs registered. Use the API Manager widget to add one.", nil
 			}
 			return apis, nil
+		},
+	}
+}
+
+func getAPIEndpointByName(name string) (*uctypes.APIEndpointInfo, error) {
+	dataDir := gulinbase.GetGulinDataDir()
+	dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open gulin db: %w", err)
+	}
+	defer db.Close()
+
+	row := db.QueryRow(
+		fmt.Sprintf("SELECT id, name, url, username, password, token, system_prompt, knowledge_source, auth_instructions, created_at, updated_at FROM %s WHERE name = ? LIMIT 1", GulinAPIEndpointsTable),
+		name,
+	)
+	var ep uctypes.APIEndpointInfo
+	if err := row.Scan(&ep.ID, &ep.Name, &ep.URL, &ep.Username, &ep.Password, &ep.Token, &ep.SystemPrompt, &ep.KnowledgeSource, &ep.AuthInstructions, &ep.CreatedAt, &ep.UpdatedAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("API '%s' not found", name)
+		}
+		return nil, fmt.Errorf("error reading API endpoint: %w", err)
+	}
+	return &ep, nil
+}
+
+// GetAPIDeleteToolDefinition returns a tool to delete a registered API by name.
+func GetAPIDeleteToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "apimanager_delete",
+		DisplayName: "Delete API Manager Endpoint",
+		ToolLogName: "apimanager:delete",
+		Description: "Permanently delete an API endpoint registered in the GuLiN API Manager by its name. Use this only when the user explicitly asks to remove or delete an API registration.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"api_name": map[string]any{
+					"type":        "string",
+					"description": "Name of the API as saved in the GuLiN API Manager (case-sensitive).",
+				},
+			},
+			"required":             []string{"api_name"},
+			"additionalProperties": false,
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			m, ok := input.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("invalid input")
+			}
+			name, _ := m["api_name"].(string)
+			if name == "" {
+				return nil, fmt.Errorf("api_name is required")
+			}
+
+			dataDir := gulinbase.GetGulinDataDir()
+			dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
+			db, err := sql.Open("sqlite3", dbPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open db: %w", err)
+			}
+			defer db.Close()
+
+			res, err := db.Exec(fmt.Sprintf("DELETE FROM %s WHERE name = ?", GulinAPIEndpointsTable), name)
+			if err != nil {
+				return nil, fmt.Errorf("failed to delete API '%s': %w", name, err)
+			}
+
+			count, _ := res.RowsAffected()
+			if count == 0 {
+				return nil, fmt.Errorf("API '%s' not found in the manager", name)
+			}
+
+			return fmt.Sprintf("API '%s' has been successfully deleted from the GuLiN API Manager.", name), nil
 		},
 	}
 }

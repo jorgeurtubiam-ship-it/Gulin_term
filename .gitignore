@@ -40,3 +40,11 @@ docsite/
 .kilo-format-temp-*
 workspace_embeddings.json
 test-arm64
+backups/
+lib/
+pyvenv.cfg
+bin/
+*.dmg
+*.exe
+.DS_Store
+*.log

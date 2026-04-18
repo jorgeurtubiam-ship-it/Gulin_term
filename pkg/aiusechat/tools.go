@@ -161,7 +161,10 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 	// log.Printf("TABPROMPT %s\n", tabState)
 	var tools []uctypes.ToolDefinition
 	if widgetAccess {
-		tools = append(tools, GetCallExpertToolDefinition())
+		// Only add call_expert if using Gulin AI or Gulin Bridge (Direct providers often don't support expert configurations)
+		if chatOpts.Config.Provider == uctypes.AIProvider_Gulin || chatOpts.Config.Provider == uctypes.AIProvider_GulinBridge {
+			tools = append(tools, GetCallExpertToolDefinition())
+		}
 		// Only add screenshot tool for:
 		// - openai-responses API type
 		// - google-gemini API type with Gemini 3+ models
@@ -182,6 +185,14 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetDBRegisterToolDefinition(tabid))
 		tools = append(tools, GetDBQueryToolDefinition(tabid))
 		tools = append(tools, GetAPICallToolDefinition())
+		tools = append(tools, GetAPIListToolDefinition())
+		tools = append(tools, GetAPIDeleteToolDefinition())
+
+		// Global Web Tools (always available if widgetAccess is true)
+		tools = append(tools, GetWebNavigateToolDefinition(tabid))
+		tools = append(tools, GetWebReadPageToolDefinition(tabid))
+		tools = append(tools, GetWebClickToolDefinition(tabid))
+		tools = append(tools, GetWebTypeToolDefinition(tabid))
 		viewTypes := make(map[string]bool)
 		for _, block := range blocks {
 			if block.Meta == nil {

@@ -7,6 +7,12 @@ import { atom, Atom } from "jotai";
 import { DashboardView } from "./dashboard";
 import { makeORef, getGulinObjectAtom } from "@/store/wos";
 
+/**
+ * DashboardViewModel: Gestiona el estado y la configuración de la vista del dashboard.
+ * 
+ * Se encarga de la vinculación entre los datos del bloque (Block) y el componente 
+ * visual DashboardView. Define los metadatos iniciales del widget como el icono y el nombre.
+ */
 export class DashboardViewModel implements ViewModel {
     viewType: string;
     viewComponent = DashboardView;

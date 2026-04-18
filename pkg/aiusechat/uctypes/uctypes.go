@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+type contextKey string
+
+const TokenModeContextKey contextKey = "token-mode"
+
 const DefaultAIEndpoint = "https://cfapi.gulin.dev/api/gulinai"
 const GulinAIEndpointEnvName = "GULIN_GULINAI_ENDPOINT"
 const DefaultAnthropicModel = "claude-sonnet-4-5"
@@ -169,6 +173,12 @@ const (
 	AIModeQuick    = "gulinai@quick"
 	AIModeBalanced = "gulinai@balanced"
 	AIModeDeep     = "gulinai@deep"
+)
+
+const (
+	TokenModeMini     = "mini"
+	TokenModeBalanced = "balanced"
+	TokenModeMax      = "max"
 )
 
 const (
@@ -342,6 +352,7 @@ type AIMetrics struct {
 	WidgetAccess      bool           `json:"widgetaccess"`
 	ThinkingLevel     string         `json:"thinkinglevel,omitempty"`
 	AIMode            string         `json:"aimode,omitempty"`
+	TokenMode         string         `json:"tokenmode,omitempty"`
 	AIProvider        string         `json:"aiprovider,omitempty"`
 	IsLocal           bool           `json:"islocal,omitempty"`
 }
@@ -554,6 +565,7 @@ type GulinChatOpts struct {
 	AllowNativeWebSearch bool
 	BuilderId            string
 	BuilderAppId         string
+	TokenMode            string
 
 	// ephemeral to the step
 	TabState       string
@@ -682,12 +694,16 @@ func AreAPITypesCompatible(apiType1, apiType2 string) bool {
 var NativeMessageUnmarshalers = make(map[string]func(data []byte) (GenAIMessage, error))
 
 type APIEndpointInfo struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	URL       string `json:"url"`
-	Username  string `json:"username,omitempty"`
-	Password  string `json:"password,omitempty"`
-	Token     string `json:"token,omitempty"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	URL              string `json:"url"`
+	Username         string `json:"username,omitempty"`
+	Password         string `json:"password,omitempty"`
+	Token            string `json:"token,omitempty"`
+	SystemPrompt     string `json:"system_prompt,omitempty"`
+	KnowledgeSource  string `json:"knowledge_source,omitempty"`
+	AuthInstructions string `json:"auth_instructions,omitempty"`
+	CreatedAt        int64  `json:"created_at"`
+	UpdatedAt        int64  `json:"updated_at"`
 }
+

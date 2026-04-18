@@ -15,9 +15,13 @@ interface APIEndpointInfo {
     username?: string;
     password?: string;
     token?: string;
+    system_prompt?: string;
+    knowledge_source?: string;
     created_at: number;
     updated_at: number;
 }
+
+
 
 const endpointsAtom = atom<APIEndpointInfo[]>([]);
 const loadingAtom = atom<boolean>(false);
@@ -77,6 +81,31 @@ export class APIEndpointManagerViewModel implements ViewModel {
             return false;
         }
     }
+
+    async deleteEndpoint(id: string) {
+        try {
+            const endpoint = getWebServerEndpoint();
+            const headers = {
+                "X-AuthKey": getApi().getAuthKey(),
+                "Content-Type": "application/json"
+            };
+            const resp = await fetch(`${endpoint}/gulin/api-delete`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ id })
+            });
+            if (!resp.ok) {
+                const errorText = await resp.text();
+                alert(`Error al eliminar: ${resp.status} - ${errorText}`);
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error("Error deleting API endpoint", e);
+            alert(`Error de red: ${e.message}`);
+            return false;
+        }
+    }
 }
 
 export function APIEndpointManagerView({ model }: { model: APIEndpointManagerViewModel }) {
@@ -99,7 +128,12 @@ export function APIEndpointManagerView({ model }: { model: APIEndpointManagerVie
             username: formData.get("username") as string,
             password: formData.get("password") as string,
             token: formData.get("token") as string,
+            system_prompt: formData.get("system_prompt") as string,
+            knowledge_source: formData.get("knowledge_source") as string,
+            auth_instructions: formData.get("auth_instructions") as string,
         };
+
+
 
         const success = await model.saveEndpoint(info);
         if (success) {
@@ -154,31 +188,54 @@ export function APIEndpointManagerView({ model }: { model: APIEndpointManagerVie
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors shadow-inner">
-                                                    <i className="fa fa-server"></i>
+                                                    <i className="fa fa-plug text-lg"></i>
                                                 </div>
-                                                <div>
-                                                    <h3 className="font-bold text-lg text-white group-hover:text-purple-300 transition-colors tracking-tight">{ep.name}</h3>
-                                                    <code className="text-[10px] text-slate-500 bg-black/30 px-2 py-0.5 rounded uppercase tracking-tighter">Endpoint</code>
-                                                </div>
+                                                <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">{ep.name}</h3>
                                             </div>
-                                            <p className="text-sm text-slate-400 truncate mb-3 font-mono opacity-80">{ep.url}</p>
-                                            <div className="flex flex-wrap gap-2 text-[11px]">
-                                                {ep.username && <span className="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20 flex items-center gap-1.5 font-medium"><i className="fa fa-user text-[9px]"></i> {ep.username}</span>}
-                                                {ep.token && <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20 flex items-center gap-1.5 font-medium"><i className="fa fa-shield-alt text-[9px]"></i> Token Activo</span>}
-                                                {!ep.token && ep.password && <span className="bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full border border-amber-500/20 flex items-center gap-1.5 font-medium"><i className="fa fa-lock text-[9px]"></i> Password</span>}
+                                            <div className="space-y-2 mt-4">
+                                                <div className="flex items-center gap-2 text-xs text-slate-400 font-mono bg-black/20 p-2 rounded-lg border border-white/5 truncate">
+                                                    <i className="fa fa-link text-purple-500/50"></i>
+                                                    {ep.url}
+                                                </div>
+                                                {ep.system_prompt && (
+                                                    <p className="text-xs text-slate-400 line-clamp-2 italic leading-relaxed border-l-2 border-purple-500/30 pl-3 py-1">
+                                                        "{ep.system_prompt}"
+                                                    </p>
+                                                )}
+                                                {ep.auth_instructions && (
+                                                    <div className="flex items-center gap-2 text-[10px] text-purple-300 font-bold uppercase tracking-tighter bg-purple-500/10 p-1.5 rounded-md border border-purple-500/20">
+                                                        <i className="fa fa-key"></i>
+                                                        Auth: {ep.auth_instructions}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => { setEditingEndpoint(ep); setShowForm(true); }}
-                                                className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all active:scale-90" title="Editar"
+                                                className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                                title="Editar"
                                             >
                                                 <i className="fa fa-edit"></i>
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    if (window.confirm(`¿Estás seguro de que deseas eliminar la configuración de "${ep.name}"?`)) {
+                                                        const success = await model.deleteEndpoint(ep.id);
+                                                        if (success) {
+                                                            model.fetchEndpoints(setEndpoints, setLoading);
+                                                        }
+                                                    }
+                                                }}
+                                                className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                                                title="Eliminar"
+                                            >
+                                                <i className="fa fa-trash"></i>
                                             </button>
                                         </div>
                                     </div>
                                     <div className="absolute -right-8 -bottom-8 text-white/[0.02] text-8xl transition-all group-hover:text-white/[0.05] group-hover:scale-110">
-                                        <i className="fa fa-key"></i>
+                                        <i className="fa fa-plug"></i>
                                     </div>
                                 </div>
                             ))}
@@ -219,8 +276,23 @@ export function APIEndpointManagerView({ model }: { model: APIEndpointManagerVie
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">API Token (Recomendado)</label>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">API Token (Opcional)</label>
                                 <input name="token" defaultValue={editingEndpoint?.token} placeholder="sk-..." className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all font-mono text-xs" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Identidad Corporativa (System Prompt)</label>
+                                <textarea name="system_prompt" defaultValue={editingEndpoint?.system_prompt} rows={3} placeholder="Ej. Eres el asistente experto de Logística Express. Tu tono es..." className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all text-sm resize-none" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Fuentes de Conocimiento (Web/Docs)</label>
+                                <input name="knowledge_source" defaultValue={editingEndpoint?.knowledge_source} placeholder="https://mi-empresa.com/docs" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all text-sm" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Instrucciones de Login (Ruta/Ticket)</label>
+                                <input name="auth_instructions" defaultValue={editingEndpoint?.auth_instructions} placeholder="P. ej: /apiv2/login o {{username}}" className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all text-sm" />
                             </div>
 
                             <div className="pt-4 flex gap-3">

@@ -108,7 +108,8 @@ var SystemPrompt_Orchestrator = strings.Join([]string{
 	"### Operational Mode: ORCHESTRATOR",
 	"Eres el Comandante de Gulin Term. Tu objetivo es coordinar a tus Agentes Expertos para resolver la solicitud del usuario.",
 	"- **REGLA DE ORO**: NO realices tareas técnicas tú mismo ni pidas permiso para hacerlas. USA tu herramienta 'call_expert' de inmediato si la solicitud requiere:",
-	"  * Bases de Datos, Archivos, Terminal/Comandos o Navegación Web.",
+	"  * Bases de Datos, Archivos, Terminal/Comandos, Navegación Web o APIs (API Manager).",
+	"- **AUTENTICACIÓN Y TOKENS**: Tienes acceso completo a credenciales vía 'apimanager_list'. REGLA DREMIO: Si la API es Dremio (puerto 9047), usa el TOKEN LITERAL sin ningún prefijo (PROHIBIDO _dremio, _dremioauth o Bearer).",
 	"- Si el usuario pide algo como 'lista las instancias aws', DELEGÁLO al 'command_expert' inmediatamente usando 'call_expert'.",
 	"- NO pidas IDs de widgets ni confirmaciones adicionales si ya tienes el contexto.",
 	"- Responde siempre en ESPAÑOL.",
@@ -118,6 +119,8 @@ var SystemPrompt_Orchestrator = strings.Join([]string{
 // SystemPrompt_DBExpert especializado en bases de datos
 var SystemPrompt_DBExpert = strings.Join([]string{
 	`- REGLA CRÍTICA: PROHIBIDO EMULAR O SIMULAR DATOS. Usa siempre tus herramientas para extraer e informar con datos reales y empíricos.`,
+	`- REGLA DREMIO: Si interactúas con Dremio (puerto 9047), usa el TOKEN de forma literal. PROHIBIDO añadir cualquier prefijo como _dremio o Bearer.`,
+	`- PROHIBICIÓN DE PREFIJOS: JAMÁS añadas prefijos inventados a los tokens de autorización. Úsalos exactamente como se reciben.`,
 	`- BREVEDAD: No repitas los datos obtenidos por herramientas si ya son visibles para el usuario. Sé extremadamente directo.`,
 }, "\n")
 
@@ -143,5 +146,7 @@ var SystemPrompt_CommandExpert = strings.Join([]string{
 	`- Tu meta es ejecutar comandos de terminal para diagnóstico y reparación.`,
 	`- Tienes permiso para usar herramientas de terminal activamente.`,
 	`- REGLA CRÍTICA: PROHIBIDO EMULAR O SIMULAR OUTPUTS DE CONSOLA. Ejecuta tus comandos y evalúa las respuestas textuales reales que retorna el sistema.`,
+	`- REGLA DREMIO: En comandos CURL para Dremio (puerto 9047), usa el TOKEN LITERAL. Es obligatorio usar -H "Authorization: TOKEN" sin palabras como _dremio, _dremioauth o Bearer.`,
+	`- PROHIBICIÓN DE PREFIJOS: Queda terminantemente PROHIBIDO añadir prefijos inventados a los tokens en los comandos curl que generes. Usa el token de forma literal.`,
 	`- BREVEDAD CRÍTICA: NO repitas el output del terminal en tu respuesta. El usuario ya lo ve. Solo confirma o analiza brevemente en UNA SOLA FRASE.`,
 }, "\n")

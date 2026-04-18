@@ -139,6 +139,35 @@ func DeleteChatFromDB(chatId string) error {
 		return nil
 	})
 }
+
+func BulkDeleteChatsFromDB(chatIds []string) error {
+	if len(chatIds) == 0 {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	log.Printf("[GULIN] Starting bulk delete of %d chats\n", len(chatIds))
+
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		// Use a single query for efficiency
+		query := "DELETE FROM chat_message WHERE chat_id IN ("
+		args := make([]interface{}, len(chatIds))
+		for i, id := range chatIds {
+			if i > 0 {
+				query += ","
+			}
+			query += "?"
+			args[i] = id
+		}
+		query += ")"
+
+		tx.Exec(query, args...)
+		return nil
+	})
+}
+
+
 func GetChatListFromDB() ([]ChatSummary, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

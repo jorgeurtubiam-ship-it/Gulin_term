@@ -8,9 +8,12 @@ import (
 	"fmt"
 
 	"github.com/gulindev/gulin/pkg/aiusechat/anthropic"
+	"github.com/gulindev/gulin/pkg/aiusechat/deepseek"
 	"github.com/gulindev/gulin/pkg/aiusechat/gemini"
+	"github.com/gulindev/gulin/pkg/aiusechat/groq"
 	"github.com/gulindev/gulin/pkg/aiusechat/openai"
 	"github.com/gulindev/gulin/pkg/aiusechat/openaichat"
+	"github.com/gulindev/gulin/pkg/aiusechat/openrouter"
 	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 	"github.com/gulindev/gulin/pkg/web/sse"
 )
@@ -55,19 +58,35 @@ type UseChatBackend interface {
 	ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIChat, error)
 }
 
-// Compile-time interface checks
 var _ UseChatBackend = (*openaiResponsesBackend)(nil)
 var _ UseChatBackend = (*openaiCompletionsBackend)(nil)
 var _ UseChatBackend = (*anthropicBackend)(nil)
 var _ UseChatBackend = (*geminiBackend)(nil)
+var _ UseChatBackend = (*deepseek.DeepSeekBackend)(nil)
+var _ UseChatBackend = (*groq.GroqBackend)(nil)
+var _ UseChatBackend = (*openrouter.OpenRouterBackend)(nil)
 
 // GetBackendByAPIType returns the appropriate UseChatBackend implementation for the given API type
 func GetBackendByAPIType(apiType string) (UseChatBackend, error) {
+	return GetBackend(apiType, "")
+}
+
+// GetBackend returns the appropriate UseChatBackend implementation for the given API type and provider
+func GetBackend(apiType string, provider string) (UseChatBackend, error) {
 	switch apiType {
 	case uctypes.APIType_OpenAIResponses:
 		return &openaiResponsesBackend{}, nil
 	case uctypes.APIType_OpenAIChat:
-		return &openaiCompletionsBackend{}, nil
+		switch provider {
+		case uctypes.AIProvider_DeepSeek:
+			return &deepseek.DeepSeekBackend{}, nil
+		case uctypes.AIProvider_Groq:
+			return &groq.GroqBackend{}, nil
+		case uctypes.AIProvider_OpenRouter:
+			return &openrouter.OpenRouterBackend{}, nil
+		default:
+			return &openaiCompletionsBackend{}, nil
+		}
 	case uctypes.APIType_AnthropicMessages:
 		return &anthropicBackend{}, nil
 	case uctypes.APIType_GoogleGemini:
