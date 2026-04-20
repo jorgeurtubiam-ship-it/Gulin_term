@@ -301,6 +301,7 @@ type AIModeConfigType struct {
 	GulinAICloud        bool     `json:"gulinai:cloud,omitempty"`
 	GulinAIPremium      bool     `json:"gulinai:premium,omitempty"`
 	BridgeProvider      string   `json:"ai:bridge-provider,omitempty"`
+	AgentID             string   `json:"ai:agentid,omitempty"`
 }
 
 type AIModeConfigUpdate struct {

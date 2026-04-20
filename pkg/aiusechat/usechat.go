@@ -170,6 +170,8 @@ func getGulinAISettings(premium bool, builderMode bool, rtInfo gulinobj.ObjRTInf
 		Capabilities:  config.Capabilities,
 		GulinAIPremium: config.GulinAIPremium,
 		BridgeProvider: config.BridgeProvider,
+		AgentID:        config.AgentID,
+		APITokenSecretName: config.APITokenSecretName,
 	}
 	if apiToken != "" {
 		opts.APIToken = apiToken

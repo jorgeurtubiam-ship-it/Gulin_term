@@ -101,6 +101,9 @@
         },
         "ai:bridge-provider": {
           "type": "string"
+        },
+        "ai:agentid": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

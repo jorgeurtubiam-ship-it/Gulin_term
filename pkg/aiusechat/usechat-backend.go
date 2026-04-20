@@ -91,6 +91,8 @@ func GetBackend(apiType string, provider string) (UseChatBackend, error) {
 		return &anthropicBackend{}, nil
 	case uctypes.APIType_GoogleGemini:
 		return &geminiBackend{}, nil
+	case uctypes.APIType_PlaiAssistant:
+		return &plaiBackend{}, nil
 	default:
 		return nil, fmt.Errorf("unsupported API type: %s", apiType)
 	}

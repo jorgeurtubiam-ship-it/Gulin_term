@@ -26,6 +26,7 @@ const (
 	APIType_OpenAIResponses   = "openai-responses"
 	APIType_OpenAIChat        = "openai-chat"
 	APIType_GoogleGemini      = "google-gemini"
+	APIType_PlaiAssistant    = "plai-assistant"
 )
 
 const (
@@ -219,6 +220,7 @@ type AIModeConfig struct {
 	Premium            bool     `json:"premium"`
 	Description        string   `json:"description"`
 	Capabilities       []string `json:"capabilities,omitempty"`
+	AgentID            string   `json:"agentid,omitempty"`
 }
 
 func (c *AIModeConfig) HasCapability(cap string) bool {
@@ -302,6 +304,8 @@ type AIOptsType struct {
 	Capabilities  []string `json:"capabilities,omitempty"`
 	GulinAIPremium bool     `json:"gulinaipremium,omitempty"`
 	BridgeProvider string   `json:"bridgeprovider,omitempty"`
+	AgentID       string   `json:"agentid,omitempty"`
+	APITokenSecretName string `json:"apitokensecretname,omitempty"`
 }
 
 func (opts AIOptsType) IsGulinProxy() bool {

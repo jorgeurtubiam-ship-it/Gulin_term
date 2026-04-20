@@ -35,6 +35,7 @@ declare global {
         "gulinai:cloud"?: boolean;
         "gulinai:premium"?: boolean;
         "ai:bridge-provider"?: string;
+        "ai:agentid"?: string;
     };
 
     // wconfig.AIModeConfigUpdate
