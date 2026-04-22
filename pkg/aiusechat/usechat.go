@@ -308,6 +308,16 @@ func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctyp
 	}
 
 	if toolCall.ToolUseData != nil {
+		// Update generic tool status if not already set by expert interceptor
+		if toolCall.ToolUseData.Status == uctypes.ToolUseStatusPending {
+			if result.ErrorText != "" {
+				toolCall.ToolUseData.Status = uctypes.ToolUseStatusError
+				toolCall.ToolUseData.ErrorMessage = result.ErrorText
+			} else {
+				toolCall.ToolUseData.Status = uctypes.ToolUseStatusCompleted
+			}
+		}
+
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
 		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}

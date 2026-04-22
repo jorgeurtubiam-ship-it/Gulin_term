@@ -138,6 +138,21 @@ func getTermScrollbackOutput(ctx context.Context, tabId string, widgetId string,
 	}
 	hasMore := effectiveLineEnd < result.TotalLines
 
+	// OPTIMIZACIÓN: Si todas las líneas devueltas están vacías, detenemos el 'hasMore' 
+	// para evitar que la IA siga pidiendo bloques de historia vacía innecesariamente.
+	if len(lines) > 0 {
+		allEmpty := true
+		for _, line := range lines {
+			if strings.TrimSpace(line) != "" {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			hasMore = false
+		}
+	}
+
 	var sinceLastOutputSec *int
 	if result.LastUpdated > 0 {
 		sec := max(0, int((time.Now().UnixMilli()-result.LastUpdated)/1000))

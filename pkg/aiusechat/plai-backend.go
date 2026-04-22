@@ -58,60 +58,60 @@ func (b *plaiBackend) RunChatStep(
 	// SOPORTE DINÁMICO DE HERRAMIENTAS: 
 	// Si chatOpts.Tools está vacío, intentamos usar el generador de la pestaña para obtener herramientas de terminal reales.
 	if len(chatOpts.Tools) == 0 && chatOpts.TabStateGenerator != nil {
-		tabState, tabTools, _, err := chatOpts.TabStateGenerator()
+		_, tabTools, _, err := chatOpts.TabStateGenerator() // Ignoramos tabState aquí
 		if err == nil {
 			chatOpts.Tools = tabTools
-			if chatOpts.TabState == "" {
-				chatOpts.TabState = tabState
-			}
 		}
 	}
 
-	// Construir el input enriquecido (Estructura Limpia)
-	var fullInput strings.Builder
-	
+	// Ensamble asincrónico para el escudo de contexto
+	var sysPart, statePart, historyPart strings.Builder
+
 	// 1. Instrucciones Críticas (System Prompt)
 	if len(chatOpts.SystemPrompt) > 0 {
-		fullInput.WriteString("### INSTRUCCIONES:\n")
-		fullInput.WriteString(strings.Join(chatOpts.SystemPrompt, "\n"))
-		fullInput.WriteString("\n\n")
+		sysPart.WriteString("### INSTRUCCIONES:\n")
+		sysPart.WriteString("REGLA DE CONTEXTO: Estás en modo REACTIVO. No tienes visión directa del terminal actual. Si necesitas analizar errores, ver el listado de archivos que se generó, o revisar qué hay en pantalla, DEBES usar la herramienta 'term_get_scrollback'. No asumas ni inventes resultados.\n")
+		sysPart.WriteString(strings.Join(chatOpts.SystemPrompt, "\n"))
+		sysPart.WriteString("\n\n")
 	}
 
-	// 2. Estado de la Terminal (Compacto)
+	// 2. Estado de la Terminal (DESACTIVADO el estado completo por modelo Reactivo, pero enviamos el ID)
 	if chatOpts.TabState != "" {
-		fullInput.WriteString("### ESTADO:\n")
-		ts := chatOpts.TabState
-		if len(ts) > 600 {
-			ts = "...[recortado]..." + ts[len(ts)-600:]
+		widgetId := findPrimaryWidgetId(chatOpts.TabState)
+		if widgetId != "" {
+			statePart.WriteString(fmt.Sprintf("### CONTEXTO ACTIVO:\nEl ID de tu widget de terminal actual es: %s\nUsa este ID para el parámetro 'widget_id' en tus herramientas de terminal.\n\n", widgetId))
 		}
-		fullInput.WriteString(ts)
-		fullInput.WriteString("\n\n")
 	}
 
-	// 3. Historial (Ultra-Dieta: Max 3 mensajes, 200 chars)
+	// 3. Historial (Max 10 mensajes, 400 chars)
 	msgCount := len(chat.NativeMessages)
 	startIdx := 0
-	if msgCount > 3 {
-		startIdx = msgCount - 3
+	if msgCount > 10 {
+		startIdx = msgCount - 10
 	}
 
 	if startIdx < msgCount {
-		fullInput.WriteString("### RECIENTE:\n")
+		historyPart.WriteString("### RECIENTE:\n")
 		for i := startIdx; i < msgCount; i++ {
 			msg := chat.NativeMessages[i]
 			content := msg.GetContent()
-			if len(content) > 200 {
-				content = content[:200] + "..."
+			limit := 400
+			if msg.GetRole() == "tool" {
+				limit = 4000 // Permitir más visibilidad para resultados de comandos
+			}
+			if len(content) > limit {
+				content = content[:limit] + "...[recortado]"
 			}
 			role := "U"
 			if msg.GetRole() == "assistant" {
 				role = "A"
 			} else if msg.GetRole() == "tool" {
-				role = "R"
+				role = "U" // FINGIR QUE EL USUARIO ENVIÓ EL RESULTADO para obligar a la IA a leerlo
+				content = "[SISTEMA - RESULTADO DE HERRAMIENTA. OBLIGATORIO ANALIZAR Y DAR RESUMEN AL USUARIO]:\n" + content
 			}
-			fullInput.WriteString(fmt.Sprintf("%s: %s\n", role, content))
+			historyPart.WriteString(fmt.Sprintf("%s: %s\n", role, content))
 		}
-		fullInput.WriteString("\n")
+		historyPart.WriteString("\n")
 	}
 
 	// 4. Herramientas y Acción (Restaurando Schemas técnicos)
@@ -123,18 +123,67 @@ func (b *plaiBackend) RunChatStep(
 		toolsToUse = tabTools
 	}
 
+	var toolsSection strings.Builder
 	if len(toolsToUse) > 0 {
-		fullInput.WriteString("### HERRAMIENTAS DISPONIBLES (USA ESTE FORMATO):\n")
+		toolsSection.WriteString("### HERRAMIENTAS DISPONIBLES:\nPara ejecutar una herramienta, DEBES usar un bloque ```json con EXACTAMENTE esta estructura:\n```json\n{\n  \"name\": \"nombre_herramienta\",\n  \"parameters\": { ... }\n}\n```\n\nHerramientas:\n")
 		for _, tool := range toolsToUse {
+			// Sin filtro estricto: ahora pasamos todas las herramientas permitidas por el experto
+			// para que tenga sus capacidades completas, ya que la API soporta +20KB.
+			
 			schemaBytes, _ := json.Marshal(tool.InputSchema)
-			fullInput.WriteString(fmt.Sprintf("- %s: %s. Parámetros JSON: %s\n", tool.Name, tool.Description, string(schemaBytes)))
+			toolsSection.WriteString(fmt.Sprintf("- %s: %s. Esquema de 'parameters': %s\n", tool.Name, tool.Description, string(schemaBytes)))
 		}
-		fullInput.WriteString("\nREGLA DE ORO: Responde SOLO con un bloque ```bash o ```json con el comando. NO hables.\n\n")
+		toolsSection.WriteString("\nREGLA 1: Si la tarea requiere comandos, usa el bloque ```json o un bloque ```bash directo. NUNCA pidas al usuario que lo ejecute.\nREGLA 2: Si en el RECIENTE ves un resultado de herramienta (R: ...), DEBES obligatoriamente leerlo y responder con un resumen en español claro. No te quedes callado.\n\n")
 	}
 
-	finalInput := fullInput.String()
+	// --- ENSAMBLAJE FINAL CON ESCUDO DE CONTEXTO ---
+	finalInput := ""
+	const MaxSafeSize = 18000 // Aumentado a 18k ya que la prueba empírica demostró que la API lo soporta bien
+	
+	systemSection := sysPart.String()
+	stateSection := statePart.String()
+	historySection := historyPart.String()
+	toolsText := toolsSection.String()
+
+	totalSize := len(systemSection) + len(stateSection) + len(historySection) + len(toolsText)
+	log.Printf("[PLAI-DEBUG] Tamaño pre-ensamblaje: %d bytes (System:%d, State:%d, History:%d, Tools:%d)\n", 
+		totalSize, len(systemSection), len(stateSection), len(historySection), len(toolsText))
+
+	if totalSize > MaxSafeSize {
+		diff := totalSize - MaxSafeSize
+		log.Printf("[PLAI-DEBUG] ESCUDO ACTIVADO: Recortando %d bytes...\n", diff)
+		// 1. Recortar Historial (si es necesario)
+		if diff > 0 && len(historySection) > 300 {
+			toCut := diff
+			if toCut > len(historySection)-300 {
+				toCut = len(historySection) - 300
+			}
+			historySection = "...[recortado]\n" + historySection[toCut:]
+			diff -= toCut
+		}
+		// 2. Recortar Sistema/Brain (si aún es necesario)
+		if diff > 0 && len(systemSection) > 2000 {
+			toCut := diff
+			if toCut > len(systemSection)-2000 {
+				toCut = len(systemSection) - 2000
+			}
+			systemSection = systemSection[:2000] + "...[instrucciones recortadas]\n\n"
+			diff -= toCut
+		}
+		// 3. Recortar Herramientas (Último recurso)
+		if diff > 0 && len(toolsText) > 5000 {
+			toCut := diff
+			if toCut > len(toolsText)-5000 {
+				toCut = len(toolsText) - 5000
+			}
+			toolsText = toolsText[:len(toolsText)-toCut] + "...[tools recortadas]\n"
+			diff -= toCut
+		}
+	}
+
+	finalInput = systemSection + stateSection + historySection + toolsText
 	log.Printf("[PLAI-DEBUG] Prompt Final Construido (%d bytes)\n", len(finalInput))
-	// log.Printf("[PLAI-DEBUG] Input completo enviado a API:\n%s\n", finalInput)
+	log.Printf("[PLAI-DEBUG] URL: %s | AgentID: %s\n", chatOpts.Config.Endpoint, chatOpts.Config.AgentID)
 
 	// Preparar la petición
 	plaiReq := PlaiRequest{
@@ -247,6 +296,37 @@ func (b *plaiBackend) RunChatStep(
 				Content:   content,
 			}
 			return createToolCall(toolReq.Name, toolReq.Parameters, sseHandler, assistantMsg)
+		} else {
+			// Fallback: Si el modelo olvidó el wrapper y mandó directamente los parámetros
+			var params map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonStr), &params); err == nil {
+				toolName := ""
+				if _, hasCmd := params["command"]; hasCmd {
+					toolName = "term_run_command"
+				} else if _, hasCount := params["count"]; hasCount {
+					toolName = "term_get_scrollback"
+				} else if _, hasLineStart := params["line_start"]; hasLineStart {
+					toolName = "term_get_scrollback"
+				}
+
+				if toolName != "" {
+					log.Printf("[PLAI-DEBUG] Fallback: Detectada llamada implícita a herramienta JSON: %s\n", toolName)
+					
+					if _, hasWidget := params["widget_id"]; !hasWidget {
+						widgetId := findPrimaryWidgetId(chatOpts.TabState)
+						if widgetId != "" {
+							params["widget_id"] = widgetId
+						}
+					}
+					
+					assistantMsg := &PlaiMessage{
+						MessageId: apiMsgId,
+						Role:      "assistant",
+						Content:   content,
+					}
+					return createToolCall(toolName, params, sseHandler, assistantMsg)
+				}
+			}
 		}
 	}
 
@@ -339,7 +419,23 @@ func (b *plaiBackend) RemoveToolUseCall(chatId string, toolCallId string) error 
 }
 
 func (b *plaiBackend) ConvertToolResultsToNativeChatMessage(toolResults []uctypes.AIToolResult) ([]uctypes.GenAIMessage, error) {
-	return nil, nil // No soportado por PLAI actualmente
+	if len(toolResults) == 0 {
+		return nil, nil
+	}
+	var rtn []uctypes.GenAIMessage
+	for _, res := range toolResults {
+		content := res.Text
+		if res.ErrorText != "" {
+			content = fmt.Sprintf("Error: %s", res.ErrorText)
+		}
+		msg := &PlaiMessage{
+			MessageId: uuid.New().String(),
+			Role:      "tool",
+			Content:   content,
+		}
+		rtn = append(rtn, msg)
+	}
+	return rtn, nil
 }
 
 func (b *plaiBackend) ConvertAIMessageToNativeChatMessage(message uctypes.AIMessage) (uctypes.GenAIMessage, error) {
@@ -364,6 +460,10 @@ func (b *plaiBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIC
 	}
 
 	for _, genMsg := range aiChat.NativeMessages {
+		if genMsg.GetRole() == "tool" {
+			continue // Ocultar los resultados raw de las herramientas en la interfaz UI
+		}
+		
 		uiMsg := uctypes.UIMessage{
 			ID:   genMsg.GetMessageId(),
 			Role: genMsg.GetRole(),
