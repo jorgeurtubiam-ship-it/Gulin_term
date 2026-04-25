@@ -18,6 +18,7 @@ export interface BrainSummary {
 export interface DBConnectionInfo {
     name: string;
     type: string;
+    url?: string;
 }
 
 type GulinUIDataTypes = {

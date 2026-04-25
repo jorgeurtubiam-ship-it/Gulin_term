@@ -92,6 +92,67 @@ class DBConnectionsViewModel implements ViewModel {
         }
     }
 
+    async testConnection(connName: string) {
+        try {
+            const endpoint = getWebServerEndpoint();
+            const headers = { "X-AuthKey": getApi().getAuthKey() };
+            const resp = await fetch(`${endpoint}/gulin/db-test?connection=${encodeURIComponent(connName)}`, { headers });
+            if (!resp.ok) {
+                const text = await resp.text();
+                throw new Error(text || "Error testing connection");
+            }
+            alert(`Conexión '${connName}' exitosa.`);
+        } catch (e: any) {
+            console.error("Error testing connection", e);
+            alert(`Error al probar conexión:\n${e.message}`);
+        }
+    }
+
+    async deleteConnection(connName: string) {
+        if (!confirm(`¿Estás seguro de que quieres eliminar la conexión '${connName}'?`)) return;
+        try {
+            const endpoint = getWebServerEndpoint();
+            const headers = { "X-AuthKey": getApi().getAuthKey() };
+            const resp = await fetch(`${endpoint}/gulin/db-delete?connection=${encodeURIComponent(connName)}`, { headers });
+            if (!resp.ok) {
+                const text = await resp.text();
+                throw new Error(text || "Error deleting connection");
+            }
+            await this.loadData();
+            if (globalStore.get(this.selectedConnAtom) === connName) {
+                globalStore.set(this.selectedConnAtom, null);
+                globalStore.set(this.tablesAtom, []);
+            }
+        } catch (e: any) {
+            console.error("Error deleting connection", e);
+            alert(`Error al eliminar conexión:\n${e.message}`);
+        }
+    }
+
+    async saveConnection(connName: string, type: string, url: string) {
+        try {
+            const endpoint = getWebServerEndpoint();
+            const headers = { 
+                "X-AuthKey": getApi().getAuthKey(),
+                "Content-Type": "application/json"
+            };
+            const resp = await fetch(`${endpoint}/gulin/db-save`, { 
+                method: "POST",
+                headers,
+                body: JSON.stringify({ name: connName, type, url })
+            });
+            if (!resp.ok) {
+                const text = await resp.text();
+                throw new Error(text || "Error saving connection");
+            }
+            await this.loadData();
+        } catch (e: any) {
+            console.error("Error saving connection", e);
+            alert(`Error al guardar conexión:\n${e.message}`);
+            throw e;
+        }
+    }
+
     get viewComponent(): ViewComponent {
         return DBConnectionsView;
     }
@@ -104,6 +165,10 @@ function DBConnectionsView({ model }: { model: DBConnectionsViewModel }) {
     const tables = jotai.useAtomValue(model.tablesAtom);
     const loadingTables = jotai.useAtomValue(model.loadingTablesAtom);
 
+    const [editingConn, setEditingConn] = React.useState<string | null>(null);
+    const [editUrl, setEditUrl] = React.useState<string>("");
+    const [editType, setEditType] = React.useState<string>("");
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full text-zinc-500">
@@ -114,24 +179,68 @@ function DBConnectionsView({ model }: { model: DBConnectionsViewModel }) {
 
     const renderConnections = () => (
         <div className="flex flex-col gap-3">
-            {dbs.map(db => (
-                <div
-                    key={db.name}
-                    onClick={() => model.selectConnection(db.name)}
-                    className="group bg-zinc-900/60 border border-zinc-800 p-4 rounded-xl flex items-center justify-between hover:bg-zinc-800/80 hover:border-purple-500/50 transition-all cursor-pointer shadow-sm hover:shadow-purple-500/10"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="bg-purple-500/10 w-10 h-10 flex items-center justify-center rounded-lg text-purple-400 group-hover:bg-purple-500/20 transition-colors">
-                            <i className="fa fa-database text-sm"></i>
-                        </div>
-                        <div>
-                            <div className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">{db.name}</div>
-                            <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">{db.type}</div>
-                        </div>
+            {dbs.map(db => {
+                const isEditing = editingConn === db.name;
+                return (
+                    <div
+                        key={db.name}
+                        className="group bg-zinc-900/60 border border-zinc-800 p-4 rounded-xl flex flex-col gap-2 hover:bg-zinc-800/80 hover:border-purple-500/50 transition-all shadow-sm hover:shadow-purple-500/10"
+                    >
+                        {!isEditing ? (
+                            <div className="flex items-center justify-between cursor-pointer" onClick={() => model.selectConnection(db.name)}>
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-purple-500/10 w-10 h-10 flex items-center justify-center rounded-lg text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                                        <i className="fa fa-database text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">{db.name}</div>
+                                        <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">{db.type}</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <button onClick={() => model.testConnection(db.name)} className="bg-zinc-800 hover:bg-blue-500/20 text-blue-400 p-1.5 rounded-md text-[10px] transition-all" title="Probar Conexión">
+                                        <i className="fa fa-plug"></i>
+                                    </button>
+                                    <button onClick={() => { setEditingConn(db.name); setEditUrl(db.url || ""); setEditType(db.type); }} className="bg-zinc-800 hover:bg-green-500/20 text-green-400 p-1.5 rounded-md text-[10px] transition-all" title="Editar">
+                                        <i className="fa fa-pencil"></i>
+                                    </button>
+                                    <button onClick={() => model.deleteConnection(db.name)} className="bg-zinc-800 hover:bg-red-500/20 text-red-400 p-1.5 rounded-md text-[10px] transition-all" title="Eliminar">
+                                        <i className="fa fa-trash"></i>
+                                    </button>
+                                    <i className="fa fa-chevron-right text-[10px] text-zinc-700 group-hover:text-purple-500 group-hover:translate-x-1 transition-all ml-2"></i>
+
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-3 mt-2">
+                                <div className="text-sm font-bold text-white">{db.name}</div>
+                                <select 
+                                    value={editType} 
+                                    onChange={(e) => setEditType(e.target.value)}
+                                    className="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                                >
+                                    <option value="postgres">Postgres</option>
+                                    <option value="mysql">MySQL</option>
+                                    <option value="mssql">SQL Server</option>
+                                    <option value="sqlite">SQLite</option>
+                                    <option value="mongodb">MongoDB</option>
+                                </select>
+                                <input 
+                                    type="text" 
+                                    value={editUrl} 
+                                    onChange={(e) => setEditUrl(e.target.value)} 
+                                    placeholder="URL de Conexión (ej. postgres://user:pass@localhost:5432/db)"
+                                    className="bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-white focus:outline-none focus:border-purple-500 w-full"
+                                />
+                                <div className="flex gap-2 justify-end mt-2">
+                                    <button onClick={() => setEditingConn(null)} className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded transition-colors">Cancelar</button>
+                                    <button onClick={async () => { await model.saveConnection(db.name, editType, editUrl); setEditingConn(null); }} className="px-3 py-1.5 text-xs text-white bg-purple-600 hover:bg-purple-500 rounded transition-colors shadow-sm shadow-purple-500/20">Guardar</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <i className="fa fa-chevron-right text-[10px] text-zinc-700 group-hover:text-purple-500 group-hover:translate-x-1 transition-all"></i>
-                </div>
-            ))}
+                );
+            })}
             {dbs.length === 0 && (
                 <div className="text-center py-12 border-2 border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20">
                     <i className="fa fa-plus-circle text-zinc-700 text-3xl mb-3"></i>

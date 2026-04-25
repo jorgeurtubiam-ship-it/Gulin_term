@@ -398,6 +398,19 @@ func (m *AIMessage) GetContent() string {
 	return ""
 }
 
+type PlaiMessage struct {
+	MessageId string          `json:"messageid"`
+	Role      string          `json:"role"`
+	Content   string          `json:"content"`
+	ToolCalls []GulinToolCall `json:"toolcalls,omitempty"`
+}
+
+func (m *PlaiMessage) GetMessageId() string { return m.MessageId }
+func (m *PlaiMessage) GetRole() string      { return m.Role }
+func (m *PlaiMessage) GetUsage() *AIUsage   { return nil }
+func (m *PlaiMessage) GetContent() string   { return m.Content }
+func (m *PlaiMessage) GetToolCalls() []GulinToolCall { return m.ToolCalls }
+
 type AIMessagePart struct {
 	Type string `json:"type"` // "text", "file"
 

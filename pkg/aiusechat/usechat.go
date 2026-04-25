@@ -420,6 +420,16 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 	
 	// Preserve original tools/prompt to allow switching between Orchestrator and Experts in the loop
 	originalTools := chatOpts.Tools
+	if chatOpts.Config.APIType == uctypes.APIType_PlaiAssistant {
+		originalTools = append(originalTools, GetAPIRegisterToolDefinition())
+		originalTools = append(originalTools, GetAPICallToolDefinition())
+		originalTools = append(originalTools, GetAPIListToolDefinition())
+		originalTools = append(originalTools, GetAPIDeleteToolDefinition())
+		originalTools = append(originalTools, GetGulinBrainUpdateToolDefinition())
+		originalTools = append(originalTools, GetGulinBrainListToolDefinition())
+		originalTools = append(originalTools, GetGulinBrainSearchToolDefinition())
+		originalTools = append(originalTools, GetWebSearchToolDefinition(""))
+	}
 	originalSystemPrompt := chatOpts.SystemPrompt
 	for {
 		// RESTORE original tools/prompt before each step so experts work correctly
@@ -983,6 +993,7 @@ func GulinAIDBListHandler(w http.ResponseWriter, r *http.Request) {
 		result = append(result, DBConnectionInfo{
 			Name: name,
 			Type: conn.Type,
+			URL:  conn.URL,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")

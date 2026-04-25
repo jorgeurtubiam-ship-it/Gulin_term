@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
@@ -101,6 +102,14 @@ func LoadChatFromDB(chatId string) (*uctypes.AIChat, error) {
 				aiMsg, err = unmarshaler([]byte(dbMsg.ExtraData))
 				if err != nil {
 					log.Printf("error unmarshaling native message: %v\n", err)
+				}
+			}
+
+			// Fallback específico para PLAI si el unmarshaler falló o no existe el tipo exacto
+			if aiMsg == nil && dbMsg.ExtraData != "" && (dbMsg.APIType == "plai-assistant" || strings.Contains(dbMsg.ExtraData, "toolcalls")) {
+				var m uctypes.PlaiMessage
+				if err := json.Unmarshal([]byte(dbMsg.ExtraData), &m); err == nil && m.Role != "" {
+					aiMsg = &m
 				}
 			}
 

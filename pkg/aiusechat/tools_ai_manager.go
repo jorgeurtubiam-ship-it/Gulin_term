@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"path/filepath"
@@ -19,7 +21,14 @@ const GulinAPIEndpointsTable = "gulin_api_endpoints"
 
 func getGulintermDB() (*sql.DB, error) {
 	dataDir := gulinbase.GetGulinDataDir()
-	dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
+	dbDir := filepath.Join(dataDir, gulinbase.GulinDBDir)
+	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
+		err := os.MkdirAll(dbDir, 0755)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create db directory: %v", err)
+		}
+	}
+	dbPath := filepath.Join(dbDir, "gulin.db")
 	return sql.Open("sqlite3", dbPath)
 }
 
@@ -70,6 +79,7 @@ func GulinAIApiRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Printf("[API-MANAGER] registering endpoint: %s (%s)\n", req.Name, req.URL)
  
+	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" || req.URL == "" {
 		http.Error(w, "name and url are required", http.StatusBadRequest)
 		return
@@ -161,7 +171,24 @@ func GulinAIApiDeleteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func EnsureAPIEndpointsSchema(db *sql.DB) {
-	// Asegurar esquema técnico básico (Añadir columnas si no existen)
+	// Crear tabla si no existe
+	query := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s (
+			id TEXT PRIMARY KEY,
+			name TEXT UNIQUE,
+			url TEXT,
+			username TEXT,
+			password TEXT,
+			token TEXT,
+			system_prompt TEXT,
+			knowledge_source TEXT,
+			auth_instructions TEXT,
+			created_at INTEGER,
+			updated_at INTEGER
+		)`, GulinAPIEndpointsTable)
+	db.Exec(query)
+
+	// Asegurar esquema técnico básico (Añadir columnas si no existen - para migraciones)
 	db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN system_prompt TEXT", GulinAPIEndpointsTable))
 	db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN knowledge_source TEXT", GulinAPIEndpointsTable))
 	db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN auth_instructions TEXT", GulinAPIEndpointsTable))

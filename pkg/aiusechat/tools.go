@@ -165,6 +165,7 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		if chatOpts.Config.Provider == uctypes.AIProvider_Gulin || chatOpts.Config.Provider == uctypes.AIProvider_GulinBridge {
 			tools = append(tools, GetCallExpertToolDefinition())
 		}
+
 		// Only add screenshot tool for:
 		// - openai-responses API type
 		// - google-gemini API type with Gemini 3+ models
@@ -187,6 +188,7 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 		tools = append(tools, GetAPICallToolDefinition())
 		tools = append(tools, GetAPIListToolDefinition())
 		tools = append(tools, GetAPIDeleteToolDefinition())
+		tools = append(tools, GetWebSearchToolDefinition(tabid))
 
 		// Global Web Tools (always available if widgetAccess is true)
 		tools = append(tools, GetWebNavigateToolDefinition(tabid))
@@ -222,9 +224,13 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 			tools = append(tools, GetWebClickToolDefinition(tabid))
 			tools = append(tools, GetWebTypeToolDefinition(tabid))
 		}
-
-// El filtro restrictivo de Gulin Bridge fue removido exitosamente aquí
 	}
+// El filtro restrictivo de Gulin Bridge fue removido exitosamente aquí
+	// Herramientas de Descubrimiento Dinámico (Cualquier proveedor puede usarlas si tiene muchas herramientas)
+	tools = append(tools, GetListAvailableToolsToolDefinition())
+	// Pasamos la lista completa de herramientas acumuladas para que el catálogo tenga todo
+	tools = append(tools, GetGetToolSchemaToolDefinition(tools))
+
 	return tabState, tools, nil
 }
 

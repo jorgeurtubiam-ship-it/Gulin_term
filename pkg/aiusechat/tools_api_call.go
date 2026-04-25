@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 	"github.com/gulindev/gulin/pkg/gulinbase"
 
@@ -40,7 +41,11 @@ type APICallInput struct {
 // listAPIEndpointNames returns all registered API names, for error hints.
 func listAPIEndpointNames() ([]string, error) {
 	dataDir := gulinbase.GetGulinDataDir()
-	dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
+	dbDir := filepath.Join(dataDir, gulinbase.GulinDBDir)
+	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
+		os.MkdirAll(dbDir, 0755)
+	}
+	dbPath := filepath.Join(dbDir, "gulin.db")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
@@ -105,6 +110,7 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 						"type": "string",
 					},
 				},
+				"api_id":   map[string]any{"type": "string", "description": "Unique ID of the API to delete (optional)"},
 			},
 			"required":             []string{"api_name"},
 			"additionalProperties": false,
@@ -301,7 +307,11 @@ func GetAPIListToolDefinition() uctypes.ToolDefinition {
 
 func getAPIEndpointByName(name string) (*uctypes.APIEndpointInfo, error) {
 	dataDir := gulinbase.GetGulinDataDir()
-	dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
+	dbDir := filepath.Join(dataDir, gulinbase.GulinDBDir)
+	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
+		os.MkdirAll(dbDir, 0755)
+	}
+	dbPath := filepath.Join(dbDir, "gulin.db")
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open gulin db: %w", err)
@@ -309,7 +319,7 @@ func getAPIEndpointByName(name string) (*uctypes.APIEndpointInfo, error) {
 	defer db.Close()
 
 	row := db.QueryRow(
-		fmt.Sprintf("SELECT id, name, url, username, password, token, system_prompt, knowledge_source, auth_instructions, created_at, updated_at FROM %s WHERE name = ? LIMIT 1", GulinAPIEndpointsTable),
+		fmt.Sprintf("SELECT id, name, url, username, password, token, system_prompt, knowledge_source, auth_instructions, created_at, updated_at FROM %s WHERE LOWER(name) = LOWER(?) LIMIT 1", GulinAPIEndpointsTable),
 		name,
 	)
 	var ep uctypes.APIEndpointInfo
@@ -332,12 +342,10 @@ func GetAPIDeleteToolDefinition() uctypes.ToolDefinition {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"api_name": map[string]any{
-					"type":        "string",
-					"description": "Name of the API as saved in the GuLiN API Manager (case-sensitive).",
-				},
+				"api_name": map[string]any{"type": "string", "description": "Name of the API to delete"},
+				"api_id":   map[string]any{"type": "string", "description": "Unique ID of the API to delete (optional)"},
 			},
-			"required":             []string{"api_name"},
+			"required":             []string{},
 			"additionalProperties": false,
 		},
 		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
@@ -346,21 +354,27 @@ func GetAPIDeleteToolDefinition() uctypes.ToolDefinition {
 				return nil, fmt.Errorf("invalid input")
 			}
 			name, _ := m["api_name"].(string)
-			if name == "" {
-				return nil, fmt.Errorf("api_name is required")
+			id, _ := m["api_id"].(string)
+
+			if name == "" && id == "" {
+				return nil, fmt.Errorf("api_name or api_id is required")
 			}
 
-			dataDir := gulinbase.GetGulinDataDir()
-			dbPath := filepath.Join(dataDir, gulinbase.GulinDBDir, "gulin.db")
-			db, err := sql.Open("sqlite3", dbPath)
+			db, err := getAPIContextDB()
 			if err != nil {
 				return nil, fmt.Errorf("failed to open db: %w", err)
 			}
 			defer db.Close()
 
-			res, err := db.Exec(fmt.Sprintf("DELETE FROM %s WHERE name = ?", GulinAPIEndpointsTable), name)
+			var res sql.Result
+			if id != "" {
+				res, err = db.Exec(fmt.Sprintf("DELETE FROM %s WHERE id = ?", GulinAPIEndpointsTable), id)
+			} else {
+				res, err = db.Exec(fmt.Sprintf("DELETE FROM %s WHERE name = ?", GulinAPIEndpointsTable), name)
+			}
+
 			if err != nil {
-				return nil, fmt.Errorf("failed to delete API '%s': %w", name, err)
+				return nil, fmt.Errorf("failed to delete API: %w", err)
 			}
 
 			count, _ := res.RowsAffected()
@@ -371,4 +385,65 @@ func GetAPIDeleteToolDefinition() uctypes.ToolDefinition {
 			return fmt.Sprintf("API '%s' has been successfully deleted from the GuLiN API Manager.", name), nil
 		},
 	}
+}
+// GetAPIRegisterToolDefinition returns a tool to register a new API in the manager.
+func GetAPIRegisterToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "apimanager_register",
+		DisplayName: "Register API Manager Endpoint",
+		ToolLogName: "apimanager:register",
+		Description: "Register a new API endpoint in the GuLiN API Manager. Provide a name, base URL, and optionally credentials (username, password, token).",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name":     map[string]any{"type": "string", "description": "Unique name for this API (e.g. 'dremio')"},
+				"url":      map[string]any{"type": "string", "description": "Base URL of the API (e.g. 'http://127.0.0.1:9047')"},
+				"username":          map[string]any{"type": "string", "description": "Username for authentication (optional)"},
+				"password":          map[string]any{"type": "string", "description": "Password for authentication (optional)"},
+				"token":             map[string]any{"type": "string", "description": "API token or Bearer token (optional)"},
+				"system_prompt":     map[string]any{"type": "string", "description": "Custom identity or instructions for this API (optional)"},
+				"knowledge_source":  map[string]any{"type": "string", "description": "URL or description of the knowledge source for this API (optional)"},
+				"auth_instructions": map[string]any{"type": "string", "description": "Specific login path or token usage instructions (optional)"},
+			},
+			"required": []string{"name", "url"},
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			b, _ := json.Marshal(input)
+			var req uctypes.APIEndpointInfo
+			json.Unmarshal(b, &req)
+
+			db, err := getAPIContextDB()
+			if err != nil {
+				return nil, err
+			}
+			defer db.Close()
+
+			// ASEGURAR QUE LA TABLA EXISTA
+			EnsureAPIEndpointsSchema(db)
+
+			now := time.Now().UnixMilli()
+			req.ID = uuid.New().String()
+			req.CreatedAt = now
+			req.UpdatedAt = now
+
+			query := fmt.Sprintf(`
+				INSERT INTO %s (id, name, url, username, password, token, system_prompt, knowledge_source, auth_instructions, created_at, updated_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, GulinAPIEndpointsTable)
+			_, err = db.Exec(query, req.ID, req.Name, req.URL, req.Username, req.Password, req.Token, req.SystemPrompt, req.KnowledgeSource, req.AuthInstructions, req.CreatedAt, req.UpdatedAt)
+			if err != nil {
+				return nil, fmt.Errorf("failed to register API: %w", err)
+			}
+			return fmt.Sprintf("API '%s' registrada exitosamente en el API Manager con el modelo de datos completo.", req.Name), nil
+		},
+	}
+}
+
+func getAPIContextDB() (*sql.DB, error) {
+	dataDir := gulinbase.GetGulinDataDir()
+	dbDir := filepath.Join(dataDir, gulinbase.GulinDBDir)
+	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
+		os.MkdirAll(dbDir, 0755)
+	}
+	dbPath := filepath.Join(dbDir, "gulin.db")
+	return sql.Open("sqlite3", dbPath)
 }

@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -29,6 +30,7 @@ import (
 type DBConnectionInfo struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
+	URL  string `json:"url"`
 }
 
 const DBConnectionsSecretKey = "gulin_db_connections"
@@ -380,5 +382,102 @@ func openDBExplorerBlock(ctx context.Context, tabId string, parsed DBQueryInput,
 		return nil, fmt.Errorf("failed to open DB Explorer: %w", err)
 	}
 	return fmt.Sprintf("Query executed. %d rows returned. DB Explorer widget opened.", len(results)), nil
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Web Handlers for DB Explorer UI Actions
+// ──────────────────────────────────────────────────────────────────────────────
+
+func GulinAIDBDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	connName := r.URL.Query().Get("connection")
+	if connName == "" {
+		http.Error(w, "connection parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	connections, _ := loadDBConnections()
+	if _, ok := connections[connName]; !ok {
+		http.Error(w, "connection not found", http.StatusNotFound)
+		return
+	}
+
+	delete(connections, connName)
+	if err := saveDBConnections(connections); err != nil {
+		http.Error(w, fmt.Sprintf("failed to save connections: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+func GulinAIDBTestHandler(w http.ResponseWriter, r *http.Request) {
+	connName := r.URL.Query().Get("connection")
+	if connName == "" {
+		http.Error(w, "connection parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	connections, _ := loadDBConnections()
+	connInfo, ok := connections[connName]
+	if !ok {
+		http.Error(w, "connection not found", http.StatusNotFound)
+		return
+	}
+
+	if connInfo.Type == "mongodb" {
+		client, err := mongo.Connect(r.Context(), options.Client().ApplyURI(connInfo.URL))
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to connect to MongoDB: %v", err), http.StatusInternalServerError)
+			return
+		}
+		defer client.Disconnect(r.Context())
+		if err := client.Ping(r.Context(), nil); err != nil {
+			http.Error(w, fmt.Sprintf("MongoDB ping failed: %v", err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		db, err := openSQLDB(connInfo.Type, connInfo.URL)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to open db: %v", err), http.StatusInternalServerError)
+			return
+		}
+		defer db.Close()
+		if err := db.PingContext(r.Context()); err != nil {
+			http.Error(w, fmt.Sprintf("db ping failed: %v", err), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+func GulinAIDBSaveHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req DBRegisterInput
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if req.Name == "" || req.Type == "" || req.URL == "" {
+		http.Error(w, "name, type, and url are required", http.StatusBadRequest)
+		return
+	}
+
+	connections, _ := loadDBConnections()
+	connections[req.Name] = req
+	if err := saveDBConnections(connections); err != nil {
+		http.Error(w, fmt.Sprintf("failed to save connection: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
