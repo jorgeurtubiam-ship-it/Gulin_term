@@ -43,6 +43,11 @@ Se compactó el System Prompt y el historial de mensajes:
 - **Reducción de Instrucciones:** De 10.3 KB a **2.5 KB**.
 - **Memoria Eficiente:** Se priorizó el historial reciente y el objetivo inicial (Goal), asegurando que la IA siempre sepa qué está haciendo sin saturar la conexión.
 
+### D. Estandarización de Chunks (Streaming Eficiente)
+Se ha verificado y asegurado que la implementación de **Chunks** (fragmentos de datos) es uniforme en todos los proveedores del ecosistema Gulin (Anthropic, Gemini, PLAI):
+- **Protocolo Unificado:** Todos los backends utilizan una estructura de chunks estandarizada, permitiendo que la interfaz de usuario (UI) muestre respuestas en tiempo real (streaming) sin importar el proveedor seleccionado.
+- **Robustez:** El manejo de chunks evita latencias perceptibles y asegura que las herramientas de terminal reciban datos de forma incremental, optimizando la experiencia del usuario final.
+
 ---
 
 ## 4. Resultados Obtenidos
