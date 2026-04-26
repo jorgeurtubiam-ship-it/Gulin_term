@@ -17,9 +17,10 @@ El WAF de Cencosud opera bajo reglas que penalizan el uso de herramientas técni
 - **Límite de Carga Útil (Payload):** El límite se reduce a **16 KB** cuando se detecta contenido técnico (JSON/Código), lo cual es insuficiente para agentes de IA avanzados que requieren contextos amplios.
 - **Bloqueo de Patrones de Terminal:** Se detectó el bloqueo sistemático de caracteres de control como el **Pipe (`|`)** y comandos como `grep`, esenciales para la automatización de tareas.
 
-### B. Ausencia de Streaming (SSE) en la API de PLAI
+### B. Ausencia de Streaming (SSE) y Desperdicio de Chunks
 A diferencia de otros proveedores de vanguardia (Anthropic, OpenAI), la API de PLAI actualmente **no tiene habilitado el protocolo de Streaming (SSE)**.
-- **Impacto:** El usuario no ve la respuesta en tiempo real, sino que debe esperar a que el modelo termine todo el razonamiento para ver el resultado. Esto genera una percepción de latencia y dificulta la interacción fluida.
+- **Infraestructura Gulin:** Nuestro motor ya está estandarizado y **preparado para manejar Chunks** (fragmentos de datos en tiempo real).
+- **Cuello de Botella:** Debido a que la API de Cencosud no soporta streaming, la implementación de chunks de Gulin queda "ociosa", obligando al usuario a esperar el bloque completo de respuesta. Esto anula la ventaja de velocidad que ya tenemos programada.
 
 ---
 
