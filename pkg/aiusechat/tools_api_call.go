@@ -31,8 +31,8 @@ type APICallInput struct {
 	Method string `json:"method,omitempty"`
 	// Path to append to the base URL, e.g. "/users/1". Leave empty for the root.
 	Path string `json:"path,omitempty"`
-	// Optional JSON body for POST/PUT/PATCH requests (as a string).
-	Body string `json:"body,omitempty"`
+	// Optional JSON body for POST/PUT/PATCH requests (can be a string or an object).
+	Body any `json:"body,omitempty"`
 	// Optional extra headers as key:value pairs, e.g. {"Accept": "application/json"}.
 	Headers map[string]string `json:"headers,omitempty"`
 }
@@ -81,7 +81,9 @@ You have access to these credentials via 'apimanager_list'. Use them to construc
 You only need to provide the API name, the HTTP method, and optionally a path and body.
 SECURE PLACEHOLDERS: You can also use {{username}}, {{password}}, and {{token}} inside 'body' or 'path' if you want the tool to swap them automatically for you.
 Use this tool whenever the user mentions "api manager" or an API registered in the app.
-Do NOT use db_query or terminal commands for REST APIs — use this tool instead.
+8. DYNAMISM: Always read 'auth_instructions' from 'apimanager_list' before calling this tool. Follow those instructions strictly as they contain the correct endpoints for the specific environment.
+9. URL EXTRACTION: If the user provides a full URL, extract the path and query yourself.
+10. DEBUGGING: If apimanager_call returns 404 or 401, check the 'auth_instructions' again and use terminal commands (curl) to verify the correct endpoint.
 `),
 		InputSchema: map[string]any{
 			"type": "object",
@@ -143,18 +145,35 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 			baseURL := strings.TrimRight(ep.URL, "/")
 			path := parsed.Path
 
-			// Replace placeholders in Path and Body
-			if ep.Username != "" {
-				path = strings.ReplaceAll(path, "{{username}}", ep.Username)
-				parsed.Body = strings.ReplaceAll(parsed.Body, "{{username}}", ep.Username)
+			// Handle body: can be string or object
+			bodyStr := ""
+			if parsed.Body != nil {
+				switch v := parsed.Body.(type) {
+				case string:
+					bodyStr = v
+				default:
+					jb, _ := json.Marshal(v)
+					bodyStr = string(jb)
+				}
 			}
-			if ep.Password != "" {
-				path = strings.ReplaceAll(path, "{{password}}", ep.Password)
-				parsed.Body = strings.ReplaceAll(parsed.Body, "{{password}}", ep.Password)
+
+			// Replace placeholders in Path, Body, and Headers
+			replacePlaceholders := func(s string) string {
+				// FORCE REAL DATA: If DB has data, use it ALWAYS, ignoring agent's input
+				if ep.Username != "" { s = strings.ReplaceAll(s, "{{username}}", ep.Username) }
+				if ep.Password != "" { s = strings.ReplaceAll(s, "{{password}}", ep.Password) }
+				if ep.Token != "" { s = strings.ReplaceAll(s, "{{token}}", ep.Token) }
+				
+				// SECURITY: If the agent tried to use 'admin', overwrite it with real data
+				if ep.Username != "" { s = strings.ReplaceAll(s, "admin", ep.Username) }
+				
+				return s
 			}
-			if ep.Token != "" {
-				path = strings.ReplaceAll(path, "{{token}}", ep.Token)
-				parsed.Body = strings.ReplaceAll(parsed.Body, "{{token}}", ep.Token)
+
+			path = replacePlaceholders(path)
+			bodyStr = replacePlaceholders(bodyStr)
+			for k, v := range parsed.Headers {
+				parsed.Headers[k] = replacePlaceholders(v)
 			}
 
 			if path != "" && !strings.HasPrefix(path, "/") {
@@ -164,8 +183,8 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 
 			// Build request
 			var bodyReader io.Reader
-			if parsed.Body != "" {
-				bodyReader = strings.NewReader(parsed.Body)
+			if bodyStr != "" {
+				bodyReader = strings.NewReader(bodyStr)
 			}
 			req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 			if err != nil {
@@ -174,18 +193,13 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 
 			// Auth: prefer token, then basic auth
 			if ep.Token != "" {
-				// Try to detect if it's already prefixed
-				tokenVal := ep.Token
-				if !strings.HasPrefix(strings.ToLower(tokenVal), "bearer ") {
-					tokenVal = "Bearer " + tokenVal
-				}
-				req.Header.Set("Authorization", tokenVal)
+				req.Header.Set("Authorization", ep.Token)
 			} else if ep.Username != "" && ep.Password != "" {
 				req.SetBasicAuth(ep.Username, ep.Password)
 			}
 
 			// Default content type for body requests
-			if parsed.Body != "" {
+			if bodyStr != "" {
 				req.Header.Set("Content-Type", "application/json")
 			}
 			req.Header.Set("Accept", "application/json")
@@ -193,6 +207,16 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 			// Extra headers
 			for k, v := range parsed.Headers {
 				req.Header.Set(k, v)
+			}
+
+			// --- DEBUG PARA JORGE ---
+			fmt.Printf("\n[DEBUG API] %s %s\n", method, fullURL)
+			if bodyStr != "" { fmt.Printf("[DEBUG BODY] %s\n", bodyStr) }
+			// -------------------------
+
+			// ENFORCEMENT: Dremio SQL must be POST
+			if strings.Contains(fullURL, "/api/v3/sql") && method == "GET" {
+				return nil, fmt.Errorf("DREMIO ERROR: El endpoint /api/v3/sql EXIGE el método POST. No intentes usar GET.")
 			}
 
 			// Execute
@@ -212,7 +236,7 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 			var prettyJSON any
 			if err := json.Unmarshal(respBody, &prettyJSON); err == nil {
 				prettyBytes, _ := json.MarshalIndent(prettyJSON, "", "  ")
-				bodyStr := string(prettyBytes)
+				bodyStr = string(prettyBytes)
 				
 				// Limit output length to prevent LLM context overflow (max ~15KB per API call)
 				const MaxBodyLen = 15000
@@ -234,7 +258,10 @@ Do NOT use db_query or terminal commands for REST APIs — use this tool instead
 			}
 
 			// Non-JSON response truncation
-			bodyStr := string(respBody)
+			bodyStr = string(respBody)
+			if strings.Contains(strings.ToLower(bodyStr), "<html") {
+				bodyStr += "\n\n>>> WARNING: This endpoint returned HTML instead of JSON. You might be calling a UI URL instead of an API endpoint. For Dremio, ensure your path starts with /api/v3/ (e.g. /api/v3/login)."
+			}
 			const MaxStringLen = 15000
 			if len(bodyStr) > MaxStringLen {
 				tmpFile := filepath.Join(gulinbase.GetGulinDataDir(), "tmp_api_response.txt")
@@ -323,12 +350,22 @@ func getAPIEndpointByName(name string) (*uctypes.APIEndpointInfo, error) {
 		name,
 	)
 	var ep uctypes.APIEndpointInfo
-	if err := row.Scan(&ep.ID, &ep.Name, &ep.URL, &ep.Username, &ep.Password, &ep.Token, &ep.SystemPrompt, &ep.KnowledgeSource, &ep.AuthInstructions, &ep.CreatedAt, &ep.UpdatedAt); err != nil {
+	var username, password, token, systemPrompt, knowledgeSource, authInstructions sql.NullString
+
+	if err := row.Scan(&ep.ID, &ep.Name, &ep.URL, &username, &password, &token, &systemPrompt, &knowledgeSource, &authInstructions, &ep.CreatedAt, &ep.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("API '%s' not found", name)
 		}
 		return nil, fmt.Errorf("error reading API endpoint: %w", err)
 	}
+
+	if username.Valid { ep.Username = username.String }
+	if password.Valid { ep.Password = password.String }
+	if token.Valid { ep.Token = token.String }
+	if systemPrompt.Valid { ep.SystemPrompt = systemPrompt.String }
+	if knowledgeSource.Valid { ep.KnowledgeSource = knowledgeSource.String }
+	if authInstructions.Valid { ep.AuthInstructions = authInstructions.String }
+
 	return &ep, nil
 }
 
@@ -421,19 +458,49 @@ func GetAPIRegisterToolDefinition() uctypes.ToolDefinition {
 			// ASEGURAR QUE LA TABLA EXISTA
 			EnsureAPIEndpointsSchema(db)
 
+			// BUSCAR SI YA EXISTE POR NOMBRE PARA REUTILIZAR EL ID (Case-insensitive)
+			existing := uctypes.APIEndpointInfo{}
+			var exURL, exUser, exPass, exToken, exPrompt, exSource, exAuth sql.NullString
+			err = db.QueryRow(fmt.Sprintf("SELECT id, url, username, password, token, system_prompt, knowledge_source, auth_instructions, created_at FROM %s WHERE LOWER(name) = LOWER(?)", GulinAPIEndpointsTable), req.Name).Scan(
+				&existing.ID, &exURL, &exUser, &exPass, &exToken, &exPrompt, &exSource, &exAuth, &existing.CreatedAt,
+			)
+
 			now := time.Now().UnixMilli()
-			req.ID = uuid.New().String()
-			req.CreatedAt = now
+			if err == nil && existing.ID != "" {
+				req.ID = existing.ID
+				req.CreatedAt = existing.CreatedAt
+				// Patch behavior: keep existing values if new ones are empty
+				if req.URL == "" && exURL.Valid { req.URL = exURL.String }
+				if req.Username == "" && exUser.Valid { req.Username = exUser.String }
+				if req.Password == "" && exPass.Valid { req.Password = exPass.String }
+				if req.Token == "" && exToken.Valid { req.Token = exToken.String }
+				if req.SystemPrompt == "" && exPrompt.Valid { req.SystemPrompt = exPrompt.String }
+				if req.KnowledgeSource == "" && exSource.Valid { req.KnowledgeSource = exSource.String }
+				if req.AuthInstructions == "" && exAuth.Valid { req.AuthInstructions = exAuth.String }
+			} else {
+				req.ID = uuid.New().String()
+				req.CreatedAt = now
+			}
 			req.UpdatedAt = now
 
 			query := fmt.Sprintf(`
 				INSERT INTO %s (id, name, url, username, password, token, system_prompt, knowledge_source, auth_instructions, created_at, updated_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, GulinAPIEndpointsTable)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+				ON CONFLICT(id) DO UPDATE SET
+					name=excluded.name,
+					url=excluded.url,
+					username=excluded.username,
+					password=excluded.password,
+					token=excluded.token,
+					system_prompt=excluded.system_prompt,
+					knowledge_source=excluded.knowledge_source,
+					auth_instructions=excluded.auth_instructions,
+					updated_at=excluded.updated_at`, GulinAPIEndpointsTable)
 			_, err = db.Exec(query, req.ID, req.Name, req.URL, req.Username, req.Password, req.Token, req.SystemPrompt, req.KnowledgeSource, req.AuthInstructions, req.CreatedAt, req.UpdatedAt)
 			if err != nil {
 				return nil, fmt.Errorf("failed to register API: %w", err)
 			}
-			return fmt.Sprintf("API '%s' registrada exitosamente en el API Manager con el modelo de datos completo.", req.Name), nil
+			return fmt.Sprintf("API '%s' registrada/actualizada exitosamente en el API Manager.", req.Name), nil
 		},
 	}
 }

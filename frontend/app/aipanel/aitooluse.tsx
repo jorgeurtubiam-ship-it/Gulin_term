@@ -11,6 +11,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { GulinUIMessagePart } from "./aitypes";
 import { RestoreBackupModal } from "./restorebackupmodal";
 import { GulinAIModel } from "./gulinai-model";
+import { decodeWAFText } from "./ai-utils";
 
 // matches pkg/filebackup/filebackup.go
 const BackupRetentionDays = 5;
@@ -200,14 +201,17 @@ AIToolUseBatch.displayName = "AIToolUseBatch";
 interface AIToolUseProps {
     part: GulinUIMessagePart & { type: "data-tooluse" };
     isStreaming: boolean;
+    reasoning?: string;
 }
 
-const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
+const AIToolUse = memo(({ part, isStreaming, reasoning: reasoningProp }: AIToolUseProps) => {
     const toolData = part?.data;
     if (!toolData) return null;
 
     const { t } = useTranslation();
     const [userApprovalOverride, setUserApprovalOverride] = useState<string | null>(null);
+    const reasoning = reasoningProp || toolData.thought;
+    const [showReasoningModal, setShowReasoningModal] = useState(false);
 
     const model = GulinAIModel.getInstance();
     const restoreModalToolCallId = useAtomValue(model.restoreBackupModalToolCallId);
@@ -287,11 +291,17 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
     };
 
     return (
-        <div
-            className={cn("flex flex-col gap-1 p-2 rounded border", statusStyles)}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-        >
+        <>
+            <div
+                className={cn(
+                    "flex flex-col gap-1 p-2 rounded border transition-all duration-200",
+                    statusStyles,
+                    "cursor-pointer hover:brightness-110 active:scale-[0.98]"
+                )}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                onClick={() => setShowReasoningModal(true)}
+            >
             <div className="flex items-center gap-2">
                 <span className="font-bold">{statusIcon}</span>
                 <div className="font-semibold">{toolData.toolname}</div>
@@ -333,8 +343,40 @@ const AIToolUse = memo(({ part, isStreaming }: AIToolUseProps) => {
                     <AIToolApprovalButtons count={1} onApprove={handleApprove} onDeny={handleDeny} />
                 </div>
             )}
+            </div>
             {showRestoreModal && <RestoreBackupModal part={part} />}
-        </div>
+            {showReasoningModal && (
+                <Modal
+                    open={true}
+                    onClose={() => setShowReasoningModal(false)}
+                    title="Razonamiento de la IA"
+                    className="max-w-2xl"
+                >
+                    <div className="p-6">
+                        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                <i className="fa fa-brain"></i>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">¿Qué pensó Gulin?</h3>
+                                <p className="text-xs text-gray-400">Contexto y lógica detrás de esta acción</p>
+                            </div>
+                        </div>
+                        <div className="bg-zinc-950/40 p-4 rounded-lg border border-white/5 font-mono text-sm leading-relaxed text-zinc-300 max-h-[60vh] overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                            {decodeWAFText(reasoning) || "Gulin realizó una acción técnica directa sin comentarios adicionales."}
+                        </div>
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                onClick={() => setShowReasoningModal(false)}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-semibold transition-colors"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+        </>
     );
 });
 
@@ -401,9 +443,11 @@ interface AITerminalToolGroupCardProps {
     blockid: string;
     parts: Array<GulinUIMessagePart & { type: "data-tooluse" }>;
     isStreaming: boolean;
+    reasoning?: string;
 }
 
-const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) => {
+const AITerminalToolGroupCard = memo(({ parts, reasoning: reasoningProp }: AITerminalToolGroupCardProps) => {
+    const [showReasoningModal, setShowReasoningModal] = useState(false);
     if (!Array.isArray(parts) || parts.length === 0) return null;
 
     // Representative tool: the first one that ran a command (not just output)
@@ -416,6 +460,9 @@ const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) =
     const anyCompleted = parts.some((p) => p?.data?.status === "completed");
     const allCompletedOrFinished = parts.every((p) => p?.data?.status === "completed" || (p?.data?.toolname && !p?.data?.status));
     const overallStatus = hasError ? "error" : (allCompletedOrFinished || anyCompleted ? "completed" : "pending");
+    
+    // Reasoning from parts
+    const effectiveReasoning = reasoningProp || parts.find(p => p.data?.thought)?.data?.thought;
 
     const statusIcon = overallStatus === "completed" ? "✓" : overallStatus === "error" ? "✗" : "•";
     const statusStyles =
@@ -441,9 +488,15 @@ const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) =
     const cardTitle = toolData.toolname;
 
     return (
-        <div
-            className={cn("flex flex-col gap-1 p-2 rounded border", statusStyles)}
-        >
+        <>
+            <div
+                className={cn(
+                    "flex flex-col gap-1 p-2 rounded border transition-all duration-200",
+                    statusStyles,
+                    effectiveReasoning ? "cursor-pointer hover:brightness-110 active:scale-[0.98]" : ""
+                )}
+                onClick={effectiveReasoning ? () => setShowReasoningModal(true) : undefined}
+            >
             <div className="flex items-center gap-2">
                 <span className="font-bold">{statusIcon}</span>
                 <div className="font-semibold">{cardTitle}</div>
@@ -460,7 +513,39 @@ const AITerminalToolGroupCard = memo(({ parts }: AITerminalToolGroupCardProps) =
                     {parts.find((p) => p?.data?.errormessage)?.data?.errormessage}
                 </div>
             )}
-        </div>
+            </div>
+            {showReasoningModal && effectiveReasoning && (
+                <Modal
+                    open={true}
+                    onClose={() => setShowReasoningModal(false)}
+                    title="Razonamiento de la IA"
+                    className="max-w-2xl"
+                >
+                    <div className="p-6">
+                        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/10">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                <i className="fa fa-brain"></i>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">¿Qué pensó Gulin?</h3>
+                                <p className="text-xs text-gray-400">Contexto y lógica detrás de esta acción agrupada</p>
+                            </div>
+                        </div>
+                        <div className="bg-zinc-950/40 p-4 rounded-lg border border-white/5 font-mono text-sm leading-relaxed text-zinc-300 max-h-[60vh] overflow-y-auto custom-scrollbar whitespace-pre-wrap">
+                            {decodeWAFText(effectiveReasoning)}
+                        </div>
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                onClick={() => setShowReasoningModal(false)}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-semibold transition-colors"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+        </>
     );
 });
 
@@ -472,6 +557,7 @@ interface AIToolUseGroupProps {
     parts: Array<GulinUIMessagePart & { type: "data-tooluse" | "data-toolprogress" }>;
     isStreaming: boolean;
     seenBlockIds?: Set<string>;
+    reasoning?: string;
 }
 
 type ToolGroupItem =
@@ -480,7 +566,7 @@ type ToolGroupItem =
     | { type: "progress"; part: GulinUIMessagePart & { type: "data-toolprogress" } }
     | { type: "terminal-group"; blockid: string; parts: Array<GulinUIMessagePart & { type: "data-tooluse" }> };
 
-export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds }: AIToolUseGroupProps) => {
+export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds, reasoning }: AIToolUseGroupProps) => {
     const tooluseParts = parts.filter((p) => p.type === "data-tooluse") as Array<
         GulinUIMessagePart & { type: "data-tooluse" }
     >;
@@ -599,13 +685,14 @@ export const AIToolUseGroup = memo(({ parts, isStreaming, seenBlockIds }: AITool
                                 blockid={item.blockid}
                                 parts={item.parts}
                                 isStreaming={isStreaming}
+                                reasoning={reasoning}
                             />
                         </div>
                     );
                 } else {
                     return (
                         <div key={idx} className="mt-2">
-                            <AIToolUse part={item.part} isStreaming={isStreaming} />
+                            <AIToolUse part={item.part} isStreaming={isStreaming} reasoning={reasoning} />
                         </div>
                     );
                 }

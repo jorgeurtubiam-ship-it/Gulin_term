@@ -17,7 +17,7 @@ import (
 type TermCreateDashboardInput struct {
 	Title string `json:"title"`
 	Type  string `json:"type"` // "bar", "line", etc.
-	Data  string `json:"data"` // JSON array string of the chart data
+	Data  any    `json:"data"` // Can be JSON array string or raw array/map
 }
 
 func parseCreateDashboardInput(input any) (*TermCreateDashboardInput, error) {
@@ -50,7 +50,7 @@ func GetCreateDashboardToolDefinition(tabId string) uctypes.ToolDefinition {
 	return uctypes.ToolDefinition{
 		Name:        "term_create_dashboard",
 		DisplayName: "Create Interactive Dashboard",
-		Description: "Generate a beautiful interactive data dashboard widget based on statistical or performance data. Use this when the user asks to see metrics, tables, costs, or status in a graph format. Provide a JSON array with the data. CRITICAL: If the user asks for a dashboard on a general topic, DO NOT search the local file system. IMMEDIATELY generate hypothetical or real data from your pre-training knowledge and call this tool. ONLY search the file system if the user EXPLICITLY asks to read a specific local file or folder.",
+		Description: "Generate an interactive dashboard or table. Use 'grid' type for tabular data. IMPORTANT: Data must be a list of records. If providing Dremio source info, use the 'children' array to show multiple items in the table. Avoid nested objects if possible.",
 		ToolLogName: "widget:createdashboard",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -65,8 +65,7 @@ func GetCreateDashboardToolDefinition(tabId string) uctypes.ToolDefinition {
 					"description": "Chart type. Default is 'bar'. Use 'grid' for tabular data like database results or excel-like spreadsheets.",
 				},
 				"data": map[string]any{
-					"type":        "string",
-					"description": "A JSON array string containing the data set. For charts: first key is X axis. For 'grid': all keys become columns. E.g. '[{\"ID\":1,\"User\":\"Admin\",\"Status\":\"Active\"}]'",
+					"description": "The data set for the dashboard. Can be a JSON array string OR a direct JSON array/object. For 'grid' type, providing an array of objects is recommended.",
 				},
 			},
 			"required":             []string{"data"},
@@ -85,10 +84,40 @@ func GetCreateDashboardToolDefinition(tabId string) uctypes.ToolDefinition {
 				return nil, err
 			}
 
+			// Normalize data to JSON string for the frontend
+			var finalDataStr string
+			switch v := parsed.Data.(type) {
+			case string:
+				finalDataStr = v
+			default:
+				bytes, err := json.Marshal(v)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal dashboard data: %w", err)
+				}
+				finalDataStr = string(bytes)
+			}
+
 			// Validate JSON array format basically
-			var dummy []map[string]any
-			if err := json.Unmarshal([]byte(parsed.Data), &dummy); err != nil {
-				return nil, fmt.Errorf("data must be a valid JSON array string: %v", err)
+			var dummy []any
+			if err := json.Unmarshal([]byte(finalDataStr), &dummy); err != nil {
+				// If it's not an array, wrap it in one to allow single object display
+				var singleObj map[string]any
+				if err2 := json.Unmarshal([]byte(finalDataStr), &singleObj); err2 == nil {
+					// AUTO-DETECTION: If the object has a 'children' array, use that as the data
+					// This is common with Dremio/Cloud source outputs
+					if children, ok := singleObj["children"]; ok {
+						if childrenArray, ok := children.([]any); ok && len(childrenArray) > 0 {
+							bytes, _ := json.Marshal(childrenArray)
+							finalDataStr = string(bytes)
+						} else {
+							finalDataStr = "[" + finalDataStr + "]"
+						}
+					} else {
+						finalDataStr = "[" + finalDataStr + "]"
+					}
+				} else {
+					return nil, fmt.Errorf("data must be a valid JSON array or object: %v", err)
+				}
 			}
 
 			rpcClient := wshclient.GetBareRpcClient()
@@ -99,7 +128,7 @@ func GetCreateDashboardToolDefinition(tabId string) uctypes.ToolDefinition {
 						"view":            "dashboard",
 						"dashboard:title": parsed.Title,
 						"dashboard:type":  parsed.Type,
-						"dashboard:data":  parsed.Data, // Store the json string directly
+						"dashboard:data":  finalDataStr,
 					},
 				},
 			}, nil)

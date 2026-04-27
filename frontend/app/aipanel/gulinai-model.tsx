@@ -693,6 +693,7 @@ export class GulinAIModel {
 
         const realMessage: AIMessage = {
             messageid: crypto.randomUUID(),
+            role: "user",
             parts: aiMessageParts,
         };
         this.realMessage = realMessage;

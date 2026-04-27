@@ -149,6 +149,16 @@ func DeleteChatFromDB(chatId string) error {
 	})
 }
 
+func DeleteMessageFromDB(chatId string, messageId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		tx.Exec(`DELETE FROM chat_message WHERE chat_id = ? AND message_id = ?`, chatId, messageId)
+		return nil
+	})
+}
+
 func BulkDeleteChatsFromDB(chatIds []string) error {
 	if len(chatIds) == 0 {
 		return nil

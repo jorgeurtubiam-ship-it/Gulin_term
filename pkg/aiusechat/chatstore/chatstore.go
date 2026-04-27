@@ -20,6 +20,16 @@ var DefaultChatStore = &ChatStore{
 	chats: make(map[string]*uctypes.AIChat),
 }
 
+func (cs *ChatStore) GetAll() []*uctypes.AIChat {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+	var rtn []*uctypes.AIChat
+	for _, chat := range cs.chats {
+		rtn = append(rtn, chat)
+	}
+	return rtn
+}
+
 func (cs *ChatStore) Get(chatId string) *uctypes.AIChat {
 	cs.lock.Lock()
 	chat := cs.chats[chatId]
@@ -172,7 +182,12 @@ func (cs *ChatStore) RemoveMessage(chatId string, messageId string) bool {
 		return msg.GetMessageId() == messageId
 	})
 
-	return len(chat.NativeMessages) < initialLen
+	if len(chat.NativeMessages) < initialLen {
+		// Persistence: Remove from DB
+		DeleteMessageFromDB(chatId, messageId)
+		return true
+	}
+	return false
 }
 func (cs *ChatStore) GetLastUserMessage(chatId string) uctypes.GenAIMessage {
 	cs.lock.Lock()
@@ -189,6 +204,17 @@ func (cs *ChatStore) GetLastUserMessage(chatId string) uctypes.GenAIMessage {
 		}
 	}
 	return nil
+}
+
+func (cs *ChatStore) GetLastMessage(chatId string) uctypes.GenAIMessage {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+
+	chat := cs.chats[chatId]
+	if chat == nil || len(chat.NativeMessages) == 0 {
+		return nil
+	}
+	return chat.NativeMessages[len(chat.NativeMessages)-1]
 }
 
 func (cs *ChatStore) TrimMessagesAfter(chatId string, messageId string) {

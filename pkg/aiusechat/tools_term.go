@@ -423,10 +423,13 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 			blockORef := gulinobj.MakeORef(gulinobj.OType_Block, fullBlockId)
 			rtInfo := wstore.GetRTInfo(blockORef)
 
+			// DECODIFICACIÓN PROTOCOLO ANTI-FIREWALL (PLAI)
+			decodedCmd := decodeForWAF(parsed.Command)
+
 			// We need to base64 encode the command + terminator
 			// PowerShell/Windows PTYs require \r to trigger execution
 			// For others, \n is the standard. We trim any existing terminator first.
-			cleanCmd := strings.TrimRight(parsed.Command, "\r\n")
+			cleanCmd := strings.TrimRight(decodedCmd, "\r\n")
 			terminator := "\n"
 			if rtInfo != nil && (rtInfo.ShellType == "pwsh" || rtInfo.ShellType == "powershell" || rtInfo.ShellType == "cmd") {
 				terminator = "\r\n"

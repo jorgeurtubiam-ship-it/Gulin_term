@@ -10,6 +10,7 @@ import { AIFeedbackButtons } from "./aifeedbackbuttons";
 import { AIToolUseGroup } from "./aitooluse";
 import { GulinUIMessage, GulinUIMessagePart } from "./aitypes";
 import { GulinAIModel } from "./gulinai-model";
+import { decodeWAFText } from "./ai-utils";
 
 const AIThinking = memo(
     ({
@@ -127,7 +128,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
         } else {
             return (
                 <GulinStreamdown
-                    text={content}
+                    text={decodeWAFText(content)}
                     parseIncompleteMarkdown={isStreaming}
                     className="text-gray-100"
                     codeBlockMaxWidthAtom={model.codeBlockMaxWidth}
@@ -145,7 +146,7 @@ const AIMessagePart = memo(({ part, role, isStreaming }: AIMessagePartProps) => 
         
         return (
             <div className="text-gray-400 italic text-sm border-l-2 border-gray-600 pl-2 my-1">
-                {reasoning}
+                {decodeWAFText(reasoning)}
             </div>
         );
     }
@@ -240,7 +241,14 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
     
     // Filtrar partes válidas con guarda de tipo
     const validParts = parts.filter(p => p && typeof p.type === "string");
-    const displayParts = validParts.filter(isDisplayPart);
+    const hasToolCalls = validParts.some(p => p.type === "data-tooluse" || p.type === "data-toolprogress");
+    const displayParts = validParts.filter(p => {
+        if (!isDisplayPart(p)) return false;
+        // Si hay herramientas, ocultamos el razonamiento del cuerpo del chat 
+        // para que solo se vea en el modal (moval)
+        if (p.type === "reasoning" && hasToolCalls) return false;
+        return true;
+    });
     
     const fileParts = validParts.filter((part): part is GulinUIMessagePart & { type: "data-userfile" } => 
         part.type === "data-userfile" && part.data !== undefined
@@ -262,32 +270,38 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
         .join("\n\n");
 
     return (
-        <div className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}>
+        <div className={cn("flex gap-3 mb-2", message.role === "user" ? "flex-row-reverse" : "flex-row")}>
+            <div className={cn(
+                "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs mt-1 shadow-sm",
+                message.role === "user" ? "bg-indigo-600 text-white" : "bg-zinc-700 text-emerald-400 border border-emerald-500/30"
+            )}>
+                {message.role === "user" ? <i className="fa fa-user"></i> : <i className="fa fa-robot"></i>}
+            </div>
             <div
                 className={cn(
-                    "px-2 rounded-lg [&>*:first-child]:!mt-0",
+                    "rounded-2xl transition-all duration-300",
                     message.role === "user"
-                        ? "py-2 bg-zinc-700/60 text-white max-w-[calc(100%-50px)]"
-                        : "min-w-[min(100%,500px)]"
+                        ? "py-3 px-5 bg-gradient-to-br from-indigo-600/20 to-violet-600/25 text-white max-w-[calc(100%-80px)] border border-indigo-400/30 shadow-md hover:shadow-indigo-500/10"
+                        : "py-3 px-5 bg-zinc-800/60 text-zinc-100 min-w-[min(100%,500px)] border border-white/5 shadow-sm hover:border-white/10"
                 )}
             >
                 {displayParts.length === 0 && !isStreaming && !thinkingData ? (
-                    <div className="whitespace-pre-wrap break-words">{t("gulin.ai.message.no_content")}</div>
+                    <div className="whitespace-pre-wrap break-words opacity-70 italic">{t("gulin.ai.message.no_content")}</div>
                 ) : (
-                    <>
+                    <div className="space-y-2">
                         {groupedParts.map((group, index: number) => {
                             if (group.type === "toolgroup") {
-                                return <AIToolUseGroup key={index} parts={group.parts} isStreaming={isStreaming} seenBlockIds={seenBlockIds} />;
+                                return <AIToolUseGroup key={index} parts={group.parts} isStreaming={isStreaming} seenBlockIds={seenBlockIds} reasoning={allText} />;
                             }
                             if (!group.part) return null;
                             return (
-                                <div key={index} className="mt-2">
+                                <div key={index}>
                                     <AIMessagePart part={group.part} role={message.role} isStreaming={isStreaming} />
                                 </div>
                             );
                         })}
                         {thinkingData != null && thinkingData.message && (
-                            <div className="mt-2">
+                            <div className="mt-2 pt-2 border-t border-white/5">
                                 <AIThinking 
                                     message={thinkingData.message} 
                                     reasoningText={thinkingData.reasoningText} 
@@ -296,9 +310,11 @@ export const AIMessage = memo(({ message, isStreaming }: AIMessageProps) => {
                             </div>
                         )}
                         {message.role === "assistant" && !isStreaming && (
-                            <AIFeedbackButtons messageText={allText} />
+                            <div className="mt-2 pt-2 border-t border-white/5 opacity-80">
+                                <AIFeedbackButtons messageText={allText} />
+                            </div>
                         )}
-                    </>
+                    </div>
                 )}
 
                 {message.role === "user" && fileParts.length > 0 && <UserMessageFiles fileParts={fileParts} />}

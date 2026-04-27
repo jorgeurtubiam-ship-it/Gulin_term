@@ -91,6 +91,11 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
             const displayData = chartData.slice(0, ROW_LIMIT);
             const isTruncated = chartData.length > ROW_LIMIT;
 
+            const formatHeader = (key: string) => {
+                const result = key.replace(/([A-Z])/g, " $1");
+                return result.charAt(0).toUpperCase() + result.slice(1);
+            };
+
             return (
                 <div className="flex flex-col w-full h-full">
                     {isTruncated && (
@@ -103,8 +108,8 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
                             <thead className="sticky top-0 z-10 bg-zinc-900 shadow-sm">
                                 <tr>
                                     {allKeys.map(key => (
-                                        <th key={key} className="px-4 py-3 text-[10px] font-bold text-violet-400 uppercase tracking-widest border-b border-zinc-800">
-                                            {key}
+                                        <th key={key} className="px-4 py-3 text-[10px] font-bold text-violet-400 tracking-wider border-b border-zinc-800">
+                                            {formatHeader(key)}
                                         </th>
                                     ))}
                                 </tr>
@@ -114,7 +119,9 @@ export const DashboardView = memo(({ model, blockId }: { model: DashboardViewMod
                                     <tr key={i} className="hover:bg-violet-500/5 transition-colors group">
                                         {allKeys.map(key => (
                                             <td key={key} className="px-4 py-2.5 text-xs text-zinc-300 font-mono group-hover:text-zinc-100">
-                                                {String(row[key] ?? "-")}
+                                                {typeof row[key] === "object" && row[key] !== null 
+                                                    ? JSON.stringify(row[key]) 
+                                                    : String(row[key] ?? "-")}
                                             </td>
                                         ))}
                                     </tr>

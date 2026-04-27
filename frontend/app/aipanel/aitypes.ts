@@ -41,6 +41,7 @@ type GulinUIDataTypes = {
         blockid?: string;
         writebackupfilename?: string;
         inputfilename?: string;
+        thought?: string;
     };
 
     toolprogress: {

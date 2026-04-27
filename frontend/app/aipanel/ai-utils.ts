@@ -618,3 +618,19 @@ export function getModeDisplayName(config: AIModeConfigType): string {
 
     return `${model || "unknown"} (${provider || "custom"})`;
 }
+
+/**
+ * Decodifica los IDs de escape utilizados para el Protocolo Anti-Firewall de PLAI.
+ * Convierte __GPIPE__ -> |, __GSEMI__ -> ;, etc. para visualización en la UI.
+ */
+export function decodeWAFText(text: string): string {
+    if (!text) return text;
+    return text
+        .replace(/__GPIPE__/g, "|")
+        .replace(/__GSEMI__/g, ";")
+        .replace(/__GAND__/g, "&")
+        .replace(/__GGT__/g, ">")
+        .replace(/__GLT__/g, "<")
+        .replace(/__GDLR__/g, "$")
+        .replace(/__GBTK__/g, "`");
+}

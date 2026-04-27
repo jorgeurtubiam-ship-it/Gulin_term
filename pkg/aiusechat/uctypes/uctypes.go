@@ -239,6 +239,7 @@ type UIMessageDataToolUse struct {
 	BlockId             string `json:"blockid,omitempty"`
 	WriteBackupFileName string `json:"writebackupfilename,omitempty"`
 	InputFileName       string `json:"inputfilename,omitempty"`
+	Thought             string `json:"thought,omitempty"`
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {
@@ -402,6 +403,7 @@ type PlaiMessage struct {
 	MessageId string          `json:"messageid"`
 	Role      string          `json:"role"`
 	Content   string          `json:"content"`
+	ToolName  string          `json:"toolname,omitempty"`
 	ToolCalls []GulinToolCall `json:"toolcalls,omitempty"`
 }
 
