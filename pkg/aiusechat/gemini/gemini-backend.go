@@ -43,16 +43,37 @@ func ensureAltSse(endpoint string) (string, error) {
 	return endpoint, nil
 }
 
+func containsFunctionResponse(c GeminiContent) bool {
+	for _, part := range c.Parts {
+		if part.FunctionResponse != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func containsFunctionCall(c GeminiContent) bool {
+	for _, part := range c.Parts {
+		if part.FunctionCall != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // appendPartToLastUserMessage appends a text part to the last user message in the contents slice
+// it skips turns that are strictly tool responses
 func appendPartToLastUserMessage(contents []GeminiContent, text string) {
 	for i := len(contents) - 1; i >= 0; i-- {
-		if contents[i].Role == "user" {
+		if contents[i].Role == "user" && !containsFunctionResponse(contents[i]) {
 			contents[i].Parts = append(contents[i].Parts, GeminiMessagePart{
 				Text: text,
 			})
-			break
+			return
 		}
 	}
+	// If no suitable user turn found, we might need to add one?
+	// But usually there is at least one. For safety, do nothing or append to the last one if we must.
 }
 
 func truncateGeminiLargeMessages(contents []GeminiContent, isBridgeReq bool) {
@@ -117,32 +138,43 @@ func limitGeminiTotalMessages(contents []GeminiContent, maxTotalLen int, userMsg
 	numUserMsgs := 0
 	// Process from newest to oldest
 	for i := len(contents) - 1; i >= 0; i-- {
-		if contents[i].Role == "user" {
+		msg := contents[i]
+		if msg.Role == "user" && !containsFunctionResponse(msg) {
 			numUserMsgs++
 		}
 
-		// Limit to N user questions
-		if numUserMsgs > userMsgsLimit {
+		// Limit to N user questions (don't count tool responses as separate user questions for limit)
+		if numUserMsgs > userMsgsLimit && !containsFunctionResponse(msg) {
 			break
 		}
 
-		msgLen := getGeminiMessageEffectiveLen(contents[i])
+		msgLen := getGeminiMessageEffectiveLen(msg)
 
-		if totalLen+msgLen > maxTotalLen && len(kept) > 0 {
+		if totalLen+msgLen > maxTotalLen && len(kept) > 0 && !containsFunctionResponse(msg) {
 			break
 		}
 
-		kept = append(kept, contents[i])
+		kept = append(kept, msg)
 		totalLen += msgLen
+
+		// MANDATORY PAIR: if this is a function response, we MUST also include the preceding turn (the model call)
+		if containsFunctionResponse(msg) && i > 0 {
+			i--
+			callMsg := contents[i]
+			kept = append(kept, callMsg)
+			totalLen += getGeminiMessageEffectiveLen(callMsg)
+		}
 	}
 
 	// Restore chronological order
 	slices.Reverse(kept)
 
 	// SAFE HEAD LOGIC: Gemini/OpenAI models generally expect to start with a 'user' message.
+	// HOWEVER, we must not break a function call/response pair.
 	firstUserIdx := -1
-	for i, msg := range kept {
-		if msg.Role == "user" {
+	for i := 0; i < len(kept); i++ {
+		msg := kept[i]
+		if msg.Role == "user" && !containsFunctionResponse(msg) {
 			firstUserIdx = i
 			break
 		}
@@ -363,18 +395,51 @@ func RunGeminiChatStep(
 	}
 	contents = limitGeminiTotalMessages(contents, 150000, historyLimit)
 
-	req, err := buildGeminiHTTPRequest(ctx, contents, chatOpts)
-	if err != nil {
-		return nil, nil, nil, err
-	}
 
 	httpClient := &http.Client{
 		Timeout: 0, // rely on ctx; streaming can be long
 	}
 
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("HTTP request failed: %w", err)
+	var resp *http.Response
+	maxRetries := 3
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		req, err := buildGeminiHTTPRequest(ctx, contents, chatOpts)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		resp, err = httpClient.Do(req)
+		if err != nil {
+			if attempt == maxRetries {
+				return nil, nil, nil, fmt.Errorf("HTTP request failed after %d attempts: %w", maxRetries, err)
+			}
+			log.Printf("gemini: HTTP request attempt %d failed: %v, retrying...\n", attempt, err)
+			select {
+			case <-time.After(time.Duration(attempt) * 2 * time.Second):
+			case <-ctx.Done():
+				return nil, nil, nil, ctx.Err()
+			}
+			continue
+		}
+
+		// Check for transient status codes (5xx or 429)
+		if resp.StatusCode >= 500 || resp.StatusCode == 429 {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if attempt == maxRetries {
+				return nil, nil, nil, fmt.Errorf("API returned status %d after %d attempts: %s", resp.StatusCode, maxRetries, utilfn.TruncateString(string(bodyBytes), 120))
+			}
+			log.Printf("gemini: API returned transient status %d, retrying...\n", resp.StatusCode)
+			select {
+			case <-time.After(time.Duration(attempt) * 2 * time.Second):
+			case <-ctx.Done():
+				return nil, nil, nil, ctx.Err()
+			}
+			continue
+		}
+
+		// Success or permanent error
+		break
 	}
 	defer resp.Body.Close()
 

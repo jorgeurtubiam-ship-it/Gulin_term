@@ -69,14 +69,10 @@ func (b *plaiBackend) RunChatStep(
 
 	// 1. Instrucciones Críticas (System Prompt) - OPTIMIZADO PARA AHORRO DE ESPACIO
 	if len(chatOpts.SystemPrompt) > 0 {
-		sysPart.WriteString("### REGLAS DE SEGURIDAD Y ENTORNO (MÁXIMA PRIORIDAD):\n")
-		sysPart.WriteString("- Eres GuLiN Agent (elite eng). Responde en ESPAÑOL.\n")
-		sysPart.WriteString("- ENTORNO: macOS. No uses 'systemctl'; usa 'launchctl'.\n")
-		sysPart.WriteString("- PROTOCOLO WAF: Si el firewall te bloquea, usa IDs (__GPIPE__, etc.) SOLO si es imprescindible. NO envuelvas comandos.\n")
-		sysPart.WriteString("- DREMIO/API: Usa `apimanager_call`. Si necesitas investigar o depurar, usa `curl` o `grep` en la terminal.\n")
-		sysPart.WriteString("- ANTI-BUCLE: Si fallas 2 veces, DETENTE y explica el problema al usuario detalladamente.\n")
-		sysPart.WriteString("- REPORTE: Siempre explica qué hiciste y qué encontraste. No seas mudo.\n")
-		sysPart.WriteString("Final Identity: Experto en terminal macOS y APIs.\n\n")
+		for _, s := range chatOpts.SystemPrompt {
+			sysPart.WriteString(s)
+			sysPart.WriteString("\n")
+		}
 	}
 
 	// 2. Estado de la Terminal (DESACTIVADO el estado completo por modelo Reactivo, pero enviamos el ID)
@@ -99,7 +95,7 @@ func (b *plaiBackend) RunChatStep(
 		firstMsg := chat.NativeMessages[0]
 		goalContent := firstMsg.GetContent()
 		if len(goalContent) > 1500 { goalContent = goalContent[:1500] + "..." }
-		goalStr := fmt.Sprintf("GOAL: %s\n---\n", encodeForWAF(goalContent))
+		goalStr := fmt.Sprintf("GOAL: %s\n---\n", goalContent)
 		historyPart.WriteString(goalStr)
 		currentBudget -= len(goalStr)
 		
@@ -114,7 +110,7 @@ func (b *plaiBackend) RunChatStep(
 				content = "[RESULTADO]: " + content
 			}
 			
-			encoded := encodeForWAF(content)
+			encoded := content
 			const MaxMsgLen = 8000
 			if len(encoded) > MaxMsgLen {
 				encoded = encoded[:MaxMsgLen] + "..."
@@ -157,39 +153,27 @@ func (b *plaiBackend) RunChatStep(
 	}
 
 	var toolsToUse []uctypes.ToolDefinition
-	// Herramientas VITALES que siempre deben estar presentes para asegurar operatividad
+	// Herramientas VITALES (Mantenemos solo lo esencial para ahorrar ~8KB)
 	toolsToUse = append(toolsToUse, GetAPICallToolDefinition())
-	toolsToUse = append(toolsToUse, GetAPIListToolDefinition())
-	toolsToUse = append(toolsToUse, GetAPIRegisterToolDefinition())
 	
-	// Añadir el resto de baseTools (evitando duplicados)
+	// Añadir solo Dashboard y Terminal de las herramientas base
 	for _, t := range baseTools {
-		alreadyAdded := false
-		for _, existing := range toolsToUse {
-			if existing.Name == t.Name {
-				alreadyAdded = true
-				break
-			}
-		}
-		if !alreadyAdded {
+		if t.Name == "term_create_dashboard" || t.Name == "term_run_command" {
 			toolsToUse = append(toolsToUse, t)
 		}
 	}
-	
-	// Asegurar herramientas de descubrimiento dinámico
-	toolsToUse = append(toolsToUse, GetListAvailableToolsToolDefinition())
-	toolsToUse = append(toolsToUse, GetGetToolSchemaToolDefinition(toolsToUse))
 	
 	chatOpts.Tools = toolsToUse
 
 	var toolsSection strings.Builder
 	if len(toolsToUse) > 0 {
-		toolsSection.WriteString("### REGLAS DE ORO (PRIORIDAD ALTA):\n")
-		toolsSection.WriteString("1. PROHIBIDO BUSCAR EN LA WEB: No intentes usar 'web_search'. Tienes la documentación en el contexto. ÚSALA.\n")
-		toolsSection.WriteString("2. ANÁLISIS DE CURL: Si un comando 'curl' falla (404, 401), NO digas 'voy a investigar'. Analiza el JSON de error, compáralo con la documentación y CORRIGE el comando en el siguiente paso.\n")
-		toolsSection.WriteString("3. DREMIO LOGIN: Usa 'apimanager_call' con el path '/apiv2/login' y las llaves {{username}} y {{password}}. El sistema ya tiene tus datos correctos. NO uses curl.\n")
-		toolsSection.WriteString("4. DREMIO DATA: Una vez logueado, consulta '/api/v3/sql' usando OBLIGATORIAMENTE el método POST. El método GET está prohibido para SQL.\n")
-		toolsSection.WriteString("5. PROTOCOLO BASH: Usa los IDs (__GPIPE__, etc.) en tus comandos.\n\n")
+		toolsSection.WriteString("### REGLAS DE ORO (MÁXIMA PRIORIDAD):\n")
+		toolsSection.WriteString("1. El agente debe actuar siempre de forma profesional. PROHIBIDO usar 'web_search' para temas internos de Dremio. Usa siempre curl o las herramientas de API.\n")
+		toolsSection.WriteString("2. Para cualquier consulta de datos en Dremio, el primer paso es SIEMPRE realizar el login mediante un POST a /apiv2/login usando las credenciales {{username}} y {{password}} del API Manager.\n")
+		toolsSection.WriteString("3. PROTOCOLO DREMIO (API MANAGER): Está estrictamente PROHIBIDO usar 'term_run_command' o 'curl' para hablar con Dremio. El agente debe usar EXCLUSIVAMENTE la herramienta 'apimanager_call' con api_name='dremio'. El API Manager ya tiene configurada la URL base http://127.0.0.1:9047. 1) Login: POST a /apiv2/login. 2) SQL: POST a /api/v3/sql. 3) Resultados: GET a /api/v3/job/{id}/results. Usa SIEMPRE estos nombres: Servidor = 'VM', Sistema Operativo = 'OS according to the VMware Tools'.\n")
+		toolsSection.WriteString("4. ESTRATEGIA PARA GRANDES VOLÚMENES (BIG DATA): Antes de leer el contenido de cualquier tabla, el agente debe ejecutar una consulta 'SELECT COUNT(*)' para conocer el volumen total (el resultado estará en el campo 'EXPR$0'). Posteriormente, debe extraer los datos en bloques pequeños usando siempre 'LIMIT 10 OFFSET X'. El agente debe informar al usuario en todo momento de la 'marca de agua' o 'OFFSET' actual para que el usuario sepa por dónde va la extracción.\n")
+		toolsSection.WriteString("5. MANEJO DE ERRORES: Si una herramienta de API o un comando de terminal falla, el agente no debe rendirse ni pedir permiso. Debe analizar el mensaje de error técnico, corregir el comando o la consulta SQL, y reintentar la acción en el siguiente paso de forma autónoma.\n")
+		toolsSection.WriteString("6. HONESTIDAD Y VERACIDAD: Bajo ninguna circunstancia el agente debe inventar datos, nombres de hosts o valores de ejemplo. Si una consulta no devuelve resultados o Dremio falla, el agente debe informar del error real al usuario. Está PROHIBIDO generar Dashboards con datos falsos o de prueba si la fuente real ha fallado.\n")
 
 		toolsSection.WriteString("### INSTRUCCIONES DE HERRAMIENTAS:\n")
 		toolsSection.WriteString("1. Para ejecutar una herramienta, DEBES usar un bloque ```json con esta estructura exacta:\n")
@@ -200,12 +184,12 @@ func (b *plaiBackend) RunChatStep(
 		// SANITIZACIÓN DE HERRAMIENTAS PARA EL WAF (Incluyendo Schema para herramientas vitales)
 		for _, tool := range toolsToUse {
 			toolsSection.WriteString(fmt.Sprintf("#### %s\n", tool.Name))
-			toolsSection.WriteString(fmt.Sprintf("Descripción: %s\n", encodeForWAF(tool.Description)))
+			toolsSection.WriteString(fmt.Sprintf("Descripción: %s\n", tool.Description))
 			
 			// Si es una herramienta vital, incluimos el esquema directamente para evitar llamadas extra a get_tool_schema
 			if strings.HasPrefix(tool.Name, "apimanager_") || tool.Name == "term_run_command" {
 				schemaBytes, _ := json.Marshal(tool.InputSchema)
-				toolsSection.WriteString(fmt.Sprintf("Esquema JSON: %s\n", encodeForWAF(string(schemaBytes))))
+				toolsSection.WriteString(fmt.Sprintf("Esquema JSON: %s\n", string(schemaBytes)))
 			}
 			toolsSection.WriteString("\n")
 		}
@@ -228,10 +212,10 @@ func (b *plaiBackend) RunChatStep(
 
 	// --- ENSAMBLAJE FINAL CON ESCUDO DE CONTEXTO ---
 	const MaxSafeSize = 15500
-	systemSection := encodeForWAF(sysPart.String())
-	stateSection := encodeForWAF(statePart.String())
+	systemSection := sysPart.String()
+	stateSection := statePart.String()
 	historySection := historyPart.String()
-	toolsText := encodeForWAF(toolsSection.String())
+	toolsText := toolsSection.String()
 
 	totalSize := len(systemSection) + len(stateSection) + len(historySection) + len(toolsText)
 	log.Printf("[PLAI-DEBUG] Tamaño final del prompt: %d bytes (%.2f KB)\n", totalSize, float64(totalSize)/1024.0)
@@ -274,15 +258,12 @@ func (b *plaiBackend) RunChatStep(
 	}
 
 	finalInput = systemSection + stateSection + historySection + toolsText
-	sanitizedInput := finalInput 
 	
-	log.Printf("[PLAI-DEBUG] Prompt Protegido (IDs) Construido (%d bytes)\n", len(sanitizedInput))
-	
-	log.Printf("[PLAI-DEBUG] Prompt Sanitizado Construido (%d bytes)\n", len(sanitizedInput))
+	log.Printf("[PLAI-DEBUG] Prompt Construido (%d bytes)\n", len(finalInput))
 	log.Printf("[PLAI-DEBUG] URL: %s | AgentID: %s\n", chatOpts.Config.Endpoint, chatOpts.Config.AgentID)
 	
 	plaiReq := PlaiRequest{
-		Input: sanitizedInput,
+		Input: finalInput,
 	}
 	reqBody, err := json.Marshal(plaiReq)
 	if err != nil {
@@ -438,14 +419,40 @@ func (b *plaiBackend) RunChatStep(
 
 	// --- DETECCIÓN DE HERRAMIENTAS (TOOL USE) ROBUSTA ---
 	var toolCalls []uctypes.GulinToolCall
-	cleanContent := content
+	cleanContent := strings.TrimSpace(content)
 
-	// 1. Intentar detectar bloques JSON con triple comilla: ```json ... ```
+	// 1. Intentar detectar bloques JSON (con o sin triple comilla)
+	// Primero probamos con el estándar de backticks
 	reBlocks := regexp.MustCompile("(?s)```json\\s*(.*?)\\s*```")
 	matches := reBlocks.FindAllStringSubmatch(content, -1)
 	
+	// Si no hay backticks, buscamos JSON "desnudo" que empiece por { "name":
+	if len(matches) == 0 {
+		reNaked := regexp.MustCompile(`(?s)(json\s*)?(\{[\s\n]*"name"[\s\n]*:.*?\})`)
+		nakedMatches := reNaked.FindAllStringSubmatch(content, -1)
+		for _, nm := range nakedMatches {
+			matches = append(matches, []string{nm[0], nm[2]})
+		}
+	}
+
+	if len(matches) > 0 {
+		// FRENO DE MANO: Cortar el mensaje en el primer indicio de herramienta
+		firstMatchIndex := strings.Index(content, matches[0][0])
+		if firstMatchIndex != -1 {
+			cleanContent = strings.TrimSpace(content[:firstMatchIndex])
+		}
+	}
+
 	for _, m := range matches {
 		jsonStr := strings.TrimSpace(m[1])
+		
+		// Tolerancia: buscar el primer '{' y el último '}' por si hay texto extra
+		firstBrace := strings.Index(jsonStr, "{")
+		lastBrace := strings.LastIndex(jsonStr, "}")
+		if firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace {
+			jsonStr = jsonStr[firstBrace : lastBrace+1]
+		}
+
 		var toolReq struct {
 			Name       string                 `json:"name"`
 			Parameters map[string]interface{} `json:"parameters"`
@@ -491,6 +498,15 @@ func (b *plaiBackend) RunChatStep(
 	// 2. Intentar detectar bloques BASH: ```bash ... ```
 	bashRegex := regexp.MustCompile("(?s)```bash\\s*(.*?)\\s*```")
 	bashMatches := bashRegex.FindAllStringSubmatch(content, -1)
+
+	if len(bashMatches) > 0 && len(matches) == 0 {
+		// FRENO DE MANO para Bash
+		firstMatchIndex := strings.Index(content, bashMatches[0][0])
+		if firstMatchIndex != -1 {
+			cleanContent = strings.TrimSpace(content[:firstMatchIndex])
+		}
+	}
+
 	for _, m := range bashMatches {
 		cmd := strings.TrimSpace(m[1])
 		if cmd != "" {
@@ -637,39 +653,7 @@ func (b *plaiBackend) RunChatStep(
 	return stopReason, []uctypes.GenAIMessage{assistantMsg}, nil, nil
 }
 
-func encodeForWAF(input string) string {
-	// Protocolo de IDs Seguros para evitar bloqueos del Firewall corporativo.
-	// Estos IDs se traducen de vuelta a Bash real en las herramientas de ejecución.
-	r := strings.NewReplacer(
-		"|", "__GPIPE__",
-		";", "__GSEMI__",
-		"&", "__GAND__",
-		">", "__GGT__",
-		"<", "__GLT__",
-		"$", "__GDLR__",
-		"`", "__GBTK__",
-		"sudo ", "s-udo ",
-		"systemctl", "s-ystemctl",
-		"launchctl", "l-aunchctl",
-		"rm -rf", "r-m -rf",
-		"passwd", "p-asswd",
-	)
-	return r.Replace(input)
-}
-
-func decodeForWAF(input string) string {
-	// Traducción inversa: De IDs seguros a Bash funcional.
-	r := strings.NewReplacer(
-		"__GPIPE__", "|",
-		"__GSEMI__", ";",
-		"__GAND__", "&",
-		"__GGT__", ">",
-		"__GLT__", "<",
-		"__GDLR__", "$",
-		"__GBTK__", "`",
-	)
-	return r.Replace(input)
-}
+// Fin de utilidades
 
 func createToolCall(name string, params map[string]interface{}, sseHandler *sse.SSEHandlerCh, assistantMsg uctypes.GenAIMessage, thought string) (*uctypes.GulinStopReason, []uctypes.GenAIMessage, *uctypes.RateLimitInfo, error) {
 	toolCall := uctypes.GulinToolCall{
@@ -797,7 +781,7 @@ func (b *plaiBackend) ConvertAIChatToUIChat(aiChat uctypes.AIChat) (*uctypes.UIC
 			Parts: []uctypes.UIMessagePart{
 				{
 					Type:  func() string { if len(toolCalls) > 0 { return "reasoning" }; return "text" }(),
-					Text:  func() string { if len(toolCalls) > 0 { return thought }; return content }(),
+					Text:  func() string { if len(toolCalls) > 0 { return "" }; return content }(),
 					State: "done",
 				},
 			},

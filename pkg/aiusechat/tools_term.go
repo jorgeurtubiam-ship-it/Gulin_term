@@ -424,7 +424,7 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 			rtInfo := wstore.GetRTInfo(blockORef)
 
 			// DECODIFICACIÓN PROTOCOLO ANTI-FIREWALL (PLAI)
-			decodedCmd := decodeForWAF(parsed.Command)
+			decodedCmd := parsed.Command
 
 			// We need to base64 encode the command + terminator
 			// PowerShell/Windows PTYs require \r to trigger execution

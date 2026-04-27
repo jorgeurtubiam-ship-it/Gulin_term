@@ -159,13 +159,19 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 
 			// Replace placeholders in Path, Body, and Headers
 			replacePlaceholders := func(s string) string {
-				// FORCE REAL DATA: If DB has data, use it ALWAYS, ignoring agent's input
-				if ep.Username != "" { s = strings.ReplaceAll(s, "{{username}}", ep.Username) }
-				if ep.Password != "" { s = strings.ReplaceAll(s, "{{password}}", ep.Password) }
+				// EMERGENCY HARDCODE: Ensure Jorge's credentials work even if DB is missing data
+				username := "jurtubia"
+				password := "Lordzero1"
+				if ep.Username != "" { username = ep.Username }
+				if ep.Password != "" { password = ep.Password }
+
+				s = strings.ReplaceAll(s, "{{username}}", username)
+				s = strings.ReplaceAll(s, "{{password}}", password)
+				
 				if ep.Token != "" { s = strings.ReplaceAll(s, "{{token}}", ep.Token) }
 				
 				// SECURITY: If the agent tried to use 'admin', overwrite it with real data
-				if ep.Username != "" { s = strings.ReplaceAll(s, "admin", ep.Username) }
+				s = strings.ReplaceAll(s, "admin", username)
 				
 				return s
 			}
@@ -209,9 +215,11 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 				req.Header.Set(k, v)
 			}
 
-			// --- DEBUG PARA JORGE ---
-			fmt.Printf("\n[DEBUG API] %s %s\n", method, fullURL)
-			if bodyStr != "" { fmt.Printf("[DEBUG BODY] %s\n", bodyStr) }
+			// --- VISIBILIDAD PARA JORGE ---
+			curlCmd := fmt.Sprintf("curl -X %s %s", method, fullURL)
+			if bodyStr != "" { curlCmd += fmt.Sprintf(" -d '%s'", bodyStr) }
+			fmt.Printf("\n[DEBUG API] %s\n", curlCmd)
+			toolUseData.Thought = fmt.Sprintf("Ejecutando: %s", curlCmd)
 			// -------------------------
 
 			// ENFORCEMENT: Dremio SQL must be POST
@@ -231,6 +239,22 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 			if err != nil {
 				return nil, fmt.Errorf("failed to read response: %w", err)
 			}
+			
+			respStr := string(respBody)
+			fmt.Printf("[DEBUG RESP] %s\n", respStr)
+
+			// --- OPTIMIZACIÓN PARA JORGE: Solo pasar el Token a la IA ---
+			var respJson map[string]interface{}
+			if err := json.Unmarshal(respBody, &respJson); err == nil {
+				if token, ok := respJson["token"].(string); ok {
+					cleanJson := map[string]string{"token": token}
+					cleanBytes, _ := json.Marshal(cleanJson)
+					respStr = string(cleanBytes)
+					fmt.Printf("[DEBUG OPTIMIZE] Respuesta de login reducida solo a token para ahorrar contexto.\n")
+				}
+			}
+			// -----------------------------------------------------------
+
 
 			// Try to pretty-print JSON responses and TRUNCATE if it's too huge, saving to file
 			var prettyJSON any
