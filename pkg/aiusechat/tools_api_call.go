@@ -248,6 +248,20 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 					truncMsg := fmt.Sprintf("\n\n... [RESPONSE TRUNCATED: The API returned a huge JSON payload (%d bytes) which exceeds the context limit. Only showing the first %d bytes.]\n>>> CRITICAL INSTRUCTION: The FULL JSON response has been saved to the local file: %s\n>>> DO NOT try to read this file into chat (no cat, no read_file) or you will crash. Instead, use term_run_command to run a Python script that reads this file, performs the necessary data aggregation/counting, and prints a small summary. Then use that summary to generate the chart.", len(bodyStr), MaxBodyLen, tmpFile)
 					bodyStr = bodyStr[:MaxBodyLen] + truncMsg
 				}
+
+				// --- SMART WAIT FOR DREMIO ---
+				// 1. Si acabamos de lanzar un SQL, esperamos 10s obligatorios para que Dremio procese
+				if strings.Contains(fullURL, "/api/v3/sql") {
+					fmt.Printf("[SMART WAIT] SQL Lanzado. Esperando 10 segundos obligatorios para el DataLake...\n")
+					time.Sleep(10 * time.Second)
+				}
+
+				// 2. Si el estado del job no es COMPLETED, esperamos otros 10 segundos
+				if strings.Contains(bodyStr, "\"jobState\"") && !strings.Contains(bodyStr, "\"COMPLETED\"") {
+					fmt.Printf("[SMART WAIT] Job en curso... esperando 10 segundos más.\n")
+					time.Sleep(10 * time.Second)
+				}
+				// -----------------------------
 				
 				return map[string]any{
 					"status":  resp.StatusCode,
