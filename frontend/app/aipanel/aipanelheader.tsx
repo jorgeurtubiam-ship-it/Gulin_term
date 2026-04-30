@@ -8,12 +8,15 @@ import { memo } from "react";
 import { atoms } from "@/app/store/global";
 import { cn } from "@/util/util";
 import { GulinAIModel } from "./gulinai-model";
+import { useAtom } from "jotai";
 
 export const AIPanelHeader = memo(() => {
     const model = GulinAIModel.getInstance();
     const widgetAccess = useAtomValue(model.widgetAccessAtom);
     const tokenMode = useAtomValue(atoms.tokenModeAtom);
     const inBuilder = model.inBuilder;
+    const [isDebugVisible, setIsDebugVisible] = useAtom(model.isDebugVisible);
+    const unreadCount = useAtomValue(model.unreadDebugCount);
 
     const handleKebabClick = (e: React.MouseEvent) => {
         handleGulinAIContextMenu(e, false);
@@ -64,6 +67,23 @@ export const AIPanelHeader = memo(() => {
                         </button>
                     </div>
                 )}
+
+                <button
+                    onClick={() => model.toggleDebugVisible()}
+                    className={cn(
+                        "text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-2 focus:outline-none relative",
+                        isDebugVisible && "text-accent",
+                        unreadCount > 0 && "text-rose-400"
+                    )}
+                    title="Ver Logs de Depuración"
+                >
+                    <i className="fa fa-bug"></i>
+                    {unreadCount > 0 && !isDebugVisible && (
+                        <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-bold px-1 rounded-full min-w-[14px] h-3.5 flex items-center justify-center border border-zinc-900 shadow-sm animate-bounce">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                    )}
+                </button>
 
                 <button
                     onClick={() => model.toggleSidebar()}

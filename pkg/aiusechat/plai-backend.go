@@ -48,6 +48,7 @@ func (b *plaiBackend) RunChatStep(
 	if sseHandler == nil {
 		return nil, nil, nil, fmt.Errorf("sse handler is nil")
 	}
+	ctx = context.WithValue(ctx, sse.SSEHandlerContextKey, sseHandler)
 
 	// Obtener el chat
 	chat := chatstore.DefaultChatStore.Get(chatOpts.ChatId)

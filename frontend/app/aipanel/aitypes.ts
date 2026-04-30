@@ -54,6 +54,11 @@ type GulinUIDataTypes = {
         status: "running" | "completed";
         task?: string;
     };
+    debuglog: {
+        category: string;
+        message: string;
+        ts: number;
+    };
 };
 
 export type GulinUIMessage = UIMessage<any, GulinUIDataTypes, any>;

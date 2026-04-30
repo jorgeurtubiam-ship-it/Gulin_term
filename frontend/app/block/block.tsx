@@ -21,6 +21,7 @@ import { MemoryGridViewModel } from "@/app/view/gulinai/memorygrid";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WidgetBuilderViewModel } from "@/app/view/widgetbuilder/widgetbuilder";
+import { DebugLogsViewModel } from "@/app/view/debuglogs/debuglogs";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc } from "@/store/counters";
@@ -71,6 +72,7 @@ BlockRegistry.set("db-explorer", DBExplorerViewModel);
 BlockRegistry.set("api-manager", APIEndpointManagerViewModel);
 BlockRegistry.set("dashboard", DashboardViewModel);
 BlockRegistry.set("widget-builder", WidgetBuilderViewModel);
+BlockRegistry.set("debug-logs", DebugLogsViewModel);
 BlockRegistry.set("codeeditor", WidgetBuilderViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {

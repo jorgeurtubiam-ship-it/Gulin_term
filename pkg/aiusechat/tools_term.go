@@ -21,6 +21,7 @@ import (
 	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 	"github.com/gulindev/gulin/pkg/wshutil"
 	"github.com/gulindev/gulin/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
 type TermGetScrollbackToolInput struct {
@@ -343,6 +344,7 @@ func GetTermCommandOutputToolDefinition(tabId string) uctypes.ToolDefinition {
 			if err != nil {
 				return nil, fmt.Errorf("failed to get command output: %w", err)
 			}
+			sse.SendDebugLog(ctx, sse.LogCatTerminal, fmt.Sprintf("[TERM] Output captured from %s", parsed.WidgetId))
 			return output, nil
 		},
 	}
@@ -459,6 +461,7 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 				}
 			}
 
+			sse.SendDebugLog(ctx, sse.LogCatTerminal, fmt.Sprintf("[TERM] Running command in %s: %s", parsed.WidgetId, cleanCmd))
 			return "Command sent to terminal successfully and is running/ran (logged to history).", nil
 		},
 		ToolApproval: func(input any, chatOpts uctypes.GulinChatOpts) string {

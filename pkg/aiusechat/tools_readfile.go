@@ -16,6 +16,7 @@ import (
 	"github.com/gulindev/gulin/pkg/util/readutil"
 	"github.com/gulindev/gulin/pkg/util/utilfn"
 	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
 const ReadFileDefaultLineCount = 100
@@ -327,6 +328,7 @@ func readTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.U
 		result["truncated"] = stopReason
 	}
 
+	sse.SendDebugLog(ctx, sse.LogCatFiles, fmt.Sprintf("[FILE] Read %s (Origin: %s, Offset: %d, Count: %d)", params.Filename, origin, offset, count))
 	return result, nil
 }
 

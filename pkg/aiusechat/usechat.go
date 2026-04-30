@@ -393,7 +393,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		return nil, fmt.Errorf("chat %s is already running", chatOpts.ChatId)
 	}
 	defer activeChats.Delete(chatOpts.ChatId)
-	ctx = chatCtx
+	ctx = context.WithValue(chatCtx, sse.SSEHandlerContextKey, sseHandler)
 
 	stepNum := chatstore.DefaultChatStore.CountUserMessages(chatOpts.ChatId)
 	aiProvider := chatOpts.Config.Provider

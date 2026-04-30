@@ -29,6 +29,7 @@ import { AIHistorySidebar } from "./aihistorysidebar";
 import { BYOKAnnouncement } from "./byokannouncement";
 import { TelemetryRequiredMessage } from "./telemetryrequired";
 import { GulinAIModel } from "./gulinai-model";
+import { DebugLogWidget } from "./debuglogwidget";
 
 const AIBlockMask = memo(() => {
     return (
@@ -263,7 +264,7 @@ const AIPanelComponentInner = memo(() => {
     const isUsingCustomMode = !defaultMode.startsWith("gulinai@");
     const allowAccess = telemetryEnabled || (hasCustomModes && isUsingCustomMode);
 
-    const { messages, sendMessage, status, setMessages, error, stop } = useChat<GulinUIMessage>({
+    const { messages, sendMessage, status, setMessages, error, stop, data } = useChat<GulinUIMessage>({
         transport: new DefaultChatTransport({
             api: model.getUseChatEndpointUrl(),
             prepareSendMessagesRequest: (opts) => {
@@ -290,6 +291,7 @@ const AIPanelComponentInner = memo(() => {
     });
 
     model.registerUseChatData(sendMessage, setMessages, status, stop);
+    model.registerTabModel(tabModel);
 
     // console.log("AICHAT messages", messages);
     (window as any).aichatmessages = messages;
@@ -305,7 +307,26 @@ const AIPanelComponentInner = memo(() => {
 
     useEffect(() => {
         globalStore.set(model.isAIStreaming, status == "streaming");
+        if (status === "ready") {
+            // Optional: could clear some temporary data here
+        }
     }, [status]);
+
+    const processedDataCountRef = useRef(0);
+    useEffect(() => {
+        if (!data || data.length <= processedDataCountRef.current) {
+            if (!data || data.length === 0) processedDataCountRef.current = 0;
+            return;
+        }
+
+        const newItems = data.slice(processedDataCountRef.current);
+        newItems.forEach((item: any) => {
+            if (item && item.type === "debuglog" && item.data) {
+                model.addDebugLog(item.data.category, item.data.message, item.data.ts);
+            }
+        });
+        processedDataCountRef.current = data.length;
+    }, [data, model]);
 
     useEffect(() => {
         const keyHandler = keydownWrapper(handleKeyDown);
@@ -570,6 +591,7 @@ const AIPanelComponentInner = memo(() => {
             {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
+            <DebugLogWidget />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0 relative">

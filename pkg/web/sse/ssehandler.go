@@ -15,6 +15,10 @@ import (
 	"github.com/gulindev/gulin/pkg/utilds"
 )
 
+type contextKey string
+
+const SSEHandlerContextKey contextKey = "sse-handler"
+
 // see /aiprompts/usechat-streamingproto.md for protocol
 
 const (
@@ -52,6 +56,18 @@ const (
 	AiMsgStartStep           = "start-step"
 	AiMsgFinishStep          = "finish-step"
 	AiMsgError               = "error"
+	AiMsgDebugLog            = "debug-log"
+)
+
+// Debug Log Categories
+const (
+	LogCatAPI       = "api"
+	LogCatTerminal  = "terminal"
+	LogCatFiles     = "files"
+	LogCatDatabase  = "database"
+	LogCatWeb       = "web"
+	LogCatAI        = "ai"
+	LogCatSystem    = "system"
 )
 
 // SSEMessage represents a message to be written to the SSE stream
@@ -491,4 +507,22 @@ func (h *SSEHandlerCh) AiMsgData(dataType string, id string, data interface{}) e
 		"data": data,
 	}
 	return h.WriteJsonData(resp)
+}
+
+func (h *SSEHandlerCh) AiMsgDebugLog(category, message string) error {
+	data := map[string]interface{}{
+		"category": category,
+		"message":  message,
+		"ts":       time.Now().UnixMilli(),
+	}
+	return h.AiMsgData("debuglog", "", data)
+}
+
+func SendDebugLog(ctx context.Context, category, message string) {
+	if ctx == nil {
+		return
+	}
+	if h, ok := ctx.Value(SSEHandlerContextKey).(*SSEHandlerCh); ok {
+		h.AiMsgDebugLog(category, message)
+	}
 }

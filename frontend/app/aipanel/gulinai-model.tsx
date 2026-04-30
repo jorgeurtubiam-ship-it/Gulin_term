@@ -49,7 +49,8 @@ export class GulinAIModel {
     useChatSendMessage: UseChatSendMessageType | null = null;
     useChatSetMessages: UseChatSetMessagesType | null = null;
     useChatStatus: ChatStatus = "ready";
-    useChatStop: (() => void) | null = null;
+    private useChatStop: () => void = null;
+    private tabModel: any = null;
     // Used for injecting Gulin-specific message data into DefaultChatTransport's prepareSendMessagesRequest
     realMessage: AIMessage | null = null;
     orefContext: ORef;
@@ -80,6 +81,10 @@ export class GulinAIModel {
     chatSummaries: jotai.PrimitiveAtom<ChatSummary[]> = jotai.atom([]);
     isLoadingChatSummaries: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     selectedChatIds: jotai.PrimitiveAtom<string[]> = jotai.atom([]);
+    debugLogs: jotai.PrimitiveAtom<any[]> = jotai.atom([]);
+    isDebugVisible: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
+    unreadDebugCount: jotai.PrimitiveAtom<number> = jotai.atom(0);
+    debugFilters: jotai.PrimitiveAtom<string[]> = jotai.atom(["API", "TERM", "FILE", "DB", "AI"]);
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
@@ -161,6 +166,11 @@ export class GulinAIModel {
 
         const defaultMode = globalStore.get(this.defaultModeAtom);
         this.currentAIMode = jotai.atom(defaultMode);
+
+        // Log inicial para visibilidad
+        setTimeout(() => {
+            this.addDebugLog("AI", "Sistema de Logs de Depuración inicializado. Esperando actividad...", Date.now());
+        }, 1000);
     }
 
     getPanelVisibleAtom(): jotai.Atom<boolean> {
@@ -452,6 +462,44 @@ export class GulinAIModel {
         this.useChatSetMessages = setMessages;
         this.useChatStatus = status;
         this.useChatStop = stop;
+    }
+
+    registerTabModel(tabModel: any) {
+        this.tabModel = tabModel;
+    }
+
+    openDebugLogsAsWidget() {
+        if (!this.tabModel) {
+            console.error("TabModel not registered in GulinAIModel");
+            return;
+        }
+        this.tabModel.createNewBlock({
+            view: "debug-logs",
+        });
+        this.toggleDebugVisible(false);
+    }
+
+    addDebugLog(category: string, message: string, ts: number) {
+        const currentLogs = globalStore.get(this.debugLogs);
+        const newLog = { category, message, ts, id: crypto.randomUUID() };
+        globalStore.set(this.debugLogs, [newLog, ...currentLogs].slice(0, 1000));
+        
+        if (!globalStore.get(this.isDebugVisible)) {
+            globalStore.set(this.unreadDebugCount, (prev) => prev + 1);
+        }
+    }
+
+    clearDebugLogs() {
+        globalStore.set(this.debugLogs, []);
+        globalStore.set(this.unreadDebugCount, 0);
+    }
+
+    toggleDebugVisible(visible?: boolean) {
+        const next = visible ?? !globalStore.get(this.isDebugVisible);
+        globalStore.set(this.isDebugVisible, next);
+        if (next) {
+            globalStore.set(this.unreadDebugCount, 0);
+        }
     }
 
     scrollToBottom() {

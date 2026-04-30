@@ -34,6 +34,9 @@ export function blockViewToIcon(view: string): string {
     if (view == "widget-builder") {
         return "wand-magic-sparkles";
     }
+    if (view == "debug-logs") {
+        return "bug";
+    }
     return "square";
 }
 
@@ -61,6 +64,9 @@ export function blockViewToName(view: string): string {
     }
     if (view == "widget-builder") {
         return "Widget Builder";
+    }
+    if (view == "debug-logs") {
+        return "Debug Logs";
     }
     return view;
 }

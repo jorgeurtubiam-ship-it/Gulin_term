@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/web/sse"
 
 	"database/sql"
 
@@ -159,19 +160,13 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 
 			// Replace placeholders in Path, Body, and Headers
 			replacePlaceholders := func(s string) string {
-				// EMERGENCY HARDCODE: Ensure Jorge's credentials work even if DB is missing data
-				username := "jurtubia"
-				password := "Lordzero1"
-				if ep.Username != "" { username = ep.Username }
-				if ep.Password != "" { password = ep.Password }
+				username := ep.Username
+				password := ep.Password
 
 				s = strings.ReplaceAll(s, "{{username}}", username)
 				s = strings.ReplaceAll(s, "{{password}}", password)
 				
 				if ep.Token != "" { s = strings.ReplaceAll(s, "{{token}}", ep.Token) }
-				
-				// SECURITY: If the agent tried to use 'admin', overwrite it with real data
-				s = strings.ReplaceAll(s, "admin", username)
 				
 				return s
 			}
@@ -219,6 +214,7 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 			curlCmd := fmt.Sprintf("curl -X %s %s", method, fullURL)
 			if bodyStr != "" { curlCmd += fmt.Sprintf(" -d '%s'", bodyStr) }
 			fmt.Printf("\n[DEBUG API] %s\n", curlCmd)
+			sse.SendDebugLog(ctx, sse.LogCatAPI, fmt.Sprintf("[DEBUG API] %s", curlCmd))
 			toolUseData.Thought = fmt.Sprintf("Ejecutando: %s", curlCmd)
 			// -------------------------
 
@@ -242,6 +238,7 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 			
 			respStr := string(respBody)
 			fmt.Printf("[DEBUG RESP] %s\n", respStr)
+			sse.SendDebugLog(ctx, sse.LogCatAPI, fmt.Sprintf("[DEBUG RESP] %s", respStr))
 
 			// --- OPTIMIZACIÓN PARA JORGE: Solo pasar el Token a la IA ---
 			var respJson map[string]interface{}
