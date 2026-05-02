@@ -15,7 +15,7 @@ Esta versión ha sido optimizada específicamente para la integración con **Dre
 ## 📖 Documentación
 
 - [Guía Técnica de Dremio](./DOCUMENTACION_DREMIO.md): Detalles sobre la conexión, seguridad y protocolos.
-- [Configuración del API Manager](./pkg/aiusechat/README.md): Cómo añadir nuevos endpoints.
+- [Manual del API Manager](./DOCUMENTACION_APIMANAGER.md): Gestión de endpoints, credenciales y herramientas dinámicas.
 
 ## 🛠️ Instalación y Desarrollo
 
