@@ -496,7 +496,11 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 				chatOpts.PlatformInfo = platformInfo
 			}
 		}
+		sse.SendDebugLog(ctx, sse.LogCatAI, fmt.Sprintf("Iniciando solicitud a %s (Modelo: %s)...", chatOpts.Config.APIType, chatOpts.Config.Model))
 		stopReason, rtnMessages, err := runAIChatStep(ctx, sseHandler, backend, chatOpts, cont)
+		if err == nil {
+			sse.SendDebugLog(ctx, sse.LogCatAI, "Respuesta del AI recibida.")
+		}
 		metrics.RequestCount++
 		if chatOpts.Config.IsGulinProxy() {
 			metrics.ProxyReqCount++
@@ -585,6 +589,7 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 }
 
 func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh) (result uctypes.AIToolResult) {
+	sse.SendDebugLog(ctx, sse.LogCatAI, fmt.Sprintf("Ejecutando herramienta: %s...", toolCall.Name))
 	result = uctypes.AIToolResult{
 		ToolName:  toolCall.Name,
 		ToolUseID: toolCall.ID,
@@ -694,6 +699,11 @@ func ResolveToolCall(ctx context.Context, toolDef *uctypes.ToolDefinition, toolC
 		result.ErrorText = fmt.Sprintf("tool '%s' has no callback functions", toolCall.Name)
 	}
 
+	if result.ErrorText != "" {
+		sse.SendDebugLog(ctx, sse.LogCatAI, fmt.Sprintf("Error en herramienta %s: %s", toolCall.Name, result.ErrorText))
+	} else {
+		sse.SendDebugLog(ctx, sse.LogCatAI, fmt.Sprintf("Herramienta %s ejecutada con éxito.", toolCall.Name))
+	}
 	return
 }
 

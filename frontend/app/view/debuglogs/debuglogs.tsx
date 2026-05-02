@@ -91,6 +91,12 @@ function DebugLogsView({ model }: { model: DebugLogsViewModel }) {
             </header>
 
             <div className="p-3 flex flex-wrap gap-2 bg-zinc-900/30 border-b border-white/5">
+                <button
+                    onClick={() => setFilters(categories)}
+                    className="px-3 py-1 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 bg-zinc-800 hover:bg-zinc-700 transition-all"
+                >
+                    TODOS
+                </button>
                 {categories.map(cat => (
                     <button
                         key={cat}
@@ -98,7 +104,7 @@ function DebugLogsView({ model }: { model: DebugLogsViewModel }) {
                         className={cn(
                             "px-3 py-1 rounded-md text-[10px] font-bold border transition-all",
                             filters.includes(cat) 
-                                ? (LOG_COLORS[cat] || DEFAULT_COLOR) + " opacity-100 shadow-lg"
+                                ? (LOG_COLORS[cat] || DEFAULT_COLOR) + " opacity-100 border-white/20 shadow-[0_0_10px_rgba(255,255,255,0.1)]"
                                 : "text-zinc-500 border-zinc-800 bg-transparent opacity-60 hover:opacity-100"
                         )}
                     >

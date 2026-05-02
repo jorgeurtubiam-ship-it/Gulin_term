@@ -69,10 +69,9 @@ export const AIPanelHeader = memo(() => {
                 )}
 
                 <button
-                    onClick={() => model.toggleDebugVisible()}
+                    onClick={() => model.openDebugLogsAsWidget()}
                     className={cn(
                         "text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-2 focus:outline-none relative",
-                        isDebugVisible && "text-accent",
                         unreadCount > 0 && "text-rose-400"
                     )}
                     title="Ver Logs de Depuración"

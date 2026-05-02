@@ -92,5 +92,17 @@
                 "view": "widget-builder"
             }
         }
+    },
+    "defwidget@debug-logs": {
+        "display:order": 4,
+        "icon": "bug",
+        "color": "#f43f5e",
+        "label": "logs",
+        "description": "Logs de depuración universal",
+        "blockdef": {
+            "meta": {
+                "view": "debug-logs"
+            }
+        }
     }
 }

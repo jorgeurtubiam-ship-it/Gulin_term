@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -56,18 +57,19 @@ const (
 	AiMsgStartStep           = "start-step"
 	AiMsgFinishStep          = "finish-step"
 	AiMsgError               = "error"
-	AiMsgDebugLog            = "debug-log"
+	AiMsgDebugLog            = "data-debuglog"
 )
 
 // Debug Log Categories
 const (
-	LogCatAPI       = "api"
-	LogCatTerminal  = "terminal"
-	LogCatFiles     = "files"
-	LogCatDatabase  = "database"
-	LogCatWeb       = "web"
-	LogCatAI        = "ai"
-	LogCatSystem    = "system"
+	LogCatAPI       = "API"
+	LogCatTerminal  = "TERM"
+	LogCatFiles     = "FILE"
+	LogCatDatabase  = "DB"
+	LogCatWeb       = "WEB"
+	LogCatAI        = "AI"
+	LogCatSystem    = "SYSTEM"
+	LogCatPLAI      = "PLAI"
 )
 
 // SSEMessage represents a message to be written to the SSE stream
@@ -515,7 +517,7 @@ func (h *SSEHandlerCh) AiMsgDebugLog(category, message string) error {
 		"message":  message,
 		"ts":       time.Now().UnixMilli(),
 	}
-	return h.AiMsgData("debuglog", "", data)
+	return h.AiMsgData("data-debuglog", "", data)
 }
 
 func SendDebugLog(ctx context.Context, category, message string) {

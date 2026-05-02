@@ -318,9 +318,11 @@ func (b *plaiBackend) RunChatStep(
 		// Necesitamos recrear el body reader en cada intento si falló en enviar
 		req.Body = io.NopCloser(bytes.NewBuffer(reqBody))
 		
+		sse.SendDebugLog(ctx, sse.LogCatPLAI, fmt.Sprintf("Enviando prompt a PLAI (Intento %d/%d)...", attempt, maxRetries))
 		resp, err = client.Do(req)
 		
 		if err != nil {
+			sse.SendDebugLog(ctx, sse.LogCatPLAI, fmt.Sprintf("Fallo en intento %d: %v", attempt, err))
 			log.Printf("[PLAI-DEBUG] Intento %d/%d fallido (error de conexión): %v\n", attempt, maxRetries, err)
 			if attempt == maxRetries {
 				sseHandler.AiMsgError(fmt.Sprintf("Error de conexión persistente tras %d intentos: %v", maxRetries, err))
@@ -329,6 +331,7 @@ func (b *plaiBackend) RunChatStep(
 			time.Sleep(time.Duration(attempt) * 2 * time.Second)
 			continue
 		}
+		sse.SendDebugLog(ctx, sse.LogCatPLAI, "Respuesta de PLAI recibida.")
 
 		respBody, err = io.ReadAll(resp.Body)
 		resp.Body.Close()

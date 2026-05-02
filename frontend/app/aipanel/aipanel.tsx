@@ -284,8 +284,18 @@ const AIPanelComponentInner = memo(() => {
                 return { body };
             },
         }),
+        onData: (dataParts) => {
+            if (!dataParts) return;
+            const parts = Array.isArray(dataParts) ? dataParts : [dataParts];
+            parts.forEach((item: any) => {
+                if (item && item.type === "data-debuglog" && item.data) {
+                    model.addDebugLog(item.data.category, item.data.message, item.data.ts);
+                }
+            });
+        },
+        onFinish: (message) => {
+        },
         onError: (error) => {
-            console.error("AI Chat error:", error);
             model.setError(error.message || "An error occurred");
         },
     });
@@ -312,21 +322,6 @@ const AIPanelComponentInner = memo(() => {
         }
     }, [status]);
 
-    const processedDataCountRef = useRef(0);
-    useEffect(() => {
-        if (!data || data.length <= processedDataCountRef.current) {
-            if (!data || data.length === 0) processedDataCountRef.current = 0;
-            return;
-        }
-
-        const newItems = data.slice(processedDataCountRef.current);
-        newItems.forEach((item: any) => {
-            if (item && item.type === "debuglog" && item.data) {
-                model.addDebugLog(item.data.category, item.data.message, item.data.ts);
-            }
-        });
-        processedDataCountRef.current = data.length;
-    }, [data, model]);
 
     useEffect(() => {
         const keyHandler = keydownWrapper(handleKeyDown);
@@ -591,7 +586,6 @@ const AIPanelComponentInner = memo(() => {
             {(isDragOver || isReactDndDragOver) && allowAccess && <AIDragOverlay />}
             {showBlockMask && <AIBlockMask />}
             <AIPanelHeader />
-            <DebugLogWidget />
             <AIRateLimitStrip />
 
             <div key="main-content" className="flex-1 flex flex-col min-h-0 relative">

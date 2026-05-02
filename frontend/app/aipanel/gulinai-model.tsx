@@ -84,7 +84,7 @@ export class GulinAIModel {
     debugLogs: jotai.PrimitiveAtom<any[]> = jotai.atom([]);
     isDebugVisible: jotai.PrimitiveAtom<boolean> = jotai.atom(false);
     unreadDebugCount: jotai.PrimitiveAtom<number> = jotai.atom(0);
-    debugFilters: jotai.PrimitiveAtom<string[]> = jotai.atom(["API", "TERM", "FILE", "DB", "AI"]);
+    debugFilters: jotai.PrimitiveAtom<string[]> = jotai.atom(["API", "TERM", "FILE", "DB", "AI", "PLAI", "WEB"]);
 
     private constructor(orefContext: ORef, inBuilder: boolean) {
         this.orefContext = orefContext;
