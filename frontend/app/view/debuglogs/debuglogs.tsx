@@ -3,12 +3,10 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { BlockNodeModel } from "@/app/block/blocktypes";
-import { TabModel } from "@/app/store/tab-model";
-import { WOS, globalStore } from "@/store/global";
 import { GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { cn } from "@/util/util";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import type { DebugLogsViewModel } from "./debuglogs-model";
 
 const LOG_COLORS: Record<string, string> = {
     API: "text-blue-400 border-blue-500/30 bg-blue-500/5",
@@ -27,36 +25,11 @@ function maskSensitiveData(text: string): string {
     });
 }
 
-class DebugLogsViewModel implements ViewModel {
-    viewType: string;
-    nodeModel: BlockNodeModel;
-    tabModel: TabModel;
-    blockId: string;
-    blockAtom: jotai.Atom<Block>;
-    viewIcon: jotai.Atom<string>;
-    viewName: jotai.Atom<string>;
-
-    constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
-        this.nodeModel = nodeModel;
-        this.tabModel = tabModel;
-        this.viewType = "debug-logs";
-        this.blockId = blockId;
-        this.blockAtom = WOS.getGulinObjectAtom<Block>(`block:${blockId}`);
-        this.viewIcon = jotai.atom("bug");
-        this.viewName = jotai.atom("Logs de Depuración");
-    }
-
-    get viewComponent(): ViewComponent {
-        return DebugLogsView;
-    }
-}
-
-function DebugLogsView({ model }: { model: DebugLogsViewModel }) {
+export function UniversalLogsView({ model }: { model: DebugLogsViewModel }) {
     const aiModel = GulinAIModel.getInstance();
     const logs = jotai.useAtomValue(aiModel.debugLogs);
     const [filters, setFilters] = jotai.useAtom(aiModel.debugFilters);
     const scrollRef = React.useRef<any>(null);
-    const [autoScroll, setAutoScroll] = React.useState(true);
 
     const filteredLogs = logs.filter(log => filters.includes(log.category));
 
@@ -76,14 +49,22 @@ function DebugLogsView({ model }: { model: DebugLogsViewModel }) {
                 <div className="flex items-center gap-3">
                     <i className="fa fa-bug text-rose-500 text-xl"></i>
                     <div>
-                        <h1 className="text-lg font-bold">Logs de Depuración Universal</h1>
-                        <p className="text-[10px] text-muted uppercase tracking-widest opacity-50">Diagnostic Console v1.0</p>
+                        <h1 className="text-lg font-bold">Consola de Servicios Gulin</h1>
+                        <p className="text-[10px] text-muted uppercase tracking-widest opacity-50">Diagnostic Console v1.5 (FIXED)</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
+                        onClick={() => aiModel.openServiceMap()}
+                        className="px-3 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 rounded-md border border-indigo-500/30 text-xs transition-all flex items-center gap-2 text-indigo-400 group"
+                        title="Abrir Mapa de Servicios"
+                    >
+                        <i className="fa fa-network-wired group-hover:animate-pulse"></i>
+                        <span>Mapa de Servicios</span>
+                    </button>
+                    <button 
                         onClick={() => aiModel.clearDebugLogs()}
-                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-white/10 text-xs transition-all flex items-center gap-2"
+                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-md border border-white/10 text-xs transition-all flex items-center gap-2 text-zinc-400"
                     >
                         <i className="fa fa-trash-can"></i> Limpiar
                     </button>
@@ -158,5 +139,3 @@ function DebugLogsView({ model }: { model: DebugLogsViewModel }) {
         </div>
     );
 }
-
-export { DebugLogsViewModel };

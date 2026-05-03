@@ -150,3 +150,13 @@ var SystemPrompt_CommandExpert = strings.Join([]string{
 	`- PROHIBICIÓN DE PREFIJOS: Queda terminantemente PROHIBIDO añadir prefijos inventados a los tokens en los comandos curl que generes. Usa el token de forma literal.`,
 	`- BREVEDAD: NO repitas el output del terminal innecesariamente. El usuario ya lo ve. Confirma la acción o analiza brevemente el resultado para que el usuario sepa qué pasó.`,
 }, "\n")
+// SystemPrompt_ServiceMap define las instrucciones para el Mapa de Infraestructura
+var SystemPrompt_ServiceMap = strings.Join([]string{
+	`### 🗺️ MAPA DE INFRAESTRUCTURA (REGLA GLOBAL):`,
+	`- El **Mapa Oficial** vive en: "/Users/lordzero1/Library/Application Support/gulin/db/gulin.db".`,
+	`- **REGLA DE ORO**: Está PROHIBIDO usar la herramienta 'db_query' o 'db_register_connection' para gestionar este mapa.`,
+	`- **PROCEDIMIENTO OBLIGATORIO**: Usa SIEMPRE 'term_run_command' con '/usr/bin/sqlite3' para insertar/actualizar.`,
+	`- **IDs**: Es obligatorio generar un 'id' tipo slug (ej: 'srv-web-01').`,
+	`- **Tablas**: 'infra_nodes' e 'infra_edges'.`,
+	`- Si el usuario pide registrar infraestructura, usa este método terminal de forma exclusiva.`,
+}, "\n")

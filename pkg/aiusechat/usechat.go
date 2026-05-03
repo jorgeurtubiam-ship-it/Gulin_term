@@ -5,7 +5,6 @@ package aiusechat
 
 import (
 	"context"
-	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -104,6 +103,12 @@ finalize:
 	if needsStrictToolAddOn && !useNoToolsPrompt {
 		prompts = append(prompts, SystemPromptText_StrictToolAddOn)
 	}
+
+	// INYECCIÓN GLOBAL: Mapa de Infraestructura (Senior Grade)
+	if !isBuilder && widgetAccess {
+		prompts = append(prompts, SystemPrompt_ServiceMap)
+	}
+
 	return prompts
 }
 
@@ -864,35 +869,148 @@ func GulinAIDBSchemaHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if connInfo.Type != "sqlite" {
-		http.Error(w, "only 'sqlite' is supported currently", http.StatusBadRequest)
-		return
-	}
-
-	db, err := sql.Open("sqlite3", connInfo.URL)
+	db, err := openSQLDB(connInfo.Type, connInfo.URL)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to open db: %v", err), http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
-	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+	mode := r.URL.Query().Get("mode")
+	if mode == "list-users" {
+		var userQuery string
+		switch connInfo.Type {
+		case "oracle":
+			userQuery = "SELECT username FROM all_users ORDER BY username"
+		case "postgres":
+			userQuery = "SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname != 'information_schema' ORDER BY nspname"
+		case "mysql", "mariadb":
+			userQuery = "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name"
+		default:
+			json.NewEncoder(w).Encode([]string{})
+			return
+		}
+		rows, err := db.Query(userQuery)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+		var users []string
+		for rows.Next() {
+			var u string
+			if err := rows.Scan(&u); err == nil {
+				users = append(users, u)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(users)
+		return
+	}
+
+	filterType := r.URL.Query().Get("type")
+	owner := r.URL.Query().Get("owner")
+	var query string
+	switch connInfo.Type {
+	case "postgres":
+		if filterType == "" {
+			query = `
+				SELECT 'TABLE' as type, count(*) FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+				UNION ALL
+				SELECT 'VIEW' as type, count(*) FROM pg_catalog.pg_views WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+				UNION ALL
+				SELECT 'INDEX' as type, count(*) FROM pg_indexes WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+				GROUP BY type`
+		} else {
+			if filterType == "TABLE" {
+				query = "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY tablename"
+			} else if filterType == "VIEW" {
+				query = "SELECT viewname FROM pg_catalog.pg_views WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY viewname"
+			} else if filterType == "INDEX" {
+				query = "SELECT indexname FROM pg_indexes WHERE schemaname NOT IN ('pg_catalog', 'information_schema') ORDER BY indexname"
+			}
+		}
+	case "mysql", "mariadb", "aurora-mysql":
+		if filterType == "" {
+			query = "SELECT 'TABLE' as type, count(*) FROM information_schema.tables WHERE table_schema = DATABASE()"
+		} else {
+			query = "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name"
+		}
+	case "mssql", "sqlserver", "azure-sql":
+		if filterType == "" {
+			query = "SELECT 'TABLE' as type, count(*) FROM sys.tables"
+		} else {
+			query = "SELECT name FROM sys.tables ORDER BY name"
+		}
+	case "oracle":
+		if owner == "" {
+			owner = "sys_context('userenv', 'current_schema')"
+		} else {
+			owner = fmt.Sprintf("'%s'", owner)
+		}
+
+		if filterType == "" {
+			query = fmt.Sprintf(`
+				SELECT object_type as type, count(*) as count FROM all_objects WHERE owner = %s GROUP BY object_type
+				UNION ALL
+				SELECT 'TABLESPACE' as type, count(*) as count FROM user_tablespaces
+				UNION ALL
+				SELECT 'CONSTRAINT' as type, count(*) as count FROM all_constraints WHERE owner = %s
+				ORDER BY type`, owner, owner)
+		} else {
+			if filterType == "TABLESPACE" {
+				query = "SELECT tablespace_name FROM user_tablespaces ORDER BY tablespace_name"
+			} else if filterType == "CONSTRAINT" {
+				query = fmt.Sprintf("SELECT constraint_name FROM all_constraints WHERE owner = %s AND rownum <= 5000 ORDER BY constraint_name", owner)
+			} else {
+				query = fmt.Sprintf("SELECT object_name FROM all_objects WHERE object_type = '%s' AND owner = %s ORDER BY object_name", filterType, owner)
+			}
+		}
+	case "sqlite":
+		if filterType == "" {
+			query = "SELECT upper(type), count(*) FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' GROUP BY type"
+		} else {
+			query = fmt.Sprintf("SELECT name FROM sqlite_master WHERE upper(type) = '%s' AND name NOT LIKE 'sqlite_%%' ORDER BY name", filterType)
+		}
+	default:
+		http.Error(w, fmt.Sprintf("schema listing not supported for type %q", connInfo.Type), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[GULIN] Executing schema query for %s (type=%s): %s\n", connInfo.Type, filterType, query)
+	rows, err := db.Query(query)
 	if err != nil {
+		log.Printf("[GULIN] Error querying schema for %s: %v\n", connName, err)
 		http.Error(w, fmt.Sprintf("failed to query schema: %v", err), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var tables []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err == nil {
-			tables = append(tables, name)
+	if filterType == "" {
+		// Return summary: map[string]int
+		summary := make(map[string]int)
+		for rows.Next() {
+			var objType string
+			var count int
+			if err := rows.Scan(&objType, &count); err == nil {
+				summary[objType] = count
+			}
 		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(summary)
+	} else {
+		// Return list: []string
+		var list []string
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err == nil {
+				list = append(list, name)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(list)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tables)
+	return
 }
 
 func GulinAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
@@ -919,12 +1037,7 @@ func GulinAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if connInfo.Type != "sqlite" {
-		http.Error(w, "only 'sqlite' is supported currently", http.StatusBadRequest)
-		return
-	}
-
-	db, err := sql.Open("sqlite3", connInfo.URL)
+	db, err := openSQLDB(connInfo.Type, connInfo.URL)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to open db: %v", err), http.StatusInternalServerError)
 		return
@@ -965,7 +1078,29 @@ func GulinAIDBQueryHandler(w http.ResponseWriter, r *http.Request) {
 		results = append(results, m)
 	}
 
-	// Create the block in the UI
+	if tabId == "studio" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"columns": cols,
+			"rows":    results,
+		})
+		return
+	}
+
+	if tabId == "studio-script" {
+		// Special handler for DBMS_METADATA
+		var ddl string
+		row := db.QueryRowContext(r.Context(), sqlStr)
+		if err := row.Scan(&ddl); err != nil {
+			http.Error(w, fmt.Sprintf("failed to get DDL: %v", err), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte(ddl))
+		return
+	}
+
+	// Create the block in the UI (standard behavior)
 	rpcClient := wshclient.GetBareRpcClient()
 	dataJson, _ := json.Marshal(results)
 	_, err = wshclient.CreateBlockCommand(rpcClient, wshrpc.CommandCreateBlockData{

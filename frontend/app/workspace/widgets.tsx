@@ -422,6 +422,16 @@ const Widgets = memo(() => {
                         </div>
                         <div className="flex-grow" />
                         <div className="grid grid-cols-2 gap-0 w-full">
+                            <Tooltip content="Mapa de Servicios" placement="left">
+                                <div
+                                    className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-indigo-400 text-sm overflow-hidden rounded-sm hover:bg-hoverbg hover:text-indigo-300 cursor-pointer"
+                                    onClick={() => createBlock({ meta: { view: "service-map" } })}
+                                >
+                                    <div>
+                                        <i className={makeIconClass("network-wired", true)}></i>
+                                    </div>
+                                </div>
+                            </Tooltip>
                             {isDev() || featureGulinAppBuilder ? (
                                 <div
                                     ref={appsButtonRef}
@@ -454,6 +464,23 @@ const Widgets = memo(() => {
                             <Widget key={`widget-${idx}`} widget={data} mode={mode} />
                         ))}
                         <div className="flex-grow" />
+                        <Tooltip content="Mapa de Servicios" placement="left">
+                            <div
+                                className="flex flex-col justify-center items-center w-full py-1.5 pr-0.5 text-indigo-400 text-lg overflow-hidden rounded-sm hover:bg-hoverbg hover:text-indigo-300 cursor-pointer"
+                                onClick={() => createBlock({ meta: { view: "service-map" } })}
+                            >
+                                <div className="flex flex-col items-center w-full">
+                                    <div>
+                                        <i className={makeIconClass("network-wired", true)}></i>
+                                    </div>
+                                    {mode === "normal" && (
+                                        <div className="text-xxs mt-0.5 w-full px-0.5 text-center whitespace-nowrap overflow-hidden text-ellipsis">
+                                            mapa
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </Tooltip>
                         {isDev() || featureGulinAppBuilder ? (
                             <div
                                 ref={appsButtonRef}

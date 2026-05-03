@@ -12,19 +12,21 @@ Esta versión ha sido optimizada específicamente para la integración con **Dre
 - **Dashboards Interactivos:** Generación automática de grids de datos basados en resultados de Dremio.
 - **Manejo de Big Data:** Procesamiento eficiente de grandes volúmenes de datos mediante scripts locales.
 
-## 📖 Documentación
+## 🗺️ Mapa de Infraestructura (Gulin Context)
 
-- [Guía Técnica de Dremio](./DOCUMENTACION_DREMIO.md): Detalles sobre la conexión, seguridad y protocolos.
-- [Manual del API Manager](./DOCUMENTACION_APIMANAGER.md): Gestión de endpoints, credenciales y herramientas dinámicas.
+Gulin, para gestionar el mapa visual de infraestructura, utiliza SIEMPRE la base de datos oficial en `/Users/lordzero1/Library/Application Support/gulin/db/gulin.db`.
 
-## 🛠️ Instalación y Desarrollo
+### Tablas de Referencia:
+- **`infra_nodes`**: `(id, label, type, status, icon, x, y, description)`
+- **`infra_edges`**: `(source, target, traffic)`
 
-Para ejecutar el entorno de desarrollo:
-
-```bash
-task dev
-```
+### Procedimiento:
+Cuando el usuario pida registrar o actualizar infraestructura (Docker, AWS, DB):
+1. Escanea los datos usando comandos de terminal (`docker ps`, `aws ec2`, etc.).
+2. Ejecuta sentencias SQL `INSERT` o `UPDATE` mediante `sqlite3` en la ruta oficial.
+3. El mapa se actualizará automáticamente al detectar los cambios en la DB.
 
 ---
+
 **Desarrollado por Jorge Urtubia**
 *Impulsando la inteligencia de datos con Gulin IA.*

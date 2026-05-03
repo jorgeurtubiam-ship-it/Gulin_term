@@ -23,6 +23,7 @@ import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overl
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { debounce, throttle } from "throttle-debounce";
 import { useTranslation } from "@/app/store/i18n";
+import { GulinAIModel } from "@/app/aipanel/gulinai-model";
 import "./gulinai.scss";
 
 interface ChatMessageType {
@@ -307,7 +308,15 @@ export class GulinAiModel implements ViewModel {
                 title: lang === "es" ? "Borrar historial de chat" : "Clear Chat History",
                 click: this.clearMessages.bind(this),
             };
-            return [clearButton];
+            let mapButton: IconButtonDecl = {
+                elemtype: "iconbutton",
+                icon: "network-wired",
+                title: lang === "es" ? "Abrir Mapa de Servicios" : "Open Service Map",
+                click: () => {
+                    GulinAIModel.getInstance().openServiceMap();
+                },
+            };
+            return [mapButton, clearButton];
         });
     }
 
@@ -353,6 +362,12 @@ export class GulinAiModel implements ViewModel {
     }
 
     sendMessage(text: string, user: string = "user") {
+        const trimmedText = text.trim().toLowerCase();
+        if (trimmedText.startsWith("/mapa") || trimmedText.startsWith("/map")) {
+            GulinAIModel.getInstance().openServiceMap();
+            return;
+        }
+
         const clientId = ClientModel.getInstance().clientId;
         this.setLocked(true);
 

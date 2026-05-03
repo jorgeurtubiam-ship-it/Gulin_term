@@ -69,22 +69,6 @@ export const AIPanelHeader = memo(() => {
                 )}
 
                 <button
-                    onClick={() => model.openDebugLogsAsWidget()}
-                    className={cn(
-                        "text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-2 focus:outline-none relative",
-                        unreadCount > 0 && "text-rose-400"
-                    )}
-                    title="Ver Logs de Depuración"
-                >
-                    <i className="fa fa-bug"></i>
-                    {unreadCount > 0 && !isDebugVisible && (
-                        <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-bold px-1 rounded-full min-w-[14px] h-3.5 flex items-center justify-center border border-zinc-900 shadow-sm animate-bounce">
-                            {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                    )}
-                </button>
-
-                <button
                     onClick={() => model.toggleSidebar()}
                     className="text-gray-400 hover:text-white cursor-pointer transition-colors p-1 rounded flex-shrink-0 ml-2 focus:outline-none"
                     title={t("gulin.ai.header.history_title")}

@@ -14,6 +14,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/microsoft/go-mssqldb"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/sijms/go-ora/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -24,6 +25,8 @@ import (
 	"github.com/gulindev/gulin/pkg/gulinobj"
 	"github.com/gulindev/gulin/pkg/wshrpc"
 	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
+	"github.com/gulindev/gulin/pkg/wstore"
+	"time"
 )
 
 // DBConnection info stored in public config
@@ -48,6 +51,7 @@ var supportedDBTypes = []string{
 	"mssql",     // go-mssqldb – pure Go, SQL Server, Azure SQL
 	"sqlite",    // mattn/go-sqlite3 – embedded SQLite
 	"mongodb",   // mongo-driver – NoSQL aggregation / find
+	"oracle",    // sijms/go-ora – pure Go Oracle driver
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -68,6 +72,8 @@ func openSQLDB(dbType, dsn string) (*sql.DB, error) {
 		driverName = "sqlserver"
 	case "sqlite":
 		driverName = "sqlite3"
+	case "oracle":
+		driverName = "oracle"
 	default:
 		return nil, fmt.Errorf("unsupported DB type %q. Supported: %v", dbType, supportedDBTypes)
 	}
@@ -108,6 +114,8 @@ DSN format examples:
 - mysql   : user:pass@tcp(host:3306)/dbname
 - mssql   : sqlserver://user:pass@host:1433?database=mydb
 - sqlite  : /absolute/path/to/file.db
+- oracle  : oracle://user:pass@host:1521/service_name
+- odbc    : driver={SQL Server};server=localhost;database=mydb;trusted_connection=yes
 - mongodb : mongodb://user:pass@host:27017/dbname`, supportedDBTypes),
 		ToolLogName: "db:register",
 		InputSchema: map[string]any{
@@ -367,6 +375,57 @@ func openDBExplorerBlock(ctx context.Context, tabId string, parsed DBQueryInput,
 		queryLabel = fmt.Sprintf("MongoDB %s", parsed.Collection)
 	}
 
+	// Find all blocks
+	blocks, _ := wstore.DBGetAllObjsByType[*gulinobj.Block](ctx, "block")
+	
+	// Try to find the active tab to prioritize it
+	var activeTabId string
+	workspaces, _ := wstore.DBGetAllObjsByType[*gulinobj.Workspace](ctx, "workspace")
+	if len(workspaces) > 0 {
+		activeTabId = workspaces[0].ActiveTabId
+	}
+
+	var existingBlockId string
+	// First pass: look in the active tab
+	if activeTabId != "" {
+		for _, b := range blocks {
+			if (b.Meta["view"] == "db-explorer" || b.Meta["view"] == "db-connections") && 
+			   b.ParentORef == fmt.Sprintf("tab:%s", activeTabId) {
+				existingBlockId = b.OID
+				break
+			}
+		}
+	}
+	
+	// Second pass: look in any tab (including the current sidebar tab)
+	if existingBlockId == "" {
+		for _, b := range blocks {
+			if b.Meta["view"] == "db-explorer" || b.Meta["view"] == "db-connections" {
+				existingBlockId = b.OID
+				break
+			}
+		}
+	}
+
+	if existingBlockId != "" {
+		// Use RPC command to update metadata (this guarantees broadcast to frontend)
+		err := wshclient.SetMetaCommand(rpcClient, wshrpc.CommandSetMetaData{
+			ORef: gulinobj.MakeORef("block", existingBlockId),
+			Meta: gulinobj.MetaMapType{
+				"db:external-query": map[string]any{
+					"id":         fmt.Sprintf("ext-%d", time.Now().Unix()),
+					"name":       queryLabel,
+					"connection": parsed.ConnectionName,
+					"data":       results,
+				},
+			},
+		}, nil)
+		if err == nil {
+			return fmt.Sprintf("Query executed. %d rows returned. Result sent to your open DB Explorer.", len(results)), nil
+		}
+		// If update fails, fall back to creating a new block
+	}
+
 	_, err := wshclient.CreateBlockCommand(rpcClient, wshrpc.CommandCreateBlockData{
 		TabId: tabId,
 		BlockDef: &gulinobj.BlockDef{
@@ -481,3 +540,97 @@ func GulinAIDBSaveHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Tool: db_test_connection
+// ──────────────────────────────────────────────────────────────────────────────
+
+func GetDBTestConnectionToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "db_test_connection",
+		DisplayName: "Test DB Connection",
+		Description: "Test if a registered database connection is reachable.",
+		ToolLogName: "db:test",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"connection_name": map[string]any{"type": "string", "description": "Name of the registered connection to test"},
+			},
+			"required":             []string{"connection_name"},
+			"additionalProperties": false,
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			var parsed struct {
+				ConnectionName string `json:"connection_name"`
+			}
+			b, _ := json.Marshal(input)
+			json.Unmarshal(b, &parsed)
+
+			connections, _ := loadDBConnections()
+			connInfo, ok := connections[parsed.ConnectionName]
+			if !ok {
+				return nil, fmt.Errorf("connection '%s' not found", parsed.ConnectionName)
+			}
+
+			if connInfo.Type == "mongodb" {
+				client, err := mongo.Connect(ctx, options.Client().ApplyURI(connInfo.URL))
+				if err != nil {
+					return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+				}
+				defer client.Disconnect(ctx)
+				if err := client.Ping(ctx, nil); err != nil {
+					return nil, fmt.Errorf("MongoDB ping failed: %w", err)
+				}
+			} else {
+				db, err := openSQLDB(connInfo.Type, connInfo.URL)
+				if err != nil {
+					return nil, fmt.Errorf("failed to open db: %w", err)
+				}
+				defer db.Close()
+				if err := db.PingContext(ctx); err != nil {
+					return nil, fmt.Errorf("db ping failed: %w", err)
+				}
+			}
+
+			return fmt.Sprintf("Connection '%s' is reachable and working correctly.", parsed.ConnectionName), nil
+		},
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tool: db_delete_connection
+// ──────────────────────────────────────────────────────────────────────────────
+
+func GetDBDeleteConnectionToolDefinition() uctypes.ToolDefinition {
+	return uctypes.ToolDefinition{
+		Name:        "db_delete_connection",
+		DisplayName: "Delete DB Connection",
+		Description: "Remove a registered database connection.",
+		ToolLogName: "db:delete",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"connection_name": map[string]any{"type": "string", "description": "Name of the connection to delete"},
+			},
+			"required":             []string{"connection_name"},
+			"additionalProperties": false,
+		},
+		ToolAnyCallback: func(ctx context.Context, input any, toolUseData *uctypes.UIMessageDataToolUse) (any, error) {
+			var parsed struct {
+				ConnectionName string `json:"connection_name"`
+			}
+			b, _ := json.Marshal(input)
+			json.Unmarshal(b, &parsed)
+
+			connections, _ := loadDBConnections()
+			if _, ok := connections[parsed.ConnectionName]; !ok {
+				return nil, fmt.Errorf("connection '%s' not found", parsed.ConnectionName)
+			}
+
+			delete(connections, parsed.ConnectionName)
+			if err := saveDBConnections(connections); err != nil {
+				return nil, err
+			}
+			return fmt.Sprintf("Connection '%s' deleted successfully.", parsed.ConnectionName), nil
+		},
+	}
+}

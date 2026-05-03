@@ -9,8 +9,7 @@ import {
     ChatSummary,
 } from "@/app/aipanel/aitypes";
 import { FocusManager } from "@/app/store/focusManager";
-import { atoms, createBlock, getOrefMetaKeyAtom, getSettingsKeyAtom } from "@/app/store/global";
-import { globalStore } from "@/app/store/jotaiStore";
+import { atoms, createBlock, getApi, getOrefMetaKeyAtom, getSettingsKeyAtom, globalStore, readAtom, replaceBlock } from "@/app/store/global";
 import { isBuilderWindow } from "@/app/store/windowtype";
 import * as WOS from "@/app/store/wos";
 import { RpcApi } from "@/app/store/wshclientapi";
@@ -468,15 +467,23 @@ export class GulinAIModel {
         this.tabModel = tabModel;
     }
 
-    openDebugLogsAsWidget() {
-        if (!this.tabModel) {
-            console.error("TabModel not registered in GulinAIModel");
-            return;
-        }
-        this.tabModel.createNewBlock({
-            view: "debug-logs",
+    async openDebugLogsAsWidget() {
+        this.addDebugLog("AI", "Abriendo Consola de Logs...", Date.now());
+        await createBlock({
+            meta: { view: "debug-logs" }
         });
         this.toggleDebugVisible(false);
+    }
+
+    async openServiceMap() {
+        this.addDebugLog("AI", "Abriendo Mapa de Servicios...", Date.now());
+        try {
+            await createBlock({
+                meta: { view: "service-map" }
+            });
+        } catch (e: any) {
+            this.addDebugLog("AI", `Error al abrir Mapa: ${e.message}`, Date.now());
+        }
     }
 
     addDebugLog(category: string, message: string, ts: number) {
@@ -691,8 +698,15 @@ export class GulinAIModel {
         const input = globalStore.get(this.inputAtom);
         const droppedFiles = globalStore.get(this.droppedFiles);
 
-        if (input.trim() === "/clear" || input.trim() === "/new") {
+        const trimmedInput = input.trim().toLowerCase();
+        if (trimmedInput === "/clear" || trimmedInput === "/new") {
             this.clearChat();
+            globalStore.set(this.inputAtom, "");
+            return;
+        }
+
+        if (trimmedInput.startsWith("/mapa") || trimmedInput.startsWith("/map")) {
+            this.openServiceMap();
             globalStore.set(this.inputAtom, "");
             return;
         }

@@ -7,6 +7,7 @@ package wshserver
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -14,11 +15,14 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/skratchdot/open-golang/open"
 	"github.com/gulindev/gulin/pkg/aiusechat"
@@ -1521,6 +1525,51 @@ func (ws *WshServer) PathCommand(ctx context.Context, data wshrpc.PathCommandDat
 		path = gulinbase.GetGulinDataDir()
 	case "log":
 		path = filepath.Join(gulinbase.GetGulinDataDir(), "gulinapp.log")
+	default:
+		if strings.HasPrefix(pathType, "sql:") {
+			sqlQuery := strings.TrimPrefix(pathType, "sql:")
+			log.Printf("[DEBUG-MAP] Ejecutando consulta SQL: %s", sqlQuery)
+			
+			// Forzamos el path absoluto que sabemos que tiene los datos
+			dbPath := "/Users/lordzero1/Library/Application Support/gulin/db/gulin.db"
+			
+			log.Printf("[DEBUG-MAP] Usando base de datos en: %s", dbPath)
+
+			db, err := sql.Open("sqlite3", dbPath)
+			if err != nil {
+				return "", fmt.Errorf("error opening db: %v", err)
+			}
+			defer db.Close()
+
+			rows, err := db.QueryContext(ctx, sqlQuery)
+			if err != nil {
+				return "", fmt.Errorf("query error: %v", err)
+			}
+			defer rows.Close()
+
+			cols, _ := rows.Columns()
+			results := []map[string]any{}
+			for rows.Next() {
+				columns := make([]any, len(cols))
+				columnPointers := make([]any, len(cols))
+				for i := range columns {
+					columnPointers[i] = &columns[i]
+				}
+				rows.Scan(columnPointers...)
+				m := make(map[string]any)
+				for i, colName := range cols {
+					val := columns[i]
+					if b, ok := val.([]byte); ok {
+						m[colName] = string(b)
+					} else {
+						m[colName] = val
+					}
+				}
+				results = append(results, m)
+			}
+			jsonRes, _ := json.Marshal(results)
+			return string(jsonRes), nil
+		}
 	}
 
 	if openInternal && openExternal {
@@ -1672,4 +1721,23 @@ func (ws *WshServer) JobControllerDetachJobCommand(ctx context.Context, jobId st
 
 func (ws *WshServer) BlockJobStatusCommand(ctx context.Context, blockId string) (*wshrpc.BlockJobStatusData, error) {
 	return jobcontroller.GetBlockJobStatus(ctx, blockId)
+}
+func (ws *WshServer) TerminalRunCommand(ctx context.Context, data wshrpc.CommandRemoteStartJobData) (wshrpc.CommandRemoteListEntriesRtnData, error) {
+	// Simple implementation to run a command and get output
+	// We reuse existing types for convenience
+	cmd := data.Cmd
+	args := data.Args
+	
+	output, err := exec.CommandContext(ctx, cmd, args...).CombinedOutput()
+	if err != nil {
+		return wshrpc.CommandRemoteListEntriesRtnData{}, fmt.Errorf("error running command: %v, output: %s", err, string(output))
+	}
+	
+	// We use FileInfo as a hacky way to return the string output in the FileInfo.Name field
+	// or we can just return a custom string. But for now, let's keep it simple.
+	return wshrpc.CommandRemoteListEntriesRtnData{
+		FileInfo: []*wshrpc.FileInfo{
+			{Name: string(output)},
+		},
+	}, nil
 }
