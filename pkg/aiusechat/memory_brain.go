@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -74,6 +75,32 @@ func ListGulinMemoryFiles() ([]string, error) {
 		}
 	}
 	return files, nil
+}
+
+func GetGulinSkillContext(skillName string) string {
+	if skillName == "" {
+		return ""
+	}
+	// Sanitize skill name to get filename (e.g. "🛡️ Seguridad" -> "seguridad.md")
+	clean := strings.ToLower(skillName)
+	// Remove emojis and spaces
+	reg, _ := regexp.Compile("[^a-z0-9_]+")
+	clean = strings.ReplaceAll(clean, " ", "_")
+	clean = reg.ReplaceAllString(clean, "")
+	clean = strings.Trim(clean, "_")
+
+	content, err := ReadGulinMemoryFile(clean + ".md")
+	if err != nil {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString("\n<active_skill_protocol>\n")
+	sb.WriteString(fmt.Sprintf("ESTÁS ACTUANDO COMO UN EXPERTO BAJO EL PROTOCOLO: %s\n", skillName))
+	sb.WriteString("Sigue estrictamente las reglas definidas a continuación para esta conversación:\n\n")
+	sb.WriteString(content)
+	sb.WriteString("\n</active_skill_protocol>\n")
+	return sb.String()
 }
 
 func GetGulinBrainContext(query string) string {

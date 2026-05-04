@@ -8,7 +8,9 @@ import { type GulinAIModel } from "@/app/aipanel/gulinai-model";
 import { Tooltip } from "@/element/tooltip";
 import { cn } from "@/util/util";
 import { useAtom, useAtomValue } from "jotai";
-import { memo, useCallback, useEffect, useRef } from "react";
+import * as jotai from "jotai";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { SkillManager } from "./skillmanager";
 
 interface AIPanelInputProps {
     onSubmit: (e: React.FormEvent) => void;
@@ -29,6 +31,13 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isPanelOpen = useAtomValue(model.getPanelVisibleAtom());
+    const [isManagerOpen, setIsManagerOpen] = useState(false);
+
+    useEffect(() => {
+        const handler = () => setIsManagerOpen(true);
+        window.addEventListener("gulin:open-skill-manager", handler);
+        return () => window.removeEventListener("gulin:open-skill-manager", handler);
+    }, []);
 
     const { t } = useTranslation();
 
@@ -186,6 +195,10 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                     <i className="fa-solid fa-rocket text-[10px]"></i>
                     ACT
                 </button>
+
+                <div className="h-4 w-[1px] bg-gray-600/30 mx-1"></div>
+
+                <SkillSelector model={model} />
             </div>
             <input
                 ref={fileInputRef}
@@ -253,8 +266,79 @@ export const AIPanelInput = memo(({ onSubmit, status, model }: AIPanelInputProps
                     )}
                 </div>
             </form>
+            {isManagerOpen && <SkillManager model={model} onClose={() => setIsManagerOpen(false)} />}
         </div>
     );
 });
+
+const SkillSelector = memo(({ model }: { model: GulinAIModel }) => {
+    const [selectedSkill, setSelectedSkill] = useAtom(model.selectedSkill);
+    const availableSkills = useAtomValue(model.availableSkills);
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border",
+                    selectedSkill 
+                        ? "bg-accent/20 text-accent border-accent/50 shadow-[0_0_8px_rgba(var(--accent-rgb),0.2)]"
+                        : "bg-zinc-800/50 text-zinc-500 border-transparent hover:text-zinc-400"
+                )}
+            >
+                <i className="fa-solid fa-graduation-cap text-[10px]"></i>
+                {selectedSkill ? selectedSkill.split(" ").slice(1).join(" ") : "SKILLS"}
+            </button>
+
+            {isOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-56 bg-zinc-900 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="bg-zinc-800/80 px-3 py-2 border-b border-gray-700">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">PROTOCOLOS EXPERTOS</span>
+                    </div>
+                    <div className="flex flex-col py-1 max-h-60 overflow-y-auto">
+                        <button
+                            onClick={() => { setSelectedSkill(null); setIsOpen(false); }}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-zinc-800 text-left",
+                                !selectedSkill ? "text-accent font-bold" : "text-gray-300"
+                            )}
+                        >
+                            <i className="fa-solid fa-ghost w-4"></i> Sin Skill (Modo Base)
+                        </button>
+                        {availableSkills.map(skill => (
+                            <button
+                                key={skill}
+                                onClick={() => { setSelectedSkill(skill); setIsOpen(false); }}
+                                className={cn(
+                                    "flex items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-zinc-800 text-left",
+                                    selectedSkill === skill ? "text-accent font-bold" : "text-gray-300"
+                                )}
+                            >
+                                <span className="w-4">{skill.split(" ")[0]}</span>
+                                {skill.split(" ").slice(1).join(" ")}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="border-t border-gray-700 bg-zinc-800/30 p-1">
+                        <button 
+                            onClick={() => { 
+                                setIsOpen(false); 
+                                // Dispatch custom event to open manager
+                                window.dispatchEvent(new CustomEvent("gulin:open-skill-manager"));
+                            }}
+                            className="w-full text-center py-1.5 text-[9px] font-bold text-gray-500 hover:text-accent transition-colors"
+                        >
+                            GESTIONAR SKILLS
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+});
+
+SkillSelector.displayName = "SkillSelector";
 
 AIPanelInput.displayName = "AIPanelInput";

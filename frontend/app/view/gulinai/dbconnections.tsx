@@ -5,7 +5,7 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { BlockNodeModel } from "@/app/block/blocktypes";
 import { TabModel } from "@/app/store/tab-model";
-import { WOS, globalStore } from "@/store/global";
+import { WOS, globalStore, createBlock } from "@/store/global";
 import { DBConnectionInfo } from "@/app/aipanel/aitypes";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -26,31 +26,31 @@ class DBConnectionsViewModel implements ViewModel {
 
     dbsAtom = jotai.atom<DBConnectionInfo[]>([]);
     loadingAtom = jotai.atom<boolean>(true);
-    selectedConnAtom = jotai.atom<string | null>(null);
-    schemasAtom = jotai.atom<string[]>([]);
-    selectedSchemaAtom = jotai.atom<string | null>(null);
-    tablesAtom = jotai.atom<Record<string, number>>({});
+    selectedConnAtom = jotai.atom<string | null>(null) as jotai.WritableAtom<string | null, [string | null], unknown>;
+    schemasAtom = jotai.atom<string[]>([]) as jotai.WritableAtom<string[], [string[]], unknown>;
+    selectedSchemaAtom = jotai.atom<string | null>(null) as jotai.WritableAtom<string | null, [string | null], unknown>;
+    tablesAtom = jotai.atom<Record<string, number>>({}) as jotai.WritableAtom<Record<string, number>, [Record<string, number>], unknown>;
     typeObjectsAtom = jotai.atom<Record<string, string[]>>({});
     loadingTablesAtom = jotai.atom<boolean>(false);
     loadingSchemasAtom = jotai.atom<boolean>(false);
     loadingTypeAtom = jotai.atom<Record<string, boolean>>({});
 
-    tabsAtom = jotai.atom<{ id: string; name: string; content: string; type: 'sql' | 'table-detail'; table?: string, subTab?: string }[]>([
-        { id: "new-1", name: "query-1.sql", content: "-- Escribe tu consulta aquí\nSELECT * FROM all_objects WHERE rownum <= 10", type: 'sql' }
-    ]);
-    activeTabIdAtom = jotai.atom<string>("new-1");
-    resultsAtom = jotai.atom<{ columns: string[]; rows: any[] } | null>(null);
-    executingAtom = jotai.atom<boolean>(false);
-    errorAtom = jotai.atom<string | null>(null);
+    tabsAtom = jotai.atom<{ id: string; name: string; content: string; type: 'sql' | 'table-detail'; table?: string, subTab?: string, isExternal?: boolean }[]>([
+        { id: "new-1", name: "query-1.sql", content: "-- Escribe tu consulta aquí\nSELECT * FROM all_objects WHERE rownum <= 10", type: 'sql', isExternal: false }
+    ]) as jotai.WritableAtom<{ id: string; name: string; content: string; type: 'sql' | 'table-detail'; table?: string, subTab?: string, isExternal?: boolean }[], [any], unknown>;
+    activeTabIdAtom = jotai.atom<string>("new-1") as jotai.WritableAtom<string, [string], unknown>;
+    resultsAtom = jotai.atom<{ columns: string[]; rows: any[] } | null>(null) as jotai.WritableAtom<{ columns: string[]; rows: any[] } | null, [any], unknown>;
+    executingAtom = jotai.atom<boolean>(false) as jotai.WritableAtom<boolean, [boolean], unknown>;
+    errorAtom = jotai.atom<string | null>(null) as jotai.WritableAtom<string | null, [string | null], unknown>;
 
     // Table Detail Atoms
-    tableColumnsAtom = jotai.atom<any[]>([]);
-    tableIndexesAtom = jotai.atom<any[]>([]);
-    tableConstraintsAtom = jotai.atom<any[]>([]);
-    tableTriggersAtom = jotai.atom<any[]>([]);
-    tableScriptAtom = jotai.atom<string>("");
-    loadingDetailAtom = jotai.atom<boolean>(false);
-    designModeAtom = jotai.atom<boolean>(false);
+    tableColumnsAtom = jotai.atom<any[]>([]) as jotai.WritableAtom<any[], [any[]], unknown>;
+    tableIndexesAtom = jotai.atom<any[]>([]) as jotai.WritableAtom<any[], [any[]], unknown>;
+    tableConstraintsAtom = jotai.atom<any[]>([]) as jotai.WritableAtom<any[], [any[]], unknown>;
+    tableTriggersAtom = jotai.atom<any[]>([]) as jotai.WritableAtom<any[], [any[]], unknown>;
+    tableScriptAtom = jotai.atom<string>("") as jotai.WritableAtom<string, [string], unknown>;
+    loadingDetailAtom = jotai.atom<boolean>(false) as jotai.WritableAtom<boolean, [boolean], unknown>;
+    designModeAtom = jotai.atom<boolean>(false) as jotai.WritableAtom<boolean, [boolean], unknown>;
 
     constructor(blockId: string, nodeModel: BlockNodeModel, tabModel: TabModel) {
         this.nodeModel = nodeModel;
@@ -299,15 +299,8 @@ class DBConnectionsViewModel implements ViewModel {
             const headers = { "X-AuthKey": getApi().getAuthKey() };
             const resp = await fetch(`${endpoint}/gulin/db-query?connection=${encodeURIComponent(connName)}&sql=${encodeURIComponent(sql)}&tabid=studio-script`, { headers });
             if (resp.ok) {
-                const data = await resp.json();
-                if (data && data.rows && data.rows.length > 0) {
-                    // Extract the first column of the first row (Oracle returns DDL in one cell)
-                    const firstRow = data.rows[0];
-                    const firstCol = Object.keys(firstRow)[0];
-                    globalStore.set(this.tableScriptAtom, String(firstRow[firstCol] || ""));
-                } else {
-                    globalStore.set(this.tableScriptAtom, "-- No se pudo generar el script");
-                }
+                const data = await resp.text();
+                globalStore.set(this.tableScriptAtom, data || "-- No se pudo generar el script");
             }
         } catch (e) { console.error(e); } finally { globalStore.set(this.loadingDetailAtom, false); }
     }
@@ -841,6 +834,13 @@ function DBConnectionsView({ model }: { model: DBConnectionsViewModel }) {
                                             <i className="fa fa-plus text-xs"></i>
                                         </button>
                                     </div>
+                                    <button 
+                                        onClick={() => createBlock({ meta: { view: "oracle-monitor", connection: selectedConn } })}
+                                        className="bg-zinc-800/80 hover:bg-emerald-500/20 text-emerald-400 px-4 py-1 rounded-md text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all border border-emerald-500/20 hover:border-emerald-500/40"
+                                    >
+                                        <i className="fa fa-chart-line text-[9px]"></i>
+                                        Monitoreo
+                                    </button>
                                     <button 
                                         onClick={() => model.runQuery(selectedConn)}
                                         disabled={executing}

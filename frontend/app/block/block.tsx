@@ -23,6 +23,7 @@ import { VDomModel } from "@/app/view/vdom/vdom-model";
 import { WidgetBuilderViewModel } from "@/app/view/widgetbuilder/widgetbuilder";
 import { DebugLogsViewModel } from "@/app/view/debuglogs/debuglogs-model";
 import { ServiceMapViewModel } from "@/app/view/servicemap/servicemap";
+import { OracleMonitorViewModel } from "@/app/view/oraclemonitor/oraclemonitor";
 import { CenteredDiv } from "@/element/quickelems";
 import { useDebouncedNodeInnerRect } from "@/layout/index";
 import { counterInc } from "@/store/counters";
@@ -75,6 +76,7 @@ BlockRegistry.set("dashboard", DashboardViewModel);
 BlockRegistry.set("widget-builder", WidgetBuilderViewModel);
 BlockRegistry.set("debug-logs", DebugLogsViewModel);
 BlockRegistry.set("service-map", ServiceMapViewModel);
+BlockRegistry.set("oracle-monitor", OracleMonitorViewModel);
 BlockRegistry.set("codeeditor", WidgetBuilderViewModel);
 
 function makeViewModel(blockId: string, blockView: string, nodeModel: BlockNodeModel, tabModel: TabModel): ViewModel {

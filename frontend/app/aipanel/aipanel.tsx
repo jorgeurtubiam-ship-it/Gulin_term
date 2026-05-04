@@ -274,6 +274,7 @@ const AIPanelComponentInner = memo(() => {
                     chatid: globalStore.get(model.chatId),
                     widgetaccess: globalStore.get(model.widgetAccessAtom),
                     aimode: globalStore.get(model.currentAIMode),
+                    skill: globalStore.get(model.selectedSkill),
                 };
                 if (isBuilderWindow()) {
                     body.builderid = globalStore.get(atoms.builderId);

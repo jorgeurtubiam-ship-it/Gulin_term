@@ -104,5 +104,17 @@
                 "view": "debug-logs"
             }
         }
+    },
+    "defwidget@oracle-monitor": {
+        "display:order": 5,
+        "icon": "chart-area",
+        "color": "#10b981",
+        "label": "monitoreo",
+        "description": "Arquitectura y salud de Oracle",
+        "blockdef": {
+            "meta": {
+                "view": "oracle-monitor"
+            }
+        }
     }
 }

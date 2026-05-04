@@ -797,6 +797,7 @@ type PostMessageRequest struct {
 	WidgetAccess bool              `json:"widgetaccess,omitempty"`
 	AIMode       string            `json:"aimode"`
 	TokenMode    string            `json:"tokenmode,omitempty"`
+	Skill        string            `json:"skill,omitempty"`
 }
 
 type BrainSummary struct {
@@ -846,6 +847,63 @@ func GulinAIBrainListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(summaries)
+}
+
+func GulinAIBrainReadHandler(w http.ResponseWriter, r *http.Request) {
+	filename := r.URL.Query().Get("filename")
+	if filename == "" {
+		http.Error(w, "filename is required", http.StatusBadRequest)
+		return
+	}
+	content, err := ReadGulinMemoryFile(filename)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to read brain file: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/markdown")
+	w.Write([]byte(content))
+}
+
+func GulinAIBrainUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var data struct {
+		Filename string `json:"filename"`
+		Content  string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if data.Filename == "" {
+		http.Error(w, "filename is required", http.StatusBadRequest)
+		return
+	}
+	err := UpdateGulinMemoryFile(data.Filename, data.Content)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to update brain file: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func GulinAIBrainDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	filename := r.URL.Query().Get("filename")
+	if filename == "" {
+		http.Error(w, "filename is required", http.StatusBadRequest)
+		return
+	}
+	// Sanitize filename
+	filename = filepath.Base(filename)
+	path := filepath.Join(GetGulinMemoryDir(), filename)
+	err := os.Remove(path)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to delete brain file: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func GulinAIDBSchemaHandler(w http.ResponseWriter, r *http.Request) {
@@ -1287,6 +1345,13 @@ func GulinAIPostMessageHandler(w http.ResponseWriter, r *http.Request) {
 	brainContext := GetGulinBrainContext(req.Msg.GetContent())
 	if brainContext != "" {
 		chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, brainContext)
+	}
+
+	if req.Skill != "" {
+		skillContext := GetGulinSkillContext(req.Skill)
+		if skillContext != "" {
+			chatOpts.SystemPrompt = append(chatOpts.SystemPrompt, skillContext)
+		}
 	}
 
 	if req.TabId != "" {
