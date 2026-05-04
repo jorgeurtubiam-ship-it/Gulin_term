@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/gulindev/gulin/pkg/wshrpc/wshclient"
 	"github.com/gulindev/gulin/pkg/wshutil"
 	"github.com/gulindev/gulin/pkg/wstore"
+	"github.com/gulindev/gulin/pkg/util/shellutil"
 	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
@@ -424,19 +426,41 @@ func GetTermRunCommandToolDefinition(tabId string) uctypes.ToolDefinition {
 
 			blockORef := gulinobj.MakeORef(gulinobj.OType_Block, fullBlockId)
 			rtInfo := wstore.GetRTInfo(blockORef)
+			block, _ := wstore.DBGet[*gulinobj.Block](ctx, fullBlockId)
 
 			// DECODIFICACIÓN PROTOCOLO ANTI-FIREWALL (PLAI)
 			decodedCmd := parsed.Command
 
-			// We need to base64 encode the command + terminator
-			// PowerShell/Windows PTYs require \r to trigger execution
-			// For others, \n is the standard. We trim any existing terminator first.
+			// Determine the correct terminator and normalize newlines
+			// Use \r\n as the default universal terminator as it is more likely to trigger execution
+			// in interactive shells (like PowerShell) and nested sessions, even if shell detection fails.
+			// Most Unix shells translate \r to \n internally (ICRNL), making this safe for bash/zsh as well.
+			// We trim any existing terminator from the AI command first.
 			cleanCmd := strings.TrimRight(decodedCmd, "\r\n")
-			terminator := "\n"
-			if rtInfo != nil && (rtInfo.ShellType == "pwsh" || rtInfo.ShellType == "powershell" || rtInfo.ShellType == "cmd") {
-				terminator = "\r\n"
+			terminator := "\r\n"
+			isPowerShell := false
+			if rtInfo != nil {
+				isPowerShell = (rtInfo.ShellType == "pwsh" || rtInfo.ShellType == "powershell" || rtInfo.ShellType == "cmd")
+			} else if block != nil {
+				// Fallback: Check block metadata for shell path
+				shellPath := block.Meta.GetString(gulinobj.MetaKey_TermLocalShellPath, "")
+				if shellPath == "" {
+					shellPath = block.Meta.GetString(gulinobj.MetaKey_CmdShell, "")
+				}
+				if shellPath != "" {
+					st := shellutil.GetShellTypeFromShellPath(shellPath)
+					isPowerShell = (st == shellutil.ShellType_pwsh || st == shellutil.ShellType_cmd)
+				} else if runtime.GOOS == "windows" {
+					// Local terminal on Windows without specific shell usually defaults to PowerShell/Cmd
+					isPowerShell = (block.Meta.GetString(gulinobj.MetaKey_Connection, "") == "")
+				}
 			}
-			cmdWithTerminator := cleanCmd + terminator
+
+			finalCmd := cleanCmd
+			if isPowerShell {
+				finalCmd = strings.ReplaceAll(finalCmd, "\n", "\r\n")
+			}
+			cmdWithTerminator := finalCmd + terminator
 			b64Data := base64.StdEncoding.EncodeToString([]byte(cmdWithTerminator))
 
 			err = wshclient.ControllerInputCommand(
