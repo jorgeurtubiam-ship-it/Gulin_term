@@ -35,5 +35,7 @@
     "term:copyonselect": true,
     "term:durable": false,
     "gulinai:showcloudmodes": true,
-    "gulinai:defaultmode": "gulinai@balanced"
+    "gulinai:defaultmode": "gulinai@balanced",
+    "ai:ollama_embedding_endpoint": "http://localhost:11434",
+    "ai:ollama_embedding_model": "nomic-embed-text"
 }

@@ -340,6 +340,12 @@
         },
         "gulinbridge:tokensecretname": {
           "type": "string"
+        },
+        "ai:ollama_embedding_endpoint": {
+          "type": "string"
+        },
+        "ai:ollama_embedding_model": {
+          "type": "string"
         }
       },
       "additionalProperties": false,

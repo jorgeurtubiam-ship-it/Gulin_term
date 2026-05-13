@@ -23,6 +23,7 @@ import (
 	"github.com/gulindev/gulin/pkg/wshutil"
 	"github.com/gulindev/gulin/pkg/wstore"
 	"github.com/gulindev/gulin/pkg/util/shellutil"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 	"github.com/gulindev/gulin/pkg/web/sse"
 )
 
@@ -133,6 +134,7 @@ func getTermScrollbackOutput(ctx context.Context, tabId string, widgetId string,
 		lines = lines[len(lines)-30:]
 	}
 	content := strings.Join(lines, "\n")
+	content = utilfn.StripANSI(content)
 	var effectiveLineEnd int
 	if rpcData.LastCommand {
 		effectiveLineEnd = result.LineStart + len(result.Lines)

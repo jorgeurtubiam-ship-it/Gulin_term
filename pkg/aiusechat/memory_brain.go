@@ -20,8 +20,7 @@ import (
 
 const GulinMemoryDirName = "gulin"
 const EmbeddingsFileName = "embeddings.json"
-const DefaultOllamaURL = "http://localhost:11434/api/embeddings"
-const DefaultEmbeddingModel = "nomic-embed-text"
+const EndpointEmbeddingsAPI = "/api/embeddings"
 
 type GulinEmbeddings map[string][]float32
 
@@ -142,8 +141,12 @@ func GetGulinBrainContext(query string) string {
 }
 
 func GetEmbeddings(text string) ([]float32, error) {
+	ollamaEndpoint := GetOllamaEmbeddingEndpoint()
+	ollamaModel := GetOllamaEmbeddingModel()
+	fullURL := fmt.Sprintf("%s%s", ollamaEndpoint, EndpointEmbeddingsAPI)
+
 	reqBody := map[string]string{
-		"model":  DefaultEmbeddingModel,
+		"model":  ollamaModel,
 		"prompt": text,
 	}
 	jsonData, _ := json.Marshal(reqBody)
@@ -151,12 +154,12 @@ func GetEmbeddings(text string) ([]float32, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	req, _ := http.NewRequestWithContext(ctx, "POST", DefaultOllamaURL, strings.NewReader(string(jsonData)))
+	req, _ := http.NewRequestWithContext(ctx, "POST", fullURL, strings.NewReader(string(jsonData)))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Ollama no responde en %s. Asegúrate de que esté corriendo y el modelo '%s' esté instalado.", DefaultOllamaURL, DefaultEmbeddingModel)
+		return nil, fmt.Errorf("Ollama no responde en %s. Asegúrate de que esté corriendo y el modelo '%s' esté instalado.", fullURL, ollamaModel)
 	}
 	defer resp.Body.Close()
 

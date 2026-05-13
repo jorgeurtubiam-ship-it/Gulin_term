@@ -57,6 +57,7 @@ type Client struct {
 	OverrideUrlHandler http.Handler
 	NewBlockFlag       bool
 	SetupFn            func()
+	IsVisible          bool
 }
 
 func (c *Client) GetIsDone() bool {
@@ -101,6 +102,7 @@ func MakeClient(appOpts AppOpts) *Client {
 			CloseOnCtrlC:         appOpts.CloseOnCtrlC,
 			GlobalKeyboardEvents: appOpts.GlobalKeyboardEvents,
 		},
+		IsVisible: true,
 	}
 	if len(appOpts.GlobalStyles) > 0 {
 		client.Opts.GlobalStyles = true
@@ -279,6 +281,13 @@ func (c *Client) RegisterComponent(name string, cfunc any) error {
 }
 
 func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
+	if !c.IsVisible {
+		return &vdom.VDomBackendUpdate{
+			Type:    "backendupdate",
+			Ts:      time.Now().UnixMilli(),
+			BlockId: c.RpcContext.BlockId,
+		}, nil
+	}
 	c.Root.RunWork()
 	c.Root.Render(c.RootElem)
 	renderedVDom := c.Root.MakeVDom()
@@ -300,6 +309,13 @@ func (c *Client) fullRender() (*vdom.VDomBackendUpdate, error) {
 }
 
 func (c *Client) incrementalRender() (*vdom.VDomBackendUpdate, error) {
+	if !c.IsVisible {
+		return &vdom.VDomBackendUpdate{
+			Type:    "backendupdate",
+			Ts:      time.Now().UnixMilli(),
+			BlockId: c.RpcContext.BlockId,
+		}, nil
+	}
 	c.Root.RunWork()
 	renderedVDom := c.Root.MakeVDom()
 	if renderedVDom == nil {

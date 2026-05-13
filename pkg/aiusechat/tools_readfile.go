@@ -311,6 +311,7 @@ func readTextFileCallback(ctx context.Context, input any, toolUseData *uctypes.U
 
 	data := strings.Join(lines, "")
 	data = strings.TrimSuffix(data, "\n")
+	data = utilfn.StripANSI(data)
 
 	if len(data) > maxBytes {
 		data = truncateData(data, origin, maxBytes)

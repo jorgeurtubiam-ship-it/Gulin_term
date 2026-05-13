@@ -38,12 +38,17 @@ const (
 type anthropicChatMessage struct {
 	MessageId string                         `json:"messageid"`       // internal field for idempotency (cannot send to anthropic)
 	Usage     *anthropicUsageType            `json:"usage,omitempty"` // internal field (cannot send to anthropic)
+	Pinned    bool                           `json:"pinned,omitempty"`
 	Role      string                         `json:"role"`
 	Content   []anthropicMessageContentBlock `json:"content"`
 }
 
 func (m *anthropicChatMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *anthropicChatMessage) IsPinned() bool {
+	return m.Pinned
 }
 
 func (m *anthropicChatMessage) GetContent() string {

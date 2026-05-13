@@ -228,6 +228,7 @@ func ConvertAIMessageToGeminiChatMessage(aiMsg uctypes.AIMessage) (*GeminiChatMe
 	return &GeminiChatMessage{
 		MessageId: aiMsg.MessageId,
 		Role:      "user",
+		Pinned:    aiMsg.Pinned,
 		Parts:     parts,
 	}, nil
 }
@@ -370,9 +371,10 @@ func (m *GeminiChatMessage) convertToUIMessage() *uctypes.UIMessage {
 	}
 
 	return &uctypes.UIMessage{
-		ID:    m.MessageId,
-		Role:  role,
-		Parts: parts,
+		ID:     m.MessageId,
+		Role:   role,
+		Pinned: m.Pinned,
+		Parts:  parts,
 	}
 }
 

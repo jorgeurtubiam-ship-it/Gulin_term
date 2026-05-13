@@ -178,6 +178,8 @@ type SettingsType struct {
 	GulinBridgeEmail              string `json:"gulinbridge:email,omitempty"`
 	GulinBridgePasswordSecretName string `json:"gulinbridge:passwordsecretname,omitempty"`
 	GulinBridgeTokenSecretName    string `json:"gulinbridge:tokensecretname,omitempty"`
+	AiOllamaEmbeddingEndpoint     string `json:"ai:ollama_embedding_endpoint,omitempty"`
+	AiOllamaEmbeddingModel        string `json:"ai:ollama_embedding_model,omitempty"`
 }
 
 func (s *SettingsType) GetAiSettings() *AiSettingsType {

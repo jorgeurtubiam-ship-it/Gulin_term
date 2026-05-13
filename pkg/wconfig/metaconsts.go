@@ -131,5 +131,8 @@ const (
 	ConfigKey_GulinBridgeEmail               = "gulinbridge:email"
 	ConfigKey_GulinBridgePasswordSecretName  = "gulinbridge:passwordsecretname"
 	ConfigKey_GulinBridgeTokenSecretName     = "gulinbridge:tokensecretname"
+
+	ConfigKey_AiOllamaEmbeddingEndpoint      = "ai:ollama_embedding_endpoint"
+	ConfigKey_AiOllamaEmbeddingModel         = "ai:ollama_embedding_model"
 )
 

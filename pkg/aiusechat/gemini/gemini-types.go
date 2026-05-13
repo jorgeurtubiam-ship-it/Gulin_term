@@ -15,12 +15,17 @@ const (
 type GeminiChatMessage struct {
 	MessageId string               `json:"messageid"`
 	Role      string               `json:"role"` // "user", "model"
+	Pinned    bool                 `json:"pinned,omitempty"`
 	Parts     []GeminiMessagePart  `json:"parts"`
 	Usage     *GeminiUsageMetadata `json:"usage,omitempty"`
 }
 
 func (m *GeminiChatMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *GeminiChatMessage) IsPinned() bool {
+	return m.Pinned
 }
 
 func (m *GeminiChatMessage) GetContent() string {
@@ -166,8 +171,9 @@ type GeminiFunctionCallingConfig struct {
 
 // GeminiContent represents a content message for the API
 type GeminiContent struct {
-	Role  string              `json:"role,omitempty"`
-	Parts []GeminiMessagePart `json:"parts"`
+	Role   string              `json:"role,omitempty"`
+	Pinned bool                `json:"-"`
+	Parts  []GeminiMessagePart `json:"parts"`
 }
 
 // Clean removes internal fields from all parts
@@ -176,8 +182,9 @@ func (c *GeminiContent) Clean() *GeminiContent {
 		return nil
 	}
 	cleaned := &GeminiContent{
-		Role:  c.Role,
-		Parts: make([]GeminiMessagePart, len(c.Parts)),
+		Role:   c.Role,
+		Pinned: c.Pinned,
+		Parts:  make([]GeminiMessagePart, len(c.Parts)),
 	}
 	for i, part := range c.Parts {
 		cleaned.Parts[i] = *part.Clean()

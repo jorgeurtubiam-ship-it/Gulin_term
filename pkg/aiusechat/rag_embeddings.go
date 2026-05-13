@@ -11,10 +11,8 @@ import (
 )
 
 const (
-	OllamaHost           = "http://localhost:11434"
-	OllamaEmbeddingModel = "nomic-embed-text"
-	EndpointEmbeddings   = "/api/embeddings"
-	ChunkSizeLimit       = 512 // Approximate token limit per chunk
+	EndpointEmbeddings = "/api/embeddings"
+	ChunkSizeLimit     = 512 // Approximate token limit per chunk
 )
 
 // EmbeddingResponse represents the response from Ollama's embedding API
@@ -31,7 +29,7 @@ type EmbeddingRequest struct {
 // GetEmbedding queries the local Ollama instance to get a vector representation of the text
 func GetEmbedding(ctx context.Context, text string) ([]float32, error) {
 	reqBody := EmbeddingRequest{
-		Model:  OllamaEmbeddingModel,
+		Model:  GetOllamaEmbeddingModel(),
 		Prompt: text,
 	}
 
@@ -40,7 +38,7 @@ func GetEmbedding(ctx context.Context, text string) ([]float32, error) {
 		return nil, fmt.Errorf("failed to marshal embedding request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s%s", OllamaHost, EndpointEmbeddings)
+	url := fmt.Sprintf("%s%s", GetOllamaEmbeddingEndpoint(), EndpointEmbeddings)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

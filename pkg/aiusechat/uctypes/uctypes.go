@@ -58,6 +58,7 @@ type UIChat struct {
 type UIMessage struct {
 	ID       string          `json:"id"`
 	Role     string          `json:"role"` // "system", "user", "assistant"
+	Pinned   bool            `json:"pinned,omitempty"`
 	Metadata any             `json:"metadata,omitempty"`
 	Parts    []UIMessagePart `json:"parts,omitempty"`
 }
@@ -220,6 +221,7 @@ type AIModeConfig struct {
 	Premium            bool     `json:"premium"`
 	Description        string   `json:"description"`
 	Capabilities       []string `json:"capabilities,omitempty"`
+	ContextLimit       int      `json:"contextlimit,omitempty"`
 	AgentID            string   `json:"agentid,omitempty"`
 }
 
@@ -240,6 +242,7 @@ type UIMessageDataToolUse struct {
 	WriteBackupFileName string `json:"writebackupfilename,omitempty"`
 	InputFileName       string `json:"inputfilename,omitempty"`
 	Thought             string `json:"thought,omitempty"`
+	ExpertID            string `json:"expertid,omitempty"` // ID of the expert agent executing this tool
 }
 
 func (d *UIMessageDataToolUse) IsApproved() bool {
@@ -298,6 +301,7 @@ type AIOptsType struct {
 	Endpoint      string   `json:"endpoint,omitempty"`
 	ProxyURL      string   `json:"proxyurl,omitempty"`
 	MaxTokens     int      `json:"maxtokens,omitempty"`
+	ContextLimit  int      `json:"contextlimit,omitempty"`
 	TimeoutMs     int      `json:"timeoutms,omitempty"`
 	ThinkingLevel string   `json:"thinkinglevel,omitempty"` // ThinkingLevelLow, ThinkingLevelMedium, or ThinkingLevelHigh
 	Verbosity     string   `json:"verbosity,omitempty"`     // Text verbosity level (OpenAI Responses API only, ignored by other backends)
@@ -376,6 +380,7 @@ type GenAIMessage interface {
 	GetUsage() *AIUsage
 	GetRole() string
 	GetContent() string
+	IsPinned() bool
 }
 
 const (
@@ -387,6 +392,7 @@ const (
 type AIMessage struct {
 	MessageId string          `json:"messageid"` // only for idempotency
 	Role      string          `json:"role"`      // "user" or "assistant"
+	Pinned    bool            `json:"pinned,omitempty"`
 	Parts     []AIMessagePart `json:"parts"`
 }
 
@@ -402,6 +408,7 @@ func (m *AIMessage) GetContent() string {
 type PlaiMessage struct {
 	MessageId string          `json:"messageid"`
 	Role      string          `json:"role"`
+	Pinned    bool            `json:"pinned,omitempty"`
 	Content   string          `json:"content"`
 	ToolName  string          `json:"toolname,omitempty"`
 	ToolCalls []GulinToolCall `json:"toolcalls,omitempty"`
@@ -411,6 +418,7 @@ func (m *PlaiMessage) GetMessageId() string { return m.MessageId }
 func (m *PlaiMessage) GetRole() string      { return m.Role }
 func (m *PlaiMessage) GetUsage() *AIUsage   { return nil }
 func (m *PlaiMessage) GetContent() string   { return m.Content }
+func (m *PlaiMessage) IsPinned() bool       { return m.Pinned }
 func (m *PlaiMessage) GetToolCalls() []GulinToolCall { return m.ToolCalls }
 
 type AIMessagePart struct {
@@ -440,6 +448,10 @@ type AIToolResult struct {
 
 func (m *AIMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *AIMessage) IsPinned() bool {
+	return m.Pinned
 }
 
 func (m *AIMessage) GetRole() string {

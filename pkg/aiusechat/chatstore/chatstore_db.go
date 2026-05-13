@@ -30,6 +30,7 @@ type DBChatMessage struct {
 	CreatedAt int64  `db:"created_at"`
 	APIType   string `db:"api_type"`
 	Model     string `db:"model"`
+	Pinned    bool   `db:"pinned"`
 	ExtraData string `db:"extra_data"`
 }
 
@@ -54,12 +55,13 @@ func SaveMessageToDB(chatId string, aiOpts *uctypes.AIOptsType, message uctypes.
 			CreatedAt: time.Now().UnixMilli(),
 			APIType:   aiOpts.APIType,
 			Model:     aiOpts.Model,
+			Pinned:    message.IsPinned(),
 			ExtraData: extraData,
 		}
 
 		query := `INSERT OR REPLACE INTO chat_message 
-			(chat_id, message_id, role, content, created_at, api_type, model, extra_data) 
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+			(chat_id, message_id, role, content, created_at, api_type, model, pinned, extra_data) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 		tx.Exec(query,
 			dbMsg.ChatID,
@@ -69,6 +71,7 @@ func SaveMessageToDB(chatId string, aiOpts *uctypes.AIOptsType, message uctypes.
 			dbMsg.CreatedAt,
 			dbMsg.APIType,
 			dbMsg.Model,
+			dbMsg.Pinned,
 			dbMsg.ExtraData,
 		)
 		return nil
@@ -109,6 +112,7 @@ func LoadChatFromDB(chatId string) (*uctypes.AIChat, error) {
 			if aiMsg == nil && dbMsg.ExtraData != "" && (dbMsg.APIType == "plai-assistant" || strings.Contains(dbMsg.ExtraData, "toolcalls")) {
 				var m uctypes.PlaiMessage
 				if err := json.Unmarshal([]byte(dbMsg.ExtraData), &m); err == nil && m.Role != "" {
+					m.Pinned = dbMsg.Pinned
 					aiMsg = &m
 				}
 			}
@@ -118,6 +122,7 @@ func LoadChatFromDB(chatId string) (*uctypes.AIChat, error) {
 				genericMsg := &uctypes.AIMessage{
 					MessageId: dbMsg.MessageID,
 					Role:      dbMsg.Role,
+					Pinned:    dbMsg.Pinned,
 				}
 				if dbMsg.ExtraData != "" {
 					var parts []uctypes.AIMessagePart

@@ -67,10 +67,18 @@ func (impl *GulinAppServerImpl) VDomRenderCommand(ctx context.Context, feUpdate 
 		impl.Client.Root.UpdateRef(ref)
 	}
 
+	// handle visibility
+	wasVisible := impl.Client.IsVisible
+	impl.Client.IsVisible = !feUpdate.RenderContext.Background
+	forceResync := feUpdate.Resync
+	if !wasVisible && impl.Client.IsVisible {
+		forceResync = true
+	}
+
 	var update *vdom.VDomBackendUpdate
 	var err error
 
-	if feUpdate.Resync || true {
+	if forceResync {
 		update, err = impl.Client.fullRender()
 	} else {
 		update, err = impl.Client.incrementalRender()

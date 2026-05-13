@@ -1548,6 +1548,8 @@ declare global {
         "gulinbridge:email"?: string;
         "gulinbridge:passwordsecretname"?: string;
         "gulinbridge:tokensecretname"?: string;
+        "ai:ollama_embedding_endpoint"?: string;
+        "ai:ollama_embedding_model"?: string;
     };
 
     // gulinobj.StickerClickOptsType
@@ -1815,6 +1817,7 @@ declare global {
     type UIMessage = {
         id: string;
         role: string;
+        pinned?: boolean;
         metadata?: any;
         parts?: UIMessagePart[];
     };

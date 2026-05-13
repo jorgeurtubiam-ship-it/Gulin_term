@@ -46,6 +46,7 @@ func sanitizeHostnameInError(err error) error {
 
 type OpenAIChatMessage struct {
 	MessageId          string                         `json:"messageid"` // internal field for idempotency (cannot send to openai)
+	Pinned             bool                           `json:"pinned,omitempty"`
 	Message            *OpenAIMessage                 `json:"message,omitempty"`
 	FunctionCall       *OpenAIFunctionCallInput       `json:"functioncall,omitempty"`
 	FunctionCallOutput *OpenAIFunctionCallOutputInput `json:"functioncalloutput,omitempty"`
@@ -137,6 +138,10 @@ type openAIErrorType struct {
 
 func (m *OpenAIChatMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *OpenAIChatMessage) IsPinned() bool {
+	return m.Pinned
 }
 
 func (m *OpenAIChatMessage) GetContent() string {

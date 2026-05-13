@@ -116,5 +116,17 @@
                 "view": "oracle-monitor"
             }
         }
+    },
+    "defwidget@plugin-manager": {
+        "display:order": 6,
+        "icon": "puzzle-piece",
+        "color": "#a78bfa",
+        "label": "plugins",
+        "description": "Gestiona Plugins Dinámicos",
+        "blockdef": {
+            "meta": {
+                "view": "plugin-manager"
+            }
+        }
     }
 }

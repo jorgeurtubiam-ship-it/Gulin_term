@@ -272,7 +272,7 @@ func updateToolUseDataInChat(backend UseChatBackend, chatOpts uctypes.GulinChatO
 	}
 }
 
-func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) uctypes.AIToolResult {
+func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctypes.GulinToolCall, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics, expertID string) uctypes.AIToolResult {
 	log.Printf("AI tool %s id=%s input=%v\n", toolCall.Name, toolCall.ID, toolCall.Input)
 	
 	toolDef := chatOpts.GetToolDefinition(toolCall.Name)
@@ -323,6 +323,9 @@ func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctyp
 			}
 		}
 
+		if expertID != "" {
+			toolCall.ToolUseData.ExpertID = expertID
+		}
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, *toolCall.ToolUseData)
 		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, *toolCall.ToolUseData)
 	}
@@ -330,7 +333,7 @@ func processToolCall(ctx context.Context, backend UseChatBackend, toolCall uctyp
 	return result
 }
 
-func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason *uctypes.GulinStopReason, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics) {
+func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason *uctypes.GulinStopReason, chatOpts uctypes.GulinChatOpts, sseHandler *sse.SSEHandlerCh, metrics *uctypes.AIMetrics, expertID string) {
 	// Create and send all data-tooluse packets at the beginning
 	for i := range stopReason.ToolCalls {
 		toolCall := &stopReason.ToolCalls[i]
@@ -344,7 +347,10 @@ func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason
 		}
 		toolUseData := aiutil.CreateToolUseData(toolCall.ID, toolCall.Name, argsJSON, chatOpts)
 		stopReason.ToolCalls[i].ToolUseData = &toolUseData
-		log.Printf("AI data-tooluse %s\n", toolCall.ID)
+		if expertID != "" {
+			toolUseData.ExpertID = expertID
+		}
+		log.Printf("AI data-tooluse %s (expert=%s)\n", toolCall.ID, expertID)
 		_ = sseHandler.AiMsgData("data-tooluse", toolCall.ID, toolUseData)
 		updateToolUseDataInChat(backend, chatOpts, toolCall.ID, toolUseData)
 		if toolUseData.Approval == uctypes.ApprovalNeedsApproval {
@@ -359,7 +365,7 @@ func processAllToolCalls(ctx context.Context, backend UseChatBackend, stopReason
 			log.Printf("AI tool processing stopped: %v\n", sseHandler.Err())
 			break
 		}
-		result := processToolCall(ctx, backend, toolCall, chatOpts, sseHandler, metrics)
+		result := processToolCall(ctx, backend, toolCall, chatOpts, sseHandler, metrics, expertID)
 		toolResults = append(toolResults, result)
 	}
 
@@ -554,7 +560,12 @@ func RunAIChat(ctx context.Context, sseHandler *sse.SSEHandlerCh, backend UseCha
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
 			log.Printf("RunAIChat: processing %d tool calls...\n", len(stopReason.ToolCalls))
-			processAllToolCalls(ctx, backend, stopReason, chatOpts, sseHandler, metrics)
+			var currentExpertID string
+			if strings.Contains(chatOpts.Config.Model, "@") {
+				modelParts := strings.Split(chatOpts.Config.Model, "@")
+				currentExpertID = modelParts[1]
+			}
+			processAllToolCalls(ctx, backend, stopReason, chatOpts, sseHandler, metrics, currentExpertID)
 			
 			// Si el orquestador delegó a un experto, actualizamos el modelo para el siguiente paso del bucle
 			for _, toolCall := range stopReason.ToolCalls {
@@ -1714,11 +1725,16 @@ func runExpertSubChat(ctx context.Context, backend UseChatBackend, chatOpts ucty
 
 		// Si el experto decidió usar herramientas, procesarlas iterativamente
 		if stopReason != nil && stopReason.Kind == uctypes.StopKindToolUse {
-			_ = sseHandler.AiMsgData("data-expert-status", expertID, map[string]string{
+			var toolNames []string
+			for _, tc := range stopReason.ToolCalls {
+				toolNames = append(toolNames, tc.Name)
+			}
+			_ = sseHandler.AiMsgData("data-expert-status", expertID, map[string]any{
 				"status": "tool_use",
+				"tools":  toolNames,
 			})
 			metrics.ToolUseCount += len(stopReason.ToolCalls)
-			processAllToolCalls(ctx, backend, stopReason, expertOpts, sseHandler, metrics)
+			processAllToolCalls(ctx, backend, stopReason, expertOpts, sseHandler, metrics, expertID)
 			cont = &uctypes.GulinContinueResponse{
 				Model:            expertOpts.Config.Model,
 				ContinueFromKind: uctypes.StopKindToolUse,

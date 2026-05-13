@@ -227,6 +227,19 @@ func GenerateTabStateAndTools(ctx context.Context, tabid string, widgetAccess bo
 			tools = append(tools, GetWebClickToolDefinition(tabid))
 			tools = append(tools, GetWebTypeToolDefinition(tabid))
 		}
+
+		// --- CARGA DINÁMICA DE PLUGINS ---
+		dynamicTools, err := LoadPlugins(ctx, tabid)
+		if err == nil && len(dynamicTools) > 0 {
+			tools = append(tools, dynamicTools...)
+		}
+		// ---------------------------------
+
+		// Herramientas de Gestión de Plugins
+		tools = append(tools, GetPluginSaveToolDefinition())
+		tools = append(tools, GetPluginListToolDefinition())
+		tools = append(tools, GetPluginDeleteToolDefinition())
+		tools = append(tools, GetPluginDebugToolDefinition())
 	}
 // El filtro restrictivo de Gulin Bridge fue removido exitosamente aquí
 	// Herramientas de Descubrimiento Dinámico (Cualquier proveedor puede usarlas si tiene muchas herramientas)

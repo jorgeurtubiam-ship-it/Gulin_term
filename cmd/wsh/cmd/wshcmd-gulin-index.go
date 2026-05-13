@@ -64,7 +64,7 @@ func gulinIndexRun(cmd *cobra.Command, args []string) error {
 
 	db := aiusechat.GetVectorDB()
 	fmt.Printf("Starting Gulin Workspace Indexing for: %s\n", targetDir)
-	fmt.Printf("Using Ollama Model: %s\n", aiusechat.OllamaEmbeddingModel)
+	fmt.Printf("Using Ollama Model: %s\n", aiusechat.GetOllamaEmbeddingModel())
 	fmt.Printf("--------------------------------------------------\n")
 
 	fileCount := 0

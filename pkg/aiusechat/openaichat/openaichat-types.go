@@ -217,6 +217,7 @@ type ToolFunctionDelta struct {
 type StoredChatMessage struct {
 	MessageId string             `json:"messageid"`
 	Message   ChatRequestMessage `json:"message"`
+	Pinned    bool               `json:"pinned,omitempty"`
 	Usage     *ChatUsage         `json:"usage,omitempty"`
 }
 
@@ -229,6 +230,10 @@ type ChatUsage struct {
 
 func (m *StoredChatMessage) GetMessageId() string {
 	return m.MessageId
+}
+
+func (m *StoredChatMessage) IsPinned() bool {
+	return m.Pinned
 }
 
 func (m *StoredChatMessage) GetContent() string {

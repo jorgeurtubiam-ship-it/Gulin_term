@@ -302,3 +302,34 @@ func SendToolProgress(toolCallID, toolName string, jsonData []byte, chatOpts uct
 	}
 	_ = sseHandler.AiMsgData("data-toolprogress", "progress-"+toolCallID, progressData)
 }
+
+// EstimateTokens provides a weighted estimation of the number of tokens in a string.
+// It uses heuristics for text vs code to be more accurate than simple character counting.
+func EstimateTokens(s string) int {
+	if s == "" {
+		return 0
+	}
+
+	// Count whitespace and special characters
+	var numSpaces, numSpecials int
+	for _, r := range s {
+		if r == ' ' || r == '\n' || r == '\t' {
+			numSpaces++
+		} else if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+			numSpecials++
+		}
+	}
+
+	// Heuristic: If special characters are > 15% of the total, it's likely code/structured data.
+	// Code usually has a higher token-to-character ratio.
+	charLen := len(s)
+	specialRatio := float64(numSpecials) / float64(charLen)
+
+	if specialRatio > 0.15 {
+		// Code-like: ~3 characters per token
+		return charLen / 3
+	}
+
+	// Standard text: ~4 characters per token
+	return charLen / 4
+}

@@ -117,6 +117,11 @@ func ConvertMap(val any) map[string]any {
 }
 
 var needsQuoteRe = regexp.MustCompile(`[^\w@%:,./=+-]`)
+var ansiRegex = regexp.MustCompile(`[\x1b\x9b][\[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]`)
+
+func StripANSI(str string) string {
+	return ansiRegex.ReplaceAllString(str, "")
+}
 
 // minimum maxlen=6, pass -1 for no max length
 func ShellQuote(val string, forceQuote bool, maxLen int) string {

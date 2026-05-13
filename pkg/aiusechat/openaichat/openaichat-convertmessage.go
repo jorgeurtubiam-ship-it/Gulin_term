@@ -87,23 +87,29 @@ func sanitizeToolDefinitionsForBridge(tools []ToolDefinition) {
 	}
 }
 
-// truncateLargeMessages restricts the byte massive messages (e.g terminal outputs) to prevent Proxy overload
-func truncateLargeMessages(messages []ChatRequestMessage, maxLen int) []ChatRequestMessage {
+// truncateLargeMessages restricts the byte massive messages (e.g terminal outputs) to prevent payload overload
+func truncateLargeMessages(messages []ChatRequestMessage, maxTokens int) []ChatRequestMessage {
 	if len(messages) == 0 {
 		return messages
 	}
 
-	truncMsg := "\n\n... [truncated by Gulin Bridge to prevent payload overload] ..."
+	truncMsg := "\n\n... [truncated to prevent payload overload] ..."
 	for i := range messages {
 		// Truncate plain text content
-		if len(messages[i].Content) > maxLen {
-			messages[i].Content = messages[i].Content[:maxLen] + truncMsg
+		if aiutil.EstimateTokens(messages[i].Content) > maxTokens {
+			maxCharLen := maxTokens * 4
+			if len(messages[i].Content) > maxCharLen {
+				messages[i].Content = messages[i].Content[:maxCharLen] + truncMsg
+			}
 		}
 		// Truncate text inside content parts
 		if len(messages[i].ContentParts) > 0 {
 			for j := range messages[i].ContentParts {
-				if messages[i].ContentParts[j].Type == "text" && len(messages[i].ContentParts[j].Text) > maxLen {
-					messages[i].ContentParts[j].Text = messages[i].ContentParts[j].Text[:maxLen] + truncMsg
+				if messages[i].ContentParts[j].Type == "text" && aiutil.EstimateTokens(messages[i].ContentParts[j].Text) > maxTokens {
+					maxCharLen := maxTokens * 4
+					if len(messages[i].ContentParts[j].Text) > maxCharLen {
+						messages[i].ContentParts[j].Text = messages[i].ContentParts[j].Text[:maxCharLen] + truncMsg
+					}
 				}
 			}
 		}
@@ -111,25 +117,26 @@ func truncateLargeMessages(messages []ChatRequestMessage, maxLen int) []ChatRequ
 	return messages
 }
 
-// getMessageEffectiveLen calculates the approximate length of a message including tools and parts.
-func getMessageEffectiveLen(m ChatRequestMessage) int {
-	l := len(m.Content)
+// getMessageEffectiveTokens calculates the approximate tokens of a message including tools and parts.
+func getMessageEffectiveTokens(m ChatRequestMessage) int {
+	tokens := aiutil.EstimateTokens(m.Content)
 	for _, part := range m.ContentParts {
-		l += len(part.Text)
+		tokens += aiutil.EstimateTokens(part.Text)
 		if part.ImageUrl != nil {
-			l += len(part.ImageUrl.Url)
+			tokens += 100 // Estimate for image metadata
 		}
 	}
 	for _, tc := range m.ToolCalls {
-		l += len(tc.ID) + len(tc.Function.Name) + len(tc.Function.Arguments)
+		tokens += 50 // Overhead per tool call
+		tokens += aiutil.EstimateTokens(tc.Function.Arguments)
 	}
-	l += len(m.ToolCallID) + len(m.Name)
-	return l
+	tokens += aiutil.EstimateTokens(m.Name)
+	return tokens
 }
 
 // limitTotalMessages implements a sliding window to keep the total conversation within token limits.
 // It prioritizes the system prompt and the most recent messages.
-func limitTotalMessages(messages []ChatRequestMessage, maxTotalLen int) []ChatRequestMessage {
+func limitTotalMessages(messages []ChatRequestMessage, maxTotalTokens int) []ChatRequestMessage {
 	if len(messages) <= 1 {
 		return messages
 	}
@@ -146,9 +153,9 @@ func limitTotalMessages(messages []ChatRequestMessage, maxTotalLen int) []ChatRe
 	}
 
 	var keptMessages []ChatRequestMessage
-	totalLen := 0
+	totalTokens := 0
 	if systemMsg != nil {
-		totalLen += len(systemMsg.Content)
+		totalTokens += aiutil.EstimateTokens(systemMsg.Content)
 	}
 
 	numUserMsgs := 0
@@ -158,20 +165,20 @@ func limitTotalMessages(messages []ChatRequestMessage, maxTotalLen int) []ChatRe
 			numUserMsgs++
 		}
 
-		// Limit to last 3 user questions
-		if numUserMsgs > 3 {
+		// Limit to last 50 user questions (scaled up for large context)
+		if numUserMsgs > 50 {
 			break
 		}
 
-		msgLen := getMessageEffectiveLen(messages[i])
-		if totalLen+msgLen > maxTotalLen {
+		msgTokens := getMessageEffectiveTokens(messages[i])
+		if totalTokens+msgTokens > maxTotalTokens {
 			if len(keptMessages) > 0 {
 				break
 			}
 		}
 
 		keptMessages = append(keptMessages, messages[i])
-		totalLen += msgLen
+		totalTokens += msgTokens
 	}
 
 	// Reverse keptMessages because we collected from end to start
@@ -263,12 +270,15 @@ func buildChatHTTPRequest(ctx context.Context, messages []ChatRequestMessage, ch
 		strings.Contains(opts.Endpoint, "localhost:8090")
 		
 	// Truncate massive messages (e.g terminal outputs, large file attachments)
-	// to prevent individual message explosion. 40,000 characters is ~10k tokens.
-	sanitizedMessages = truncateLargeMessages(sanitizedMessages, 40000)
+	// to prevent individual message explosion.
+	contextLimit := opts.ContextLimit
+	if contextLimit <= 0 {
+		contextLimit = 150000 / 4 // Fallback (approx 37.5k tokens)
+	}
+	sanitizedMessages = truncateLargeMessages(sanitizedMessages, contextLimit/8)
 
 	// Apply sliding window to keep the TOTAL context within model limits.
-	// 150,000 chars is roughly 35k-45k tokens, leaving ample room (90k tokens) for tools and system prompts.
-	sanitizedMessages = limitTotalMessages(sanitizedMessages, 150000)
+	sanitizedMessages = limitTotalMessages(sanitizedMessages, contextLimit)
 
 	reqBody := &ChatRequest{
 		Messages: sanitizedMessages,

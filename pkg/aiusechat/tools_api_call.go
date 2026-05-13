@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gulindev/gulin/pkg/aiusechat/uctypes"
 	"github.com/gulindev/gulin/pkg/gulinbase"
+	"github.com/gulindev/gulin/pkg/util/utilfn"
 	"github.com/gulindev/gulin/pkg/web/sse"
 
 	"database/sql"
@@ -236,7 +237,7 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 				return nil, fmt.Errorf("failed to read response: %w", err)
 			}
 			
-			respStr := string(respBody)
+			respStr := utilfn.StripANSI(string(respBody))
 			fmt.Printf("[DEBUG RESP] %s\n", respStr)
 			sse.SendDebugLog(ctx, sse.LogCatAPI, fmt.Sprintf("[DEBUG RESP] %s", respStr))
 
@@ -257,7 +258,7 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 			var prettyJSON any
 			if err := json.Unmarshal(respBody, &prettyJSON); err == nil {
 				prettyBytes, _ := json.MarshalIndent(prettyJSON, "", "  ")
-				bodyStr = string(prettyBytes)
+				bodyStr = utilfn.StripANSI(string(prettyBytes))
 				
 				// Limit output length to prevent LLM context overflow (max ~15KB per API call)
 				const MaxBodyLen = 15000
@@ -293,7 +294,7 @@ Use this tool whenever the user mentions "api manager" or an API registered in t
 			}
 
 			// Non-JSON response truncation
-			bodyStr = string(respBody)
+			bodyStr = respStr
 			if strings.Contains(strings.ToLower(bodyStr), "<html") {
 				bodyStr += "\n\n>>> WARNING: This endpoint returned HTML instead of JSON. You might be calling a UI URL instead of an API endpoint. For Dremio, ensure your path starts with /api/v3/ (e.g. /api/v3/login)."
 			}
