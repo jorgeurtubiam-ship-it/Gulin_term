@@ -21,8 +21,8 @@
         "debug": "^4.4.3",
         "es-toolkit": "^1.45.1",
         "jotai": "^2.13.1",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
+        "react": "^19.2.6",
+        "react-dom": "^19.2.6",
         "react-markdown": "^10.1.0",
         "recharts": "^2.15.4",
         "tailwind-merge": "^3.3.1"
